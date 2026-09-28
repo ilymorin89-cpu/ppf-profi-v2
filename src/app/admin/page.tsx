@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -15,7 +15,13 @@ type Order = {
   comment: string | null;
   status: string;
   createdAt: string;
+  partnerId: number | null;
+  partnerName: string | null;
+  partnerSlug: string | null;
+  masterId: number | null;
 };
+
+type Master = { id: number; name: string; slug: string };
 
 const CAR_LABELS: Record<string, string> = {
   BMW_X5_G05: "BMW X5 G05",
@@ -36,8 +42,17 @@ const FILM_LABELS: Record<string, string> = {
   SPECTROLL_PREMIUM: "Spectroll Premium",
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  NEW: "Новая",
+  NEEDS_CHECK: "На проверке",
+  QUOTED: "Расчёт готов",
+  APPROVED: "Подтверждена",
+  COMPLETED: "Выполнена",
+};
+
 export default function AdminPage() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [masters, setMasters] = useState<Master[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   const load = async () => {
@@ -54,6 +69,10 @@ export default function AdminPage() {
 
   useEffect(() => {
     load();
+    fetch("/api/masters")
+      .then((res) => res.json())
+      .then((data) => setMasters(data.masters || []))
+      .catch(() => setMasters([]));
   }, []);
 
   const removeOrder = async (id: number) => {
@@ -61,8 +80,17 @@ export default function AdminPage() {
     await load();
   };
 
+  const assignMaster = async (orderId: number, masterId: number | null) => {
+    await fetch(`/api/orders/${orderId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ masterId }),
+    });
+    await load();
+  };
+
   const clearAll = async () => {
-    if (confirm("Удалить все заявки? Это действие нельзя отменить.")) {
+    if (confirm("Удалить все заявки?")) {
       await fetch("/api/orders", { method: "DELETE" });
       await load();
     }
@@ -77,6 +105,9 @@ export default function AdminPage() {
       minute: "2-digit",
     });
   };
+
+  const partnerOrders = orders.filter((o) => o.partnerId !== null).length;
+  const directOrders = orders.length - partnerOrders;
 
   return (
     <div className="dark-grid min-h-screen text-white">
@@ -111,24 +142,29 @@ export default function AdminPage() {
           )}
         </div>
 
-        <div className="premium-panel mt-8 flex items-center justify-between p-6">
+        <div className="premium-panel mt-8 grid grid-cols-1 gap-6 p-6 sm:grid-cols-3">
           <div>
             <div className="text-xs font-extrabold uppercase tracking-[0.14em] text-blue-300">
               Всего заявок
             </div>
-            <div className="mt-2 text-5xl font-extrabold tracking-[-0.04em]">
+            <div className="mt-2 text-4xl font-extrabold tracking-[-0.04em]">
               {orders.length}
             </div>
           </div>
-          <div className="text-right">
+          <div>
             <div className="text-xs font-extrabold uppercase tracking-[0.14em] text-slate-400">
-              Потенциал
+              От партнёров
             </div>
-            <div className="mt-2 text-2xl font-extrabold text-blue-400">
-              {orders
-                .reduce((sum, o) => sum + (o.price || 0), 0)
-                .toLocaleString("ru-RU")}{" "}
-              ₽
+            <div className="mt-2 text-4xl font-extrabold tracking-[-0.04em] text-blue-400">
+              {partnerOrders}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs font-extrabold uppercase tracking-[0.14em] text-slate-400">
+              Напрямую
+            </div>
+            <div className="mt-2 text-4xl font-extrabold tracking-[-0.04em] text-slate-300">
+              {directOrders}
             </div>
           </div>
         </div>
@@ -137,15 +173,6 @@ export default function AdminPage() {
           <div className="mt-8 rounded-2xl border border-dashed border-white/15 p-16 text-center">
             <div className="text-4xl">📭</div>
             <div className="mt-4 font-extrabold text-white">Заявок пока нет</div>
-            <p className="mt-2 text-sm text-slate-400">
-              Создайте первую заявку через калькулятор.
-            </p>
-            <Link
-              href="/calculator"
-              className="mt-6 inline-block rounded-xl bg-blue-600 px-6 py-3 font-extrabold shadow-lg shadow-blue-600/25 transition hover:bg-blue-500"
-            >
-              Открыть калькулятор
-            </Link>
           </div>
         )}
 
@@ -153,12 +180,24 @@ export default function AdminPage() {
           <div className="mt-8 space-y-3">
             {orders.map((o) => (
               <div key={o.id} className="premium-panel p-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-3">
                       <span className="text-xs font-extrabold text-blue-300">
                         {o.publicNumber}
                       </span>
+                      <span className="rounded-full bg-blue-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-blue-200">
+                        {STATUS_LABELS[o.status] || o.status}
+                      </span>
+                      {o.partnerName ? (
+                        <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-emerald-200">
+                          Партнёр: {o.partnerName}
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-slate-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-300">
+                          Напрямую
+                        </span>
+                      )}
                       <span className="text-xs text-slate-500">
                         {formatDate(o.createdAt)}
                       </span>
@@ -177,14 +216,32 @@ export default function AdminPage() {
                       </div>
                     )}
                   </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-extrabold text-white">
+                  <div className="w-52 shrink-0">
+                    <div className="text-right text-2xl font-extrabold text-white">
                       {o.price.toLocaleString("ru-RU")} ₽
                     </div>
-                    <div className="mt-1 text-xs text-slate-500">предварительно</div>
+                    <div className="mt-1 text-right text-xs text-slate-500">
+                      предварительно
+                    </div>
+                    <select
+                      value={o.masterId ?? ""}
+                      onChange={(e) =>
+                        assignMaster(o.id, e.target.value ? Number(e.target.value) : null)
+                      }
+                      className="mt-3 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-bold text-white focus:border-blue-500 focus:outline-none"
+                    >
+                      <option value="" className="bg-slate-900">
+                        — Не назначен —
+                      </option>
+                      {masters.map((m) => (
+                        <option key={m.id} value={m.id} className="bg-slate-900">
+                          {m.name}
+                        </option>
+                      ))}
+                    </select>
                     <button
                       onClick={() => removeOrder(o.id)}
-                      className="mt-3 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-1.5 text-xs font-bold text-rose-200 transition hover:bg-rose-500/20"
+                      className="mt-2 w-full rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-1.5 text-xs font-bold text-rose-200 transition hover:bg-rose-500/20"
                     >
                       Удалить
                     </button>

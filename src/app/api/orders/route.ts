@@ -1,12 +1,12 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { db } from "@/server/db/client";
-import { orders } from "@/server/db/schema";
+import { orders, partners } from "@/server/db/schema";
 import { desc, eq } from "drizzle-orm";
+import { sendTelegramNotification } from "@/server/telegram/notify";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-
     const {
       carCode,
       scenario,
@@ -15,6 +15,7 @@ export async function POST(request: Request) {
       clientName,
       clientPhone,
       comment,
+      partnerId,
     } = body;
 
     if (!carCode || !scenario || !filmCode || !clientName || !clientPhone) {
@@ -43,9 +44,23 @@ export async function POST(request: Request) {
         clientName,
         clientPhone,
         comment: comment || null,
+        partnerId: partnerId ? Number(partnerId) : null,
         status: "NEW",
       })
       .returning();
+
+    const partnerLine = partnerId ? `Партнёр: ID ${partnerId}` : "Напрямую";
+    await sendTelegramNotification(
+      `<b>🔔 НОВАЯ ЗАЯВКА ${publicNumber}</b>\n\n` +
+        `Клиент: ${clientName}\n` +
+        `Телефон: ${clientPhone}\n` +
+        `Авто: ${carCode}\n` +
+        `Состав: ${scenario}\n` +
+        `Плёнка: ${filmCode}\n` +
+        `Цена: ${price} ₽\n` +
+        `Источник: ${partnerLine}\n\n` +
+        `<a href="http://localhost:3000/admin">Открыть админку</a>`
+    );
 
     return NextResponse.json({ ok: true, order: created });
   } catch (error) {
@@ -57,12 +72,45 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const list = await db
-      .select()
+    const { searchParams } = new URL(request.url);
+    const partnerId = searchParams.get("partner_id");
+    const masterId = searchParams.get("master_id");
+
+    const query = db
+      .select({
+        id: orders.id,
+        publicNumber: orders.publicNumber,
+        carCode: orders.carCode,
+        scenario: orders.scenario,
+        filmCode: orders.filmCode,
+        price: orders.price,
+        clientName: orders.clientName,
+        clientPhone: orders.clientPhone,
+        comment: orders.comment,
+        status: orders.status,
+        createdAt: orders.createdAt,
+        partnerId: orders.partnerId,
+        masterId: orders.masterId,
+        partnerName: partners.name,
+        partnerSlug: partners.slug,
+      })
       .from(orders)
-      .orderBy(desc(orders.createdAt));
+      .leftJoin(partners, eq(orders.partnerId, partners.id));
+
+    let list;
+    if (partnerId) {
+      list = await query
+        .where(eq(orders.partnerId, Number(partnerId)))
+        .orderBy(desc(orders.createdAt));
+    } else if (masterId) {
+      list = await query
+        .where(eq(orders.masterId, Number(masterId)))
+        .orderBy(desc(orders.createdAt));
+    } else {
+      list = await query.orderBy(desc(orders.createdAt));
+    }
 
     return NextResponse.json({ orders: list });
   } catch (error) {
