@@ -6,6 +6,7 @@ import { useState } from "react";
 const NAV = [
   { label: "Главная", href: "#top" },
   { label: "Партнёрам", href: "#business" },
+  { label: "Мастерам", href: "/master" },
   { label: "Как это работает", href: "#how" },
   { label: "Преимущества", href: "#features" },
   { label: "Контакты", href: "#contacts" },
@@ -30,9 +31,9 @@ const FEATURES = [
     icon: "🛡",
   },
   {
-    title: "Полный документооборот",
-    text: "Договоры, акты, гарантии и прозрачные расчёты.",
-    icon: "📄",
+    title: "Прозрачные расчёты",
+    text: "Цена видна до подтверждения. Финальная стоимость фиксируется в системе.",
+    icon: "💰",
   },
   {
     title: "Поддержка 24/7",
@@ -40,6 +41,7 @@ const FEATURES = [
     icon: "🎧",
   },
 ];
+
 
 const PARTNER_TYPES = [
   "Автосалоны",
