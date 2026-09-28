@@ -108,6 +108,18 @@ export default function MasterPage() {
     }
   };
 
+  const markCompleted = async (orderId: number) => {
+    if (!confirm("Отметить работу как выполненную?")) return;
+    await fetch(`/api/orders/${orderId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "COMPLETED" }),
+    });
+    setOrders((prev) =>
+      prev.map((o) => (o.id === orderId ? { ...o, status: "COMPLETED" } : o))
+    );
+  };
+
   const handleLogout = () => {
     localStorage.removeItem("ppf_master");
     setMaster(null);
@@ -297,10 +309,22 @@ export default function MasterPage() {
                             </div>
                           )}
                         </div>
-                        <div className="text-right">
+                        <div className="w-40 shrink-0 text-right">
                           <div className="text-2xl font-extrabold text-white">
                             {o.price.toLocaleString("ru-RU")} ₽
                           </div>
+                          {o.status !== "COMPLETED" ? (
+                            <button
+                              onClick={() => markCompleted(o.id)}
+                              className="mt-3 w-full rounded-lg bg-emerald-600 px-3 py-2 text-xs font-extrabold text-white transition hover:bg-emerald-500"
+                            >
+                              ✓ Выполнено
+                            </button>
+                          ) : (
+                            <div className="mt-3 w-full rounded-lg bg-emerald-500/15 px-3 py-2 text-xs font-extrabold text-emerald-300">
+                              Завершено
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

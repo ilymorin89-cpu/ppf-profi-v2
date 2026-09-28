@@ -10,11 +10,25 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { masterId } = body as { masterId?: number | null };
+    const { masterId, status } = body as {
+      masterId?: number | null;
+      status?: string;
+    };
+
+    const updates: Record<string, number | string | null> = {};
+    if (masterId !== undefined) updates.masterId = masterId;
+    if (status !== undefined) updates.status = status;
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json(
+        { error: "No updates provided" },
+        { status: 400 }
+      );
+    }
 
     const [updated] = await db
       .update(orders)
-      .set({ masterId: masterId ?? null })
+      .set(updates)
       .where(eq(orders.id, Number(id)))
       .returning();
 
