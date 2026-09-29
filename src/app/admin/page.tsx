@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -111,15 +111,14 @@ export default function AdminPage() {
 
   return (
     <div className="dark-grid min-h-screen text-white">
-      <header className="border-b border-white/10 bg-[#061426]/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-6">
+      <header className="sticky top-0 z-50 border-b border-white/8 bg-black/80 backdrop-blur-xl">
+        <div className="mx-auto flex h-20 max-w-4xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-3">
-            <div className="grid h-9 w-9 place-items-center rounded-lg bg-blue-600 text-base font-black italic">
-              P
+            <div className="text-xl font-extrabold tracking-[0.12em]">
+              PPF <span className="accent">PROFI</span>
             </div>
-            <span className="text-sm font-extrabold tracking-[0.13em]">PPF PROFI</span>
           </Link>
-          <div className="text-xs font-bold text-slate-400">Панель администратора</div>
+          <div className="text-xs font-bold text-white/50">Панель администратора</div>
         </div>
       </header>
 
@@ -130,7 +129,7 @@ export default function AdminPage() {
             <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
               Список заявок
             </h1>
-            <p className="mt-3 text-slate-400">Все заявки из базы данных.</p>
+            <p className="mt-3 text-white/60">Все заявки из базы данных.</p>
           </div>
           {orders.length > 0 && (
             <button
@@ -142,9 +141,9 @@ export default function AdminPage() {
           )}
         </div>
 
-        <div className="premium-panel mt-8 grid grid-cols-1 gap-6 p-6 sm:grid-cols-3">
+        <div className="dark-card mt-8 grid grid-cols-1 gap-6 p-6 sm:grid-cols-3">
           <div>
-            <div className="text-xs font-extrabold uppercase tracking-[0.14em] text-blue-300">
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] accent">
               Всего заявок
             </div>
             <div className="mt-2 text-4xl font-extrabold tracking-[-0.04em]">
@@ -152,18 +151,18 @@ export default function AdminPage() {
             </div>
           </div>
           <div>
-            <div className="text-xs font-extrabold uppercase tracking-[0.14em] text-slate-400">
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">
               От партнёров
             </div>
-            <div className="mt-2 text-4xl font-extrabold tracking-[-0.04em] text-blue-400">
+            <div className="mt-2 text-4xl font-extrabold tracking-[-0.04em] accent">
               {partnerOrders}
             </div>
           </div>
           <div>
-            <div className="text-xs font-extrabold uppercase tracking-[0.14em] text-slate-400">
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">
               Напрямую
             </div>
-            <div className="mt-2 text-4xl font-extrabold tracking-[-0.04em] text-slate-300">
+            <div className="mt-2 text-4xl font-extrabold tracking-[-0.04em] text-white/70">
               {directOrders}
             </div>
           </div>
@@ -179,39 +178,39 @@ export default function AdminPage() {
         {orders.length > 0 && (
           <div className="mt-8 space-y-3">
             {orders.map((o) => (
-              <div key={o.id} className="premium-panel p-6">
+              <div key={o.id} className="dark-card p-6">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-3">
-                      <span className="text-xs font-extrabold text-blue-300">
+                      <span className="text-xs font-extrabold accent">
                         {o.publicNumber}
                       </span>
-                      <span className="rounded-full bg-blue-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-blue-200">
+                      <span className="rounded-full bg-lime-400/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-lime-200">
                         {STATUS_LABELS[o.status] || o.status}
                       </span>
                       {o.partnerName ? (
-                        <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-emerald-200">
+                        <span className="rounded-full bg-lime-400/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-lime-300">
                           Партнёр: {o.partnerName}
                         </span>
                       ) : (
-                        <span className="rounded-full bg-slate-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-300">
+                        <span className="rounded-full bg-white/5 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white/50">
                           Напрямую
                         </span>
                       )}
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-white/40">
                         {formatDate(o.createdAt)}
                       </span>
                     </div>
                     <div className="mt-3 text-lg font-extrabold text-white">
                       {o.clientName} · {o.clientPhone}
                     </div>
-                    <div className="mt-2 text-sm text-slate-400">
+                    <div className="mt-2 text-sm text-white/50">
                       {CAR_LABELS[o.carCode] || o.carCode} ·{" "}
                       {PKG_LABELS[o.scenario] || o.scenario} ·{" "}
                       {FILM_LABELS[o.filmCode] || o.filmCode}
                     </div>
                     {o.comment && (
-                      <div className="mt-3 rounded-lg bg-white/5 px-3 py-2 text-sm text-slate-300">
+                      <div className="mt-3 rounded-lg bg-white/5 px-3 py-2 text-sm text-white/70">
                         {o.comment}
                       </div>
                     )}
@@ -220,7 +219,7 @@ export default function AdminPage() {
                     <div className="text-right text-2xl font-extrabold text-white">
                       {o.price.toLocaleString("ru-RU")} ₽
                     </div>
-                    <div className="mt-1 text-right text-xs text-slate-500">
+                    <div className="mt-1 text-right text-xs text-white/40">
                       предварительно
                     </div>
                     <select
@@ -228,13 +227,13 @@ export default function AdminPage() {
                       onChange={(e) =>
                         assignMaster(o.id, e.target.value ? Number(e.target.value) : null)
                       }
-                      className="mt-3 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-bold text-white focus:border-blue-500 focus:outline-none"
+                      className="mt-3 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-white focus:border-lime-400 focus:outline-none"
                     >
-                      <option value="" className="bg-slate-900">
+                      <option value="" className="bg-neutral-900">
                         — Не назначен —
                       </option>
                       {masters.map((m) => (
-                        <option key={m.id} value={m.id} className="bg-slate-900">
+                        <option key={m.id} value={m.id} className="bg-neutral-900">
                           {m.name}
                         </option>
                       ))}

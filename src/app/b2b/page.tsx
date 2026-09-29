@@ -128,15 +128,14 @@ export default function B2BPage() {
 
   return (
     <div className="dark-grid min-h-screen text-white">
-      <header className="border-b border-white/10 bg-[#061426]/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-6">
+      <header className="sticky top-0 z-50 border-b border-white/8 bg-black/80 backdrop-blur-xl">
+        <div className="mx-auto flex h-20 max-w-4xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-3">
-            <div className="grid h-9 w-9 place-items-center rounded-lg bg-blue-600 text-base font-black italic">
-              P
+            <div className="text-xl font-extrabold tracking-[0.12em]">
+              PPF <span className="accent">PROFI</span>
             </div>
-            <span className="text-sm font-extrabold tracking-[0.13em]">PPF PROFI</span>
           </Link>
-          <div className="text-xs font-bold text-slate-400">Кабинет партнёра</div>
+          <div className="text-xs font-bold text-white/50">Кабинет партнёра</div>
         </div>
       </header>
 
@@ -147,11 +146,11 @@ export default function B2BPage() {
             <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
               Кабинет партнёра
             </h1>
-            <p className="mt-3 text-slate-400">Введите свой slug и PIN-код.</p>
+            <p className="mt-3 text-white/60">Введите свой slug и PIN-код.</p>
 
-            <form onSubmit={handleLogin} className="premium-panel mt-8 p-8">
+            <form onSubmit={handleLogin} className="dark-card mt-8 p-8">
               <div>
-                <label className="text-xs font-extrabold uppercase tracking-[0.14em] text-slate-400">
+                <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
                   Slug партнёра
                 </label>
                 <input
@@ -160,12 +159,12 @@ export default function B2BPage() {
                   onChange={(e) => setSlug(e.target.value)}
                   placeholder="detailing-moscow"
                   required
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 focus:border-lime-400 focus:outline-none focus:ring-1 focus:ring-lime-400"
                 />
               </div>
 
               <div className="mt-5">
-                <label className="text-xs font-extrabold uppercase tracking-[0.14em] text-slate-400">
+                <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
                   PIN-код
                 </label>
                 <input
@@ -176,7 +175,7 @@ export default function B2BPage() {
                   maxLength={6}
                   placeholder="••••••"
                   required
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-center text-2xl font-extrabold tracking-[0.5em] text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-center text-2xl font-extrabold tracking-[0.5em] text-white placeholder:text-white/30 focus:border-lime-400 focus:outline-none focus:ring-1 focus:ring-lime-400"
                 />
               </div>
 
@@ -189,21 +188,21 @@ export default function B2BPage() {
               <button
                 type="submit"
                 disabled={loading || pin.length < 4}
-                className="mt-6 w-full rounded-xl bg-blue-600 px-6 py-4 font-extrabold shadow-xl shadow-blue-600/25 transition hover:bg-blue-500 disabled:opacity-50"
+                className="btn-accent mt-6 w-full justify-center disabled:opacity-50"
               >
                 {loading ? "Проверяем..." : "Войти"}
               </button>
 
-              <div className="mt-6 rounded-xl bg-white/5 p-4 text-xs leading-5 text-slate-400">
-                <div className="font-bold text-slate-300">Тестовые доступы:</div>
+              <div className="mt-6 rounded-xl bg-white/5 p-4 text-xs leading-5 text-white/50">
+                <div className="font-bold text-white/70">Тестовые доступы:</div>
                 <div className="mt-2">
                   <div>
-                    <span className="font-mono text-blue-300">detailing-moscow</span> · PIN{" "}
-                    <span className="font-mono text-blue-300">123456</span>
+                    <span className="font-mono accent">detailing-moscow</span> · PIN{" "}
+                    <span className="font-mono accent">123456</span>
                   </div>
                   <div className="mt-1">
-                    <span className="font-mono text-blue-300">auto-plus</span> · PIN{" "}
-                    <span className="font-mono text-blue-300">654321</span>
+                    <span className="font-mono accent">auto-plus</span> · PIN{" "}
+                    <span className="font-mono accent">654321</span>
                   </div>
                 </div>
               </div>
@@ -217,29 +216,23 @@ export default function B2BPage() {
                 <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
                   {partner.name}
                 </h1>
-                <p className="mt-2 text-sm text-slate-400">
+                <p className="mt-2 text-sm text-white/50">
                   slug: <span className="font-mono">{partner.slug}</span>
                 </p>
               </div>
               <div className="flex gap-2">
-                <Link
-                  href="/b2b/new"
-                  className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-extrabold shadow-lg shadow-blue-600/25 transition hover:bg-blue-500"
-                >
+                <Link href="/b2b/new" className="btn-accent text-sm">
                   + Новый расчёт
                 </Link>
-                <button
-                  onClick={handleLogout}
-                  className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/10"
-                >
+                <button onClick={handleLogout} className="btn-ghost text-sm">
                   Выйти
                 </button>
               </div>
             </div>
 
-            <div className="premium-panel mt-8 flex items-center justify-between p-6">
+            <div className="dark-card mt-8 flex items-center justify-between p-6">
               <div>
-                <div className="text-xs font-extrabold uppercase tracking-[0.14em] text-blue-300">
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] accent">
                   Моих заявок
                 </div>
                 <div className="mt-2 text-5xl font-extrabold tracking-[-0.04em]">
@@ -247,10 +240,10 @@ export default function B2BPage() {
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-xs font-extrabold uppercase tracking-[0.14em] text-slate-400">
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">
                   Общая сумма
                 </div>
-                <div className="mt-2 text-2xl font-extrabold text-blue-400">
+                <div className="mt-2 text-2xl font-extrabold accent">
                   {totalSpread.toLocaleString("ru-RU")} ₽
                 </div>
               </div>
@@ -262,7 +255,7 @@ export default function B2BPage() {
               </div>
 
               {ordersLoading && (
-                <div className="premium-panel p-8 text-center text-slate-400">
+                <div className="dark-card p-8 text-center text-white/50">
                   Загружаем...
                 </div>
               )}
@@ -271,13 +264,10 @@ export default function B2BPage() {
                 <div className="rounded-2xl border border-dashed border-white/15 p-16 text-center">
                   <div className="text-4xl">📭</div>
                   <div className="mt-4 font-extrabold text-white">Заявок пока нет</div>
-                  <p className="mt-2 text-sm text-slate-400">
+                  <p className="mt-2 text-sm text-white/50">
                     Создайте первую заявку для клиента.
                   </p>
-                  <Link
-                    href="/b2b/new"
-                    className="mt-6 inline-block rounded-xl bg-blue-600 px-6 py-3 font-extrabold shadow-lg shadow-blue-600/25 transition hover:bg-blue-500"
-                  >
+                  <Link href="/b2b/new" className="btn-accent mt-6 inline-flex">
                     Создать заявку
                   </Link>
                 </div>
@@ -286,24 +276,24 @@ export default function B2BPage() {
               {!ordersLoading && orders.length > 0 && (
                 <div className="space-y-3">
                   {orders.map((o) => (
-                    <div key={o.id} className="premium-panel p-6">
+                    <div key={o.id} className="dark-card p-6">
                       <div className="flex flex-wrap items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-3">
-                            <span className="text-xs font-extrabold text-blue-300">
+                            <span className="text-xs font-extrabold accent">
                               {o.publicNumber}
                             </span>
-                            <span className="rounded-full bg-blue-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-blue-200">
+                            <span className="rounded-full bg-lime-400/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-lime-200">
                               {STATUS_LABELS[o.status] || o.status}
                             </span>
-                            <span className="text-xs text-slate-500">
+                            <span className="text-xs text-white/40">
                               {formatDate(o.createdAt)}
                             </span>
                           </div>
                           <div className="mt-3 text-lg font-extrabold text-white">
                             {o.clientName} · {o.clientPhone}
                           </div>
-                          <div className="mt-2 text-sm text-slate-400">
+                          <div className="mt-2 text-sm text-white/50">
                             {CAR_LABELS[o.carCode] || o.carCode} ·{" "}
                             {PKG_LABELS[o.scenario] || o.scenario} ·{" "}
                             {FILM_LABELS[o.filmCode] || o.filmCode}
@@ -313,7 +303,7 @@ export default function B2BPage() {
                           <div className="text-2xl font-extrabold text-white">
                             {o.price.toLocaleString("ru-RU")} ₽
                           </div>
-                          <div className="mt-1 text-xs text-slate-500">предварительно</div>
+                          <div className="mt-1 text-xs text-white/40">предварительно</div>
                         </div>
                       </div>
                     </div>
