@@ -34,7 +34,6 @@ const PARTNER_TYPES = [
 export default function PartnersPage() {
   return (
     <div className="dark-grid min-h-screen text-white">
-      {/* HEADER — как на главной */}
       <header className="sticky top-0 z-50 border-b border-white/8 bg-black/80 backdrop-blur-xl">
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-3">
@@ -46,20 +45,22 @@ export default function PartnersPage() {
             </div>
           </Link>
           <div className="flex items-center gap-4">
-            <Link
-              href="/b2b"
+            <a
+              href="https://t.me/partner_detiling"
+              target="_blank"
+              rel="noopener noreferrer"
               className="hidden text-sm font-bold text-white/60 transition hover:text-white md:block"
             >
+              Написать в Telegram
+            </a>
+            <Link href="/b2b" className="btn-accent text-sm">
               Войти в кабинет
-            </Link>
-            <Link href="/b2b/new" className="btn-accent text-sm">
-              Рассчитать PPF
             </Link>
           </div>
         </div>
       </header>
 
-      {/* HERO — компактный */}
+      {/* HERO */}
       <section className="mx-auto max-w-7xl px-6 pt-10 pb-8">
         <div className="reveal">
           <div className="eyebrow">PPF PROFI для бизнеса</div>
@@ -73,9 +74,14 @@ export default function PartnersPage() {
           </p>
 
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link href="/b2b/new" className="btn-accent">
-              Рассчитать автомобиль →
-            </Link>
+            <a
+              href="https://t.me/partner_detiling"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-accent"
+            >
+              Стать партнёром →
+            </a>
             <Link href="/b2b" className="btn-ghost">
               Войти в кабинет
             </Link>
@@ -87,11 +93,10 @@ export default function PartnersPage() {
         </div>
       </section>
 
-      {/* ЭКОНОМИКА — центральный блок */}
+      {/* ЭКОНОМИКА */}
       <section className="mx-auto max-w-7xl px-6 py-8">
         <div className="dark-card overflow-hidden">
           <div className="grid gap-0 lg:grid-cols-[1fr_1.2fr]">
-            {/* Левая часть — заголовок */}
             <div className="border-b border-white/8 p-6 lg:border-b-0 lg:border-r lg:p-8">
               <div className="eyebrow">Экономика сделки</div>
               <h2 className="mt-3 text-2xl font-extrabold tracking-tight sm:text-3xl">
@@ -107,14 +112,12 @@ export default function PartnersPage() {
               </p>
             </div>
 
-            {/* Правая часть — цифры */}
             <div className="p-6 lg:p-8">
               <div className="mb-4 text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">
                 Пример расчёта
               </div>
 
               <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
-                {/* Партнёрская цена */}
                 <div className="rounded-xl border border-white/8 bg-white/[0.03] p-4">
                   <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
                     Цена PPF PROFI для партнёра
@@ -122,10 +125,8 @@ export default function PartnersPage() {
                   <div className="mt-2 text-2xl font-extrabold">42 000 ₽</div>
                 </div>
 
-                {/* Стрелка */}
                 <div className="hidden text-center text-xl accent sm:block">→</div>
 
-                {/* Цена клиенту */}
                 <div className="rounded-xl border border-white/8 bg-white/[0.03] p-4">
                   <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
                     Цена для клиента
@@ -134,7 +135,6 @@ export default function PartnersPage() {
                 </div>
               </div>
 
-              {/* Спред — крупный акцент */}
               <div className="mt-4 flex items-center justify-between rounded-xl border border-lime-400/25 bg-lime-400/[0.06] p-4">
                 <div>
                   <div className="text-[10px] font-bold uppercase tracking-[0.14em] accent">
@@ -157,7 +157,7 @@ export default function PartnersPage() {
         </div>
       </section>
 
-      {/* КАК РАБОТАЕТ — компактная сетка 5 шагов */}
+      {/* КАК РАБОТАЕТ */}
       <section className="mx-auto max-w-7xl px-6 py-8">
         <div className="mb-4 flex items-end justify-between">
           <div>
@@ -182,7 +182,6 @@ export default function PartnersPage() {
       {/* ЧТО ПОЛУЧАЕТ ПАРТНЁР + ИНФРАСТРУКТУРА */}
       <section className="mx-auto max-w-7xl px-6 py-8">
         <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr]">
-          {/* Список возможностей */}
           <div className="dark-card p-6">
             <div className="eyebrow">Возможности</div>
             <h2 className="mt-2 text-xl font-extrabold tracking-tight sm:text-2xl">
@@ -203,7 +202,6 @@ export default function PartnersPage() {
             </div>
           </div>
 
-          {/* Ключевое отличие */}
           <div className="dark-card relative overflow-hidden p-6">
             <div className="absolute -right-24 -top-24 h-56 w-56 rounded-full bg-lime-400/10 blur-3xl" />
             <div className="relative">
@@ -233,7 +231,7 @@ export default function PartnersPage() {
         </div>
       </section>
 
-      {/* КОМУ ПОДХОДИТ — компактная сетка */}
+      {/* КОМУ ПОДХОДИТ */}
       <section className="mx-auto max-w-7xl px-6 py-8">
         <div className="mb-4">
           <div className="eyebrow">Кому подходит PPF PROFI</div>
@@ -252,7 +250,7 @@ export default function PartnersPage() {
         </div>
       </section>
 
-      {/* ФИНАЛЬНЫЙ CTA — компактный */}
+      {/* ФИНАЛЬНЫЙ CTA */}
       <section className="mx-auto max-w-7xl px-6 pt-8 pb-12">
         <div className="dark-card relative overflow-hidden p-6 sm:p-8">
           <div className="absolute -left-24 -top-24 h-56 w-56 rounded-full bg-lime-400/10 blur-3xl" />
@@ -263,16 +261,20 @@ export default function PartnersPage() {
                 Начните работать с PPF PROFI
               </h2>
               <p className="mt-2 max-w-xl text-sm leading-6 text-white/60">
-                Откройте кабинет, рассчитайте первый заказ и предложите клиенту
-                готовое решение.
+                Напишите нам в Telegram — выдадим slug и PIN для доступа в кабинет.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <Link href="/b2b" className="btn-accent">
-                Войти в кабинет →
-              </Link>
-              <Link href="/b2b/new" className="btn-ghost">
-                Посмотреть расчёт
+              <a
+                href="https://t.me/partner_detiling"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-accent"
+              >
+                Написать в Telegram →
+              </a>
+              <Link href="/b2b" className="btn-ghost">
+                Войти в кабинет
               </Link>
             </div>
           </div>
@@ -282,7 +284,7 @@ export default function PartnersPage() {
         </div>
       </section>
 
-      {/* FOOTER — как на главной */}
+      {/* FOOTER */}
       <footer className="border-t border-white/8 bg-black/60">
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-6 py-10 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -294,10 +296,18 @@ export default function PartnersPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-6 text-sm text-white/60">
-            <Link href="/" className="hover:text-white">Главная</Link>
-            <Link href="/partners" className="hover:text-white">Партнёрам</Link>
-            <Link href="/master" className="hover:text-white">Мастерам</Link>
-            <Link href="/b2b" className="hover:text-white">Войти</Link>
+            <Link href="/" className="hover:text-white">
+              Главная
+            </Link>
+            <Link href="/partners" className="hover:text-white">
+              Партнёрам
+            </Link>
+            <Link href="/master" className="hover:text-white">
+              Мастерам
+            </Link>
+            <Link href="/b2b" className="hover:text-white">
+              Войти
+            </Link>
           </div>
           <div className="text-xs text-white/40">
             © 2026 PPF PROFI. Все права защищены.

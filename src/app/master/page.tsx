@@ -57,23 +57,27 @@ export default function MasterPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
   const [ordersLoading, setOrdersLoading] = useState(false);
 
+  // Проверка: вошёл ли мастер
   useEffect(() => {
-    const saved = localStorage.getItem("ppf_master");
-    if (saved) {
-      try {
-        setMaster(JSON.parse(saved));
-      } catch {
-        localStorage.removeItem("ppf_master");
-      }
-    }
+    fetch("/api/me", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.session?.role === "master" && data.user) {
+          setMaster(data.user);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setChecking(false));
   }, []);
 
+  // Загрузка работ мастера
   useEffect(() => {
     if (!master) return;
     setOrdersLoading(true);
-    fetch(`/api/orders?master_id=${master.id}`, { cache: "no-store" })
+    fetch("/api/orders", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => setOrders(data.orders || []))
       .catch(() => setOrders([]))
@@ -99,7 +103,6 @@ export default function MasterPage() {
         return;
       }
 
-      localStorage.setItem("ppf_master", JSON.stringify(data.master));
       setMaster(data.master);
     } catch {
       setError("Ошибка сети");
@@ -110,18 +113,22 @@ export default function MasterPage() {
 
   const markCompleted = async (orderId: number) => {
     if (!confirm("Отметить работу как выполненную?")) return;
-    await fetch(`/api/orders/${orderId}`, {
+    const res = await fetch(`/api/orders/${orderId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "COMPLETED" }),
     });
+    if (!res.ok) {
+      alert("Не удалось обновить статус");
+      return;
+    }
     setOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status: "COMPLETED" } : o))
     );
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("ppf_master");
+  const handleLogout = async () => {
+    await fetch("/api/logout", { method: "POST" });
     setMaster(null);
     setPin("");
     setOrders([]);
@@ -137,6 +144,14 @@ export default function MasterPage() {
     });
   };
 
+  if (checking) {
+    return (
+      <div className="dark-grid min-h-screen grid place-items-center text-white">
+        <div className="text-sm text-white/50">Проверяем вход...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="dark-grid min-h-screen text-white">
       <header className="sticky top-0 z-50 border-b border-white/8 bg-black/80 backdrop-blur-xl">
@@ -146,7 +161,17 @@ export default function MasterPage() {
               PPF <span className="accent">PROFI</span>
             </div>
           </Link>
-          <div className="text-xs font-bold text-white/50">Кабинет мастера</div>
+          <div className="flex items-center gap-4">
+            <span className="text-xs font-bold text-white/50">Кабинет мастера</span>
+            {master && (
+              <button
+                onClick={handleLogout}
+                className="rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/10"
+              >
+                Выйти
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -203,20 +228,6 @@ export default function MasterPage() {
               >
                 {loading ? "Проверяем..." : "Войти"}
               </button>
-
-              <div className="mt-6 rounded-xl bg-white/5 p-4 text-xs leading-5 text-white/50">
-                <div className="font-bold text-white/70">Тестовые доступы:</div>
-                <div className="mt-2">
-                  <div>
-                    <span className="font-mono accent">ilya</span> · PIN{" "}
-                    <span className="font-mono accent">111111</span>
-                  </div>
-                  <div className="mt-1">
-                    <span className="font-mono accent">andrey</span> · PIN{" "}
-                    <span className="font-mono accent">222222</span>
-                  </div>
-                </div>
-              </div>
             </form>
           </div>
         ) : (
@@ -231,9 +242,6 @@ export default function MasterPage() {
                   slug: <span className="font-mono">{master.slug}</span>
                 </p>
               </div>
-              <button onClick={handleLogout} className="btn-ghost text-sm">
-                Выйти
-              </button>
             </div>
 
             <div className="dark-card mt-8 flex items-center justify-between p-6">
@@ -250,7 +258,10 @@ export default function MasterPage() {
                   Общая стоимость
                 </div>
                 <div className="mt-2 text-2xl font-extrabold accent">
-                  {orders.reduce((sum, o) => sum + (o.price || 0), 0).toLocaleString("ru-RU")} ₽
+                  {orders
+                    .reduce((sum, o) => sum + (o.price || 0), 0)
+                    .toLocaleString("ru-RU")}{" "}
+                  ₽
                 </div>
               </div>
             </div>
@@ -267,7 +278,9 @@ export default function MasterPage() {
               {!ordersLoading && orders.length === 0 && (
                 <div className="rounded-2xl border border-dashed border-white/15 p-16 text-center">
                   <div className="text-4xl">🔧</div>
-                  <div className="mt-4 font-extrabold text-white">Работ пока нет</div>
+                  <div className="mt-4 font-extrabold text-white">
+                    Работ пока нет
+                  </div>
                   <p className="mt-2 text-sm text-white/50">
                     Как только администратор назначит вас на заявку — она появится здесь.
                   </p>

@@ -5,7 +5,7 @@ import { useState } from "react";
 
 const NAV = [
   { label: "Главная", href: "#top" },
-  { label: "Партнёрам", href: "#business" },
+  { label: "Партнёрам", href: "/partners" },
   { label: "Мастерам", href: "/master" },
   { label: "Как это работает", href: "#how" },
   { label: "Преимущества", href: "#features" },
@@ -41,7 +41,6 @@ const FEATURES = [
     icon: "🎧",
   },
 ];
-
 
 const PARTNER_TYPES = [
   "Автосалоны",
@@ -89,7 +88,7 @@ export default function HomePage() {
 
           <div className="flex items-center gap-4">
             <Link
-              href="/b2b"
+              href="/partners"
               className="hidden text-sm font-bold text-lime-400 hover:text-lime-300 md:block"
             >
               Для партнёров
@@ -120,7 +119,7 @@ export default function HomePage() {
               </p>
 
               <div className="mt-9 flex flex-wrap gap-3">
-                <Link href="/b2b" className="btn-accent">
+                <Link href="/partners" className="btn-accent">
                   Стать партнёром →
                 </Link>
                 <a href="#how" className="btn-ghost">
@@ -170,7 +169,10 @@ export default function HomePage() {
                     Надёжная защита от сколов, царапин, ультрафиолета и реагентов.
                     Сохраняет идеальный вид автомобиля на годы.
                   </p>
-                  <Link href="/calculator" className="btn-accent mt-5 w-full justify-center">
+                  <Link
+                    href="/calculator"
+                    className="btn-accent mt-5 w-full justify-center"
+                  >
                     Рассчитать стоимость →
                   </Link>
                 </div>
@@ -251,7 +253,10 @@ export default function HomePage() {
                     </select>
                   </div>
 
-                  <Link href="/calculator" className="btn-accent w-full justify-center">
+                  <Link
+                    href="/calculator"
+                    className="btn-accent w-full justify-center"
+                  >
                     Далее →
                   </Link>
                 </div>
@@ -285,7 +290,10 @@ export default function HomePage() {
                   <p className="mt-2 text-[10px] leading-4 text-white/40">
                     Окончательная стоимость может отличаться после осмотра автомобиля.
                   </p>
-                  <Link href="/calculator" className="btn-accent mt-3 w-full justify-center">
+                  <Link
+                    href="/calculator"
+                    className="btn-accent mt-3 w-full justify-center"
+                  >
                     Оставить заявку
                   </Link>
                 </div>
@@ -360,7 +368,7 @@ export default function HomePage() {
                 Получайте заказы, увеличивайте прибыль и работайте с лучшими мастерами в
                 индустрии.
               </p>
-              <Link href="/b2b" className="btn-accent mt-8">
+              <Link href="/partners" className="btn-accent mt-8">
                 Узнать условия →
               </Link>
 
@@ -380,13 +388,11 @@ export default function HomePage() {
             <div className="relative mx-auto w-full max-w-[300px]">
               <div className="rounded-[2.5rem] border border-white/15 bg-gradient-to-b from-neutral-900 to-black p-3 shadow-2xl">
                 <div className="rounded-[2rem] bg-black p-5">
-                  {/* Статус-бар телефона */}
                   <div className="flex items-center justify-between text-[10px] text-white/60">
                     <span>9:41</span>
                     <span>5G ▮</span>
                   </div>
 
-                  {/* Шапка приложения */}
                   <div className="mt-5 flex items-center justify-between">
                     <div className="text-xs font-extrabold tracking-[0.12em]">
                       PPF <span className="accent">PROFI</span>
@@ -404,9 +410,12 @@ export default function HomePage() {
                     проверенных клиентов.
                   </p>
 
-                  <button className="mt-4 w-full rounded-lg bg-lime-400 py-2.5 text-xs font-extrabold text-black">
+                  <Link
+                    href="/partners"
+                    className="mt-4 block w-full rounded-lg bg-lime-400 py-2.5 text-center text-xs font-extrabold text-black"
+                  >
                     Стать партнёром
-                  </button>
+                  </Link>
 
                   <div className="mt-5 space-y-3 text-[11px]">
                     <div className="flex items-center gap-2 text-white/70">
@@ -442,6 +451,15 @@ export default function HomePage() {
               <div className="mt-1 font-bold">+7 (952) 857-54-23</div>
               <div className="mt-3 text-white/40">Email</div>
               <div className="mt-1 font-bold">kent777_09@mail.ru</div>
+              <div className="mt-3 text-white/40">Telegram</div>
+              <a
+                href="https://t.me/partner_detiling"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 inline-block font-bold accent hover:underline"
+              >
+                @partner_detiling
+              </a>
             </div>
             <div className="text-sm">
               <div className="text-white/40">ИП Морин Илья Владимирович</div>
@@ -474,7 +492,7 @@ export default function HomePage() {
 
           <div className="flex items-center gap-3">
             <a
-              href="https://t.me/"
+              href="https://t.me/partner_detiling"
               className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/5 text-lg transition hover:bg-white/10"
               title="Telegram"
             >
