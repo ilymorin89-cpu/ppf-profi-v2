@@ -1,13 +1,7 @@
-import {
-  CARS,
-  FILMS,
-  CONSTANTS,
-  CLASS_COEFFICIENT,
-  PRICING_VERSION,
-  type ClassCode,
-  type FilmCode,
-  type ScenarioCode,
-} from "./prices";
+import { PRICING_CONFIG, FILMS, type FilmCode } from "./config";
+import { getCar, type CarEntry } from "./catalog";
+
+export type ScenarioCode = "FULL" | "RISK_ZONES" | "FRONT";
 
 export type QuoteInput = {
   carCode: string;
@@ -22,80 +16,110 @@ export type QuoteResult = {
   pricingVersion: string;
   breakdown: {
     car: string;
-    class: ClassCode;
     scenario: ScenarioCode;
     film: string;
     days: number;
     meters: number;
-    labor: number;
     material: number;
-    consumables: number;
-    logistics: number;
-    classCoefficient: number;
+    labor: number;
+    extras: number;
     reserve: number;
     cost: number;
   };
 };
 
+export type QuoteError =
+  | { kind: "unknown-car" }
+  | { kind: "not-verified" }
+  | { kind: "no-data" }
+  | { kind: "unknown-film" };
+
 function roundUp(value: number, step: number): number {
   return Math.ceil(value / step) * step;
 }
 
-export function calculateQuote(input: QuoteInput): QuoteResult | null {
-  const car = CARS[input.carCode];
-  if (!car) return null;
+function pickMeters(car: CarEntry, scenario: ScenarioCode): number | null {
+  if (scenario === "FULL") return car.filmMFull;
+  if (scenario === "RISK_ZONES") return car.filmMRisk;
+  if (scenario === "FRONT") return car.filmMFront;
+  return null;
+}
+
+function pickDays(car: CarEntry, scenario: ScenarioCode): number | null {
+  if (scenario === "FULL") return car.daysFull;
+  if (scenario === "RISK_ZONES") return car.daysRisk;
+  if (scenario === "FRONT") return car.daysFront;
+  return null;
+}
+
+export function calculateQuote(
+  input: QuoteInput
+): { ok: true; result: QuoteResult } | { ok: false; error: QuoteError } {
+  const car = getCar(input.carCode);
+  if (!car) return { ok: false, error: { kind: "unknown-car" } };
+  if (!car.verified) return { ok: false, error: { kind: "not-verified" } };
 
   const film = FILMS[input.filmCode];
-  if (!film) return null;
+  if (!film) return { ok: false, error: { kind: "unknown-film" } };
 
-  const isFull = input.scenario === "FULL";
-  const isFront = input.scenario === "FRONT";
-  const days = isFull ? car.daysFull : 1;
-  const meters = isFull
-    ? car.areaFull
-    : isFront
-    ? Math.round(car.areaFull * 0.4 * 10) / 10
-    : car.areaRisk;
+  const meters = pickMeters(car, input.scenario);
+  const days = pickDays(car, input.scenario);
+  if (meters === null || days === null) {
+    return { ok: false, error: { kind: "no-data" } };
+  }
 
-  const labor = days * CONSTANTS.dailyRate;
   const material = Math.round(meters * film.pricePerMeter);
-  const consumables = CONSTANTS.consumables;
-  const logistics = CONSTANTS.logistics;
+  const labor = Math.round(days * PRICING_CONFIG.dailyRate);
+  const extras = PRICING_CONFIG.consumables + PRICING_CONFIG.logistics;
 
-  const base = labor + material + consumables + logistics;
-  const classCoeff = CLASS_COEFFICIENT[car.class];
-  const withClass = base * classCoeff;
-  const cost = withClass * (1 + CONSTANTS.reserve);
+  const base = material + labor + extras;
+  const cost = base * (1 + PRICING_CONFIG.reserve);
 
-  const costFloor = roundUp(cost / (1 - CONSTANTS.usn), CONSTANTS.roundingStep);
+  const costFloor = roundUp(cost / (1 - PRICING_CONFIG.usn), PRICING_CONFIG.roundingStep);
   const autoApprove = roundUp(
-    cost / (1 - CONSTANTS.usn - CONSTANTS.marginAutoApprove),
-    CONSTANTS.roundingStep
+    cost / (1 - PRICING_CONFIG.usn - PRICING_CONFIG.marginAutoApprove),
+    PRICING_CONFIG.roundingStep
   );
   const target = roundUp(
-    cost / (1 - CONSTANTS.usn - CONSTANTS.marginTarget),
-    CONSTANTS.roundingStep
+    cost / (1 - PRICING_CONFIG.usn - PRICING_CONFIG.marginTarget),
+    PRICING_CONFIG.roundingStep
   );
 
   return {
-    costFloor,
-    autoApprove,
-    target,
-    pricingVersion: PRICING_VERSION,
-    breakdown: {
-      car: car.label,
-      class: car.class,
-      scenario: input.scenario,
-      film: film.label,
-      days,
-      meters,
-      labor,
-      material,
-      consumables,
-      logistics,
-      classCoefficient: classCoeff,
-      reserve: CONSTANTS.reserve,
-      cost,
+    ok: true,
+    result: {
+      costFloor,
+      autoApprove,
+      target,
+      pricingVersion: PRICING_CONFIG.pricingVersion,
+      breakdown: {
+        car: `${car.brand} ${car.model}`,
+        scenario: input.scenario,
+        film: film.label,
+        days,
+        meters,
+        material,
+        labor,
+        extras,
+        reserve: PRICING_CONFIG.reserve,
+        cost,
+      },
     },
   };
+}
+
+// Совместимость: orders и public-quote пока вызывают quote().
+// Возвращает цену партнёра (Target) и условный диапазон розницы.
+// ДИАПАЗОН РОЗНИЦЫ ВРЕМЕННЫЙ, заменить данными рынка.
+export function quote(car: string, pkg: string, film: string) {
+  const r = calculateQuote({
+    carCode: car,
+    scenario: pkg as ScenarioCode,
+    filmCode: film as FilmCode,
+  });
+  if (!r.ok) return null;
+  const pp = r.result.target;
+  const low = Math.round(pp / 0.85 / 500) * 500;
+  const high = Math.round(pp / 0.8 / 500) * 500;
+  return { pp, low, high };
 }

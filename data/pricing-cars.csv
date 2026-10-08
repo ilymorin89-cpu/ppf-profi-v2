@@ -1,0 +1,13 @@
+﻿code;brand;model;class;film_m_full;film_m_front;film_m_risk;days_full;days_front;days_risk;verified
+GEELY_MONJARO;Geely;Monjaro;L;15;;5;4;;1;yes
+HAVAL_JOLION;Haval;Jolion;L;;;;;;;no
+BELGEE_X50;Belgee;X50;L;;;;;;;no
+BELGEE_X70;Belgee;X70;XL;;;;;;;no
+CHERY_TIGGO_4_PRO;Chery;Tiggo 4 Pro;L;;;;;;;no
+GEELY_ATLAS;Geely;Atlas;XL;;;;;;;no
+HYUNDAI_CRETA;Hyundai;Creta;L;;;;;;;no
+BMW_X5_G05;BMW;X5 G05;XL;18;;7;5;;2;yes
+BMW_X7_G07;BMW;X7 G07;XL+;22;;7;7;;2;no
+MB_GLE_V167;Mercedes-Benz;GLE V167;XL;18;;5;5;;1;no
+PORSCHE_CAYENNE_E3;Porsche;Cayenne E3;XL;18;;5;5;;1;no
+TOYOTA_LC300;Toyota;Land Cruiser 300;XL+;22;;5;7;;2;no
