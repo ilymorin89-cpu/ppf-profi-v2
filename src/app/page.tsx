@@ -44,9 +44,8 @@ const FEATURES = [
 
 const PARTNER_TYPES = [
   "Автосалоны",
-  "Малые станции",
   "Детейлинг-центры",
-  "Студии автозвука",
+  "Кузовные мастерские",
 ];
 
 const HERO_FEATURES = [
@@ -214,10 +213,10 @@ export default function HomePage() {
                       onChange={(e) => setBrand(e.target.value)}
                       className="mt-1.5 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-bold text-white focus:border-lime-400 focus:outline-none"
                     >
-                      <option>BMW</option>
-                      <option>Mercedes-Benz</option>
-                      <option>Porsche</option>
-                      <option>Toyota</option>
+                      <option className="bg-neutral-900 text-white">BMW</option>
+                      <option className="bg-neutral-900 text-white">Mercedes-Benz</option>
+                      <option className="bg-neutral-900 text-white">Porsche</option>
+                      <option className="bg-neutral-900 text-white">Toyota</option>
                     </select>
                   </div>
 
@@ -230,10 +229,10 @@ export default function HomePage() {
                       onChange={(e) => setModel(e.target.value)}
                       className="mt-1.5 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-bold text-white focus:border-lime-400 focus:outline-none"
                     >
-                      <option>X5</option>
-                      <option>X7</option>
-                      <option>GLE</option>
-                      <option>Cayenne</option>
+                      <option className="bg-neutral-900 text-white">X5</option>
+                      <option className="bg-neutral-900 text-white">X7</option>
+                      <option className="bg-neutral-900 text-white">GLE</option>
+                      <option className="bg-neutral-900 text-white">Cayenne</option>
                     </select>
                   </div>
 
@@ -246,10 +245,10 @@ export default function HomePage() {
                       onChange={(e) => setYear(e.target.value)}
                       className="mt-1.5 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-bold text-white focus:border-lime-400 focus:outline-none"
                     >
-                      <option>2024</option>
-                      <option>2023</option>
-                      <option>2022</option>
-                      <option>2021</option>
+                      <option className="bg-neutral-900 text-white">2024</option>
+                      <option className="bg-neutral-900 text-white">2023</option>
+                      <option className="bg-neutral-900 text-white">2022</option>
+                      <option className="bg-neutral-900 text-white">2021</option>
                     </select>
                   </div>
 
@@ -384,48 +383,65 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Мобильный макет */}
-            <div className="relative mx-auto w-full max-w-[300px]">
-              <div className="rounded-[2.5rem] border border-white/15 bg-gradient-to-b from-neutral-900 to-black p-3 shadow-2xl">
-                <div className="rounded-[2rem] bg-black p-5">
-                  <div className="flex items-center justify-between text-[10px] text-white/60">
+            {/* Мобильный макет — реалистичный телефон */}
+            <div className="relative mx-auto w-full max-w-[320px]">
+              <div className="relative aspect-[9/19.5] w-full rounded-[3rem] border border-white/15 bg-gradient-to-b from-neutral-900 via-black to-neutral-950 p-2 shadow-2xl shadow-black/60">
+                {/* Внутренний экран */}
+                <div className="relative h-full w-full overflow-hidden rounded-[2.5rem] bg-black">
+                  {/* Dynamic Island */}
+                  <div className="absolute left-1/2 top-2.5 z-20 h-6 w-24 -translate-x-1/2 rounded-full bg-black ring-1 ring-white/10" />
+
+                  {/* Status bar */}
+                  <div className="relative z-10 flex items-center justify-between px-7 pt-4 text-[11px] font-bold text-white/80">
                     <span>9:41</span>
-                    <span>5G ▮</span>
+                    <span className="flex items-center gap-1">
+                      <span>5G</span>
+                      <span>▮</span>
+                    </span>
                   </div>
 
-                  <div className="mt-5 flex items-center justify-between">
-                    <div className="text-xs font-extrabold tracking-[0.12em]">
-                      PPF <span className="accent">PROFI</span>
+                  {/* Содержимое экрана */}
+                  <div className="relative flex h-full flex-col px-6 pb-6 pt-14">
+                    {/* Шапка */}
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-extrabold tracking-[0.12em]">
+                        PPF <span className="accent">PROFI</span>
+                      </div>
+                      <div className="text-white/40">☰</div>
                     </div>
-                    <div className="text-white/40">☰</div>
-                  </div>
 
-                  <div className="mt-6 text-lg font-extrabold leading-tight">
-                    Партнёрская
-                    <br />
-                    программа
-                  </div>
-                  <p className="mt-2 text-[11px] leading-4 text-white/50">
-                    Станьте частью сети PPF PROFI и получайте стабильный поток заказов от
-                    проверенных клиентов.
-                  </p>
-
-                  <Link
-                    href="/partners"
-                    className="mt-4 block w-full rounded-lg bg-lime-400 py-2.5 text-center text-xs font-extrabold text-black"
-                  >
-                    Стать партнёром
-                  </Link>
-
-                  <div className="mt-5 space-y-3 text-[11px]">
-                    <div className="flex items-center gap-2 text-white/70">
-                      <span className="text-lime-400">📈</span> Стабильный поток заказов
+                    {/* Заголовок */}
+                    <div className="mt-8 text-2xl font-extrabold leading-[1.15]">
+                      Партнёрская
+                      <br />
+                      программа
                     </div>
-                    <div className="flex items-center gap-2 text-white/70">
-                      <span className="text-lime-400">✓</span> Честные условия
-                    </div>
-                    <div className="flex items-center gap-2 text-white/70">
-                      <span className="text-lime-400">🎧</span> Поддержка на всех этапах
+
+                    {/* Описание */}
+                    <p className="mt-3 text-[12px] leading-5 text-white/50">
+                      Станьте частью сети PPF PROFI и получайте стабильный поток
+                      заказов от проверенных клиентов.
+                    </p>
+
+                    {/* Кнопка */}
+                    <Link
+                      href="/partners"
+                      className="mt-6 block w-full rounded-xl bg-lime-400 py-3 text-center text-[13px] font-extrabold text-black"
+                    >
+                      Стать партнёром
+                    </Link>
+
+                    {/* Преимущества — прижаты к низу */}
+                    <div className="mt-auto space-y-3 pt-6 text-[12px]">
+                      <div className="flex items-center gap-2 text-white/80">
+                        <span className="accent">📈</span> Стабильный поток заказов
+                      </div>
+                      <div className="flex items-center gap-2 text-white/80">
+                        <span className="accent">✓</span> Честные условия
+                      </div>
+                      <div className="flex items-center gap-2 text-white/80">
+                        <span className="accent">🎧</span> Поддержка на всех этапах
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -483,11 +499,18 @@ export default function HomePage() {
           </div>
 
           <div className="flex flex-wrap gap-6 text-sm text-white/60">
-            {NAV.map((item) => (
-              <a key={item.href} href={item.href} className="hover:text-white">
-                {item.label}
-              </a>
-            ))}
+            <Link href="/" className="hover:text-white">
+              Главная
+            </Link>
+            <Link href="/partners" className="hover:text-white">
+              Партнёрам
+            </Link>
+            <Link href="/master" className="hover:text-white">
+              Мастерам
+            </Link>
+            <Link href="/privacy" className="hover:text-white">
+              Политика
+            </Link>
           </div>
 
           <div className="flex items-center gap-3">

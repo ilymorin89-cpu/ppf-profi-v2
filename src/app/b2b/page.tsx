@@ -18,6 +18,7 @@ type Order = {
   scenario: string;
   filmCode: string;
   price: number;
+  clientPrice: number | null;
   status: string;
   createdAt: string;
 };
@@ -49,14 +50,27 @@ const STATUS_LABELS: Record<string, string> = {
   COMPLETED: "Выполнена",
 };
 
+const STATUS_STYLES: Record<string, string> = {
+  NEW: "bg-sky-400/15 text-sky-200",
+  NEEDS_CHECK: "bg-amber-400/15 text-amber-200",
+  QUOTED: "bg-violet-400/15 text-violet-200",
+  APPROVED: "bg-lime-400/15 text-lime-200",
+  COMPLETED: "bg-white/10 text-white/60",
+};
+
+const IS_DEV = process.env.NODE_ENV !== "production";
+
+const rub = (n: number) => `${n.toLocaleString("ru-RU")} ₽`;
+
 export default function B2BPage() {
-  const [slug, setSlug] = useState("detailing-moscow");
+  const [slug, setSlug] = useState(IS_DEV ? "detailing-moscow" : "");
   const [pin, setPin] = useState("");
   const [partner, setPartner] = useState<Partner | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("ppf_partner");
@@ -73,8 +87,17 @@ export default function B2BPage() {
     if (!partner) return;
     setOrdersLoading(true);
     fetch(`/api/orders?partner_id=${partner.id}`, { cache: "no-store" })
-      .then((res) => res.json())
-      .then((data) => setOrders(data.orders || []))
+      .then(async (res) => {
+        if (res.status === 401 || res.status === 403) {
+          localStorage.removeItem("ppf_partner");
+          setPartner(null);
+          setOrders([]);
+          setError("Сессия истекла. Войдите снова.");
+          return;
+        }
+        const data = await res.json();
+        setOrders(data.orders || []);
+      })
       .catch(() => setOrders([]))
       .finally(() => setOrdersLoading(false));
   }, [partner]);
@@ -107,11 +130,33 @@ export default function B2BPage() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/logout", { method: "POST" });
+    } catch {
+      // выход всё равно выполняем локально
+    }
     localStorage.removeItem("ppf_partner");
     setPartner(null);
     setPin("");
     setOrders([]);
+    setError("");
+  };
+
+  // Текст для клиента: только его цена, без партнёрской цены и спреда.
+  const copyOffer = async (o: Order) => {
+    if (o.clientPrice == null) return;
+    const text =
+      `${CAR_LABELS[o.carCode] || o.carCode}\n` +
+      `${PKG_LABELS[o.scenario] || o.scenario} · ${FILM_LABELS[o.filmCode] || o.filmCode}\n` +
+      `Стоимость: ${rub(o.clientPrice)} (предварительно)`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(o.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      // буфер обмена недоступен, ничего не делаем
+    }
   };
 
   const formatDate = (iso: string) => {
@@ -124,12 +169,16 @@ export default function B2BPage() {
     });
   };
 
-  const totalSpread = orders.reduce((sum, o) => sum + (o.price || 0), 0);
+  const withPrice = orders.filter((o) => o.clientPrice != null);
+  const totalSpread = withPrice.reduce(
+    (sum, o) => sum + ((o.clientPrice as number) - (o.price || 0)),
+    0
+  );
 
   return (
     <div className="dark-grid min-h-screen text-white">
       <header className="sticky top-0 z-50 border-b border-white/8 bg-black/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-20 max-w-4xl items-center justify-between px-6">
+        <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-3">
             <div className="text-xl font-extrabold tracking-[0.12em]">
               PPF <span className="accent">PROFI</span>
@@ -139,7 +188,7 @@ export default function B2BPage() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-4xl px-6 py-12">
+      <div className="mx-auto max-w-4xl px-6 py-10">
         {!partner ? (
           <div className="reveal mx-auto max-w-2xl">
             <div className="eyebrow">Вход для партнёров</div>
@@ -158,6 +207,7 @@ export default function B2BPage() {
                   value={slug}
                   onChange={(e) => setSlug(e.target.value)}
                   placeholder="detailing-moscow"
+                  autoComplete="username"
                   required
                   className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 focus:border-lime-400 focus:outline-none focus:ring-1 focus:ring-lime-400"
                 />
@@ -168,12 +218,13 @@ export default function B2BPage() {
                   PIN-код
                 </label>
                 <input
-                  type="text"
+                  type="password"
                   inputMode="numeric"
                   value={pin}
                   onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
                   maxLength={6}
                   placeholder="••••••"
+                  autoComplete="current-password"
                   required
                   className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-center text-2xl font-extrabold tracking-[0.5em] text-white placeholder:text-white/30 focus:border-lime-400 focus:outline-none focus:ring-1 focus:ring-lime-400"
                 />
@@ -193,19 +244,35 @@ export default function B2BPage() {
                 {loading ? "Проверяем..." : "Войти"}
               </button>
 
-              <div className="mt-6 rounded-xl bg-white/5 p-4 text-xs leading-5 text-white/50">
-                <div className="font-bold text-white/70">Тестовые доступы:</div>
-                <div className="mt-2">
-                  <div>
-                    <span className="font-mono accent">detailing-moscow</span> · PIN{" "}
-                    <span className="font-mono accent">123456</span>
+              <p className="mt-5 text-center text-xs text-white/40">
+                Нет доступа?{" "}
+                <a
+                  href="https://t.me/partner_detiling"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-bold text-white/70 hover:text-white"
+                >
+                  Напишите нам в Telegram
+                </a>
+              </p>
+
+              {IS_DEV && (
+                <div className="mt-6 rounded-xl bg-white/5 p-4 text-xs leading-5 text-white/50">
+                  <div className="font-bold text-white/70">
+                    Тестовые доступы (только в режиме разработки):
                   </div>
-                  <div className="mt-1">
-                    <span className="font-mono accent">auto-plus</span> · PIN{" "}
-                    <span className="font-mono accent">654321</span>
+                  <div className="mt-2">
+                    <div>
+                      <span className="font-mono accent">detailing-moscow</span> · PIN{" "}
+                      <span className="font-mono accent">123456</span>
+                    </div>
+                    <div className="mt-1">
+                      <span className="font-mono accent">auto-plus</span> · PIN{" "}
+                      <span className="font-mono accent">654321</span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </form>
           </div>
         ) : (
@@ -241,10 +308,13 @@ export default function B2BPage() {
               </div>
               <div className="text-right">
                 <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">
-                  Общая сумма
+                  Ваш спред по заявкам
                 </div>
                 <div className="mt-2 text-2xl font-extrabold accent">
-                  {totalSpread.toLocaleString("ru-RU")} ₽
+                  {withPrice.length ? rub(totalSpread) : "—"}
+                </div>
+                <div className="mt-1 text-[11px] text-white/40">
+                  предварительно, по заявкам с ценой клиенту
                 </div>
               </div>
             </div>
@@ -278,12 +348,16 @@ export default function B2BPage() {
                   {orders.map((o) => (
                     <div key={o.id} className="dark-card p-6">
                       <div className="flex flex-wrap items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
+                        <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-3">
                             <span className="text-xs font-extrabold accent">
                               {o.publicNumber}
                             </span>
-                            <span className="rounded-full bg-lime-400/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-lime-200">
+                            <span
+                              className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] ${
+                                STATUS_STYLES[o.status] || "bg-white/10 text-white/60"
+                              }`}
+                            >
                               {STATUS_LABELS[o.status] || o.status}
                             </span>
                             <span className="text-xs text-white/40">
@@ -298,12 +372,44 @@ export default function B2BPage() {
                             {PKG_LABELS[o.scenario] || o.scenario} ·{" "}
                             {FILM_LABELS[o.filmCode] || o.filmCode}
                           </div>
+
+                          {o.clientPrice != null && (
+                            <button
+                              type="button"
+                              onClick={() => copyOffer(o)}
+                              className="mt-4 rounded-full border border-white/10 px-3 py-1 text-xs font-bold text-white/60 transition hover:border-lime-400 hover:text-white"
+                            >
+                              {copiedId === o.id
+                                ? "Скопировано ✓"
+                                : "Скопировать предложение клиенту"}
+                            </button>
+                          )}
                         </div>
+
                         <div className="text-right">
-                          <div className="text-2xl font-extrabold text-white">
-                            {o.price.toLocaleString("ru-RU")} ₽
-                          </div>
-                          <div className="mt-1 text-xs text-white/40">предварительно</div>
+                          {o.clientPrice != null ? (
+                            <>
+                              <div className="text-2xl font-extrabold text-white">
+                                {rub(o.clientPrice)}
+                              </div>
+                              <div className="mt-1 text-xs text-white/40">цена клиенту</div>
+                              <div className="mt-2 text-sm font-extrabold accent">
+                                спред {rub(o.clientPrice - o.price)}
+                              </div>
+                              <div className="mt-1 text-[11px] text-white/40">
+                                цена PPF PROFI: от {rub(o.price)}
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="text-2xl font-extrabold text-white">
+                                {rub(o.price)}
+                              </div>
+                              <div className="mt-1 text-xs text-white/40">
+                                цена PPF PROFI, предварительно
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>

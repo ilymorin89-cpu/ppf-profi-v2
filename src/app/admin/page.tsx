@@ -83,6 +83,7 @@ export default function AdminPage() {
   }, []);
 
   const removeOrder = async (id: number) => {
+    if (!confirm("Удалить эту заявку?")) return;
     await fetch(`/api/orders?id=${id}`, { method: "DELETE" });
     await load();
   };
@@ -94,13 +95,6 @@ export default function AdminPage() {
       body: JSON.stringify({ masterId }),
     });
     await load();
-  };
-
-  const clearAll = async () => {
-    if (confirm("Удалить все заявки?")) {
-      await fetch("/api/orders", { method: "DELETE" });
-      await load();
-    }
   };
 
   const logout = async () => {
@@ -181,14 +175,6 @@ export default function AdminPage() {
             </h1>
             <p className="mt-3 text-white/60">Все заявки из базы данных.</p>
           </div>
-          {orders.length > 0 && (
-            <button
-              onClick={clearAll}
-              className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-2 text-xs font-extrabold text-rose-200 transition hover:bg-rose-500/20"
-            >
-              Очистить всё
-            </button>
-          )}
         </div>
 
         <div className="dark-card mt-8 grid grid-cols-1 gap-6 p-6 sm:grid-cols-3">

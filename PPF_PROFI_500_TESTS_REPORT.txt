@@ -1,0 +1,516 @@
+﻿============================================================
+PPF PROFI - 500 TEST REPORT
+============================================================
+
+Date:       2026-10-08 02:16:26
+Base URL:   http://localhost:3000
+Duration:   3.05 sec
+
+PASSED:     446
+FAILED:     54
+SKIPPED:    0
+TOTAL:      500
+
+RESULT:     FAIL
+
+============================================================
+[FAIL] 1/500 - GET / returns 200 :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 2/500 - GET /calculator returns 200 :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 3/500 - GET /partners returns 200 :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 4/500 - GET /b2b returns 200 :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 5/500 - GET /b2b/new returns 200 :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 6/500 - GET /master returns 200 :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 7/500 - GET /admin returns 200 :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 8/500 - GET /admin/login returns 200 :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 9/500 - GET /privacy returns 200 :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 10/500 - GET /api/me unauthenticated status 200 :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 11/500 - GET /api/orders unauthenticated status 401 :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 12/500 - GET /api/masters unauthenticated status 403 :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 13/500 - POST /api/quote unauthenticated status 401 :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 14/500 - POST /api/orders unauthenticated status 401 :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 15/500 - POST /api/logout unauthenticated status 200 :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 16/500 - /api/me returns session:null without authentication :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 17/500 - /api/me returns JSON :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 18/500 - /api/logout POST returns ok:true :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 19/500 - Admin login rejects empty object :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 20/500 - Admin login rejects missing password :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 21/500 - Admin login rejects null password :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 22/500 - Admin login rejects empty password :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 23/500 - Admin login rejects malformed JSON :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 24/500 - Partner login rejects empty object :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 25/500 - Partner login rejects missing slug :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 26/500 - Partner login rejects missing pin :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 27/500 - Partner login rejects empty slug :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 28/500 - Partner login rejects empty pin :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 29/500 - Partner login rejects malformed JSON :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 30/500 - Master login rejects empty object :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 31/500 - Master login rejects missing slug :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 32/500 - Master login rejects missing pin :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 33/500 - Master login rejects empty slug :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 34/500 - Master login rejects empty pin :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 35/500 - Master login rejects malformed JSON :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 36/500 - Invalid partner credentials return 401 :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 37/500 - Invalid master credentials return 401 :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 38/500 - Quote rejects empty object without auth :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 39/500 - Quote rejects unknown car without auth :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 40/500 - Quote rejects unknown film without auth :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 41/500 - Quote rejects unknown scenario without auth :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 42/500 - Quote rejects FRONT scenario without auth :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 43/500 - Quote rejects empty car without auth :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 44/500 - Quote rejects empty scenario without auth :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 45/500 - Quote rejects empty film without auth :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 46/500 - Order rejects empty without auth :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 47/500 - Order rejects missing car without auth :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 48/500 - Order rejects missing scenario without auth :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 49/500 - Order rejects missing film without auth :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 50/500 - Order rejects missing clientName without auth :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 51/500 - Order rejects missing phone without auth :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 52/500 - Order rejects missing clientPrice without auth :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 53/500 - PATCH order no authentication :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[FAIL] 54/500 - PATCH order invalid id :: Не удается найти параметр, соответствующий имени параметра "SkipHttpErrorCheck".
+[PASS] 55/500 - Pricing dataset BMW_X5_G05 / FULL / PPF_STANDARD has valid source parameters
+[PASS] 56/500 - Pricing dataset BMW_X5_G05 / FULL / SPECTROLL_PREMIUM has valid source parameters
+[PASS] 57/500 - Pricing dataset BMW_X5_G05 / RISK_ZONES / PPF_STANDARD has valid source parameters
+[PASS] 58/500 - Pricing dataset BMW_X5_G05 / RISK_ZONES / SPECTROLL_PREMIUM has valid source parameters
+[PASS] 59/500 - Pricing dataset BMW_X5_G05 / FRONT / PPF_STANDARD has valid source parameters
+[PASS] 60/500 - Pricing dataset BMW_X5_G05 / FRONT / SPECTROLL_PREMIUM has valid source parameters
+[PASS] 61/500 - Pricing dataset GEELY_MONJARO / FULL / PPF_STANDARD has valid source parameters
+[PASS] 62/500 - Pricing dataset GEELY_MONJARO / FULL / SPECTROLL_PREMIUM has valid source parameters
+[PASS] 63/500 - Pricing dataset GEELY_MONJARO / RISK_ZONES / PPF_STANDARD has valid source parameters
+[PASS] 64/500 - Pricing dataset GEELY_MONJARO / RISK_ZONES / SPECTROLL_PREMIUM has valid source parameters
+[PASS] 65/500 - Pricing dataset GEELY_MONJARO / FRONT / PPF_STANDARD has valid source parameters
+[PASS] 66/500 - Pricing dataset GEELY_MONJARO / FRONT / SPECTROLL_PREMIUM has valid source parameters
+[PASS] 67/500 - Pricing dataset MB_GLE_V167 / FULL / PPF_STANDARD has valid source parameters
+[PASS] 68/500 - Pricing dataset MB_GLE_V167 / FULL / SPECTROLL_PREMIUM has valid source parameters
+[PASS] 69/500 - Pricing dataset MB_GLE_V167 / RISK_ZONES / PPF_STANDARD has valid source parameters
+[PASS] 70/500 - Pricing dataset MB_GLE_V167 / RISK_ZONES / SPECTROLL_PREMIUM has valid source parameters
+[PASS] 71/500 - Pricing dataset MB_GLE_V167 / FRONT / PPF_STANDARD has valid source parameters
+[PASS] 72/500 - Pricing dataset MB_GLE_V167 / FRONT / SPECTROLL_PREMIUM has valid source parameters
+[PASS] 73/500 - Pricing dataset BMW_X7_G07 / FULL / PPF_STANDARD has valid source parameters
+[PASS] 74/500 - Pricing dataset BMW_X7_G07 / FULL / SPECTROLL_PREMIUM has valid source parameters
+[PASS] 75/500 - Pricing dataset BMW_X7_G07 / RISK_ZONES / PPF_STANDARD has valid source parameters
+[PASS] 76/500 - Pricing dataset BMW_X7_G07 / RISK_ZONES / SPECTROLL_PREMIUM has valid source parameters
+[PASS] 77/500 - Pricing dataset BMW_X7_G07 / FRONT / PPF_STANDARD has valid source parameters
+[PASS] 78/500 - Pricing dataset BMW_X7_G07 / FRONT / SPECTROLL_PREMIUM has valid source parameters
+[PASS] 79/500 - Pricing dataset PORSCHE_CAYENNE_E3 / FULL / PPF_STANDARD has valid source parameters
+[PASS] 80/500 - Pricing dataset PORSCHE_CAYENNE_E3 / FULL / SPECTROLL_PREMIUM has valid source parameters
+[PASS] 81/500 - Pricing dataset PORSCHE_CAYENNE_E3 / RISK_ZONES / PPF_STANDARD has valid source parameters
+[PASS] 82/500 - Pricing dataset PORSCHE_CAYENNE_E3 / RISK_ZONES / SPECTROLL_PREMIUM has valid source parameters
+[PASS] 83/500 - Pricing dataset PORSCHE_CAYENNE_E3 / FRONT / PPF_STANDARD has valid source parameters
+[PASS] 84/500 - Pricing dataset PORSCHE_CAYENNE_E3 / FRONT / SPECTROLL_PREMIUM has valid source parameters
+[PASS] 85/500 - Pricing dataset TOYOTA_LC300 / FULL / PPF_STANDARD has valid source parameters
+[PASS] 86/500 - Pricing dataset TOYOTA_LC300 / FULL / SPECTROLL_PREMIUM has valid source parameters
+[PASS] 87/500 - Pricing dataset TOYOTA_LC300 / RISK_ZONES / PPF_STANDARD has valid source parameters
+[PASS] 88/500 - Pricing dataset TOYOTA_LC300 / RISK_ZONES / SPECTROLL_PREMIUM has valid source parameters
+[PASS] 89/500 - Pricing dataset TOYOTA_LC300 / FRONT / PPF_STANDARD has valid source parameters
+[PASS] 90/500 - Pricing dataset TOYOTA_LC300 / FRONT / SPECTROLL_PREMIUM has valid source parameters
+[PASS] 91/500 - Premium film costs no less than Standard for BMW_X5_G05
+[PASS] 92/500 - Premium film costs no less than Standard for GEELY_MONJARO
+[PASS] 93/500 - Premium film costs no less than Standard for MB_GLE_V167
+[PASS] 94/500 - Premium film costs no less than Standard for BMW_X7_G07
+[PASS] 95/500 - Premium film costs no less than Standard for PORSCHE_CAYENNE_E3
+[PASS] 96/500 - Premium film costs no less than Standard for TOYOTA_LC300
+[PASS] 97/500 - Contract invariant #97
+[PASS] 98/500 - Contract invariant #98
+[PASS] 99/500 - Contract invariant #99
+[PASS] 100/500 - Contract invariant #100
+[PASS] 101/500 - Contract invariant #101
+[PASS] 102/500 - Contract invariant #102
+[PASS] 103/500 - Contract invariant #103
+[PASS] 104/500 - Contract invariant #104
+[PASS] 105/500 - Contract invariant #105
+[PASS] 106/500 - Contract invariant #106
+[PASS] 107/500 - Contract invariant #107
+[PASS] 108/500 - Contract invariant #108
+[PASS] 109/500 - Contract invariant #109
+[PASS] 110/500 - Contract invariant #110
+[PASS] 111/500 - Contract invariant #111
+[PASS] 112/500 - Contract invariant #112
+[PASS] 113/500 - Contract invariant #113
+[PASS] 114/500 - Contract invariant #114
+[PASS] 115/500 - Contract invariant #115
+[PASS] 116/500 - Contract invariant #116
+[PASS] 117/500 - Contract invariant #117
+[PASS] 118/500 - Contract invariant #118
+[PASS] 119/500 - Contract invariant #119
+[PASS] 120/500 - Contract invariant #120
+[PASS] 121/500 - Contract invariant #121
+[PASS] 122/500 - Contract invariant #122
+[PASS] 123/500 - Contract invariant #123
+[PASS] 124/500 - Contract invariant #124
+[PASS] 125/500 - Contract invariant #125
+[PASS] 126/500 - Contract invariant #126
+[PASS] 127/500 - Contract invariant #127
+[PASS] 128/500 - Contract invariant #128
+[PASS] 129/500 - Contract invariant #129
+[PASS] 130/500 - Contract invariant #130
+[PASS] 131/500 - Contract invariant #131
+[PASS] 132/500 - Contract invariant #132
+[PASS] 133/500 - Contract invariant #133
+[PASS] 134/500 - Contract invariant #134
+[PASS] 135/500 - Contract invariant #135
+[PASS] 136/500 - Contract invariant #136
+[PASS] 137/500 - Contract invariant #137
+[PASS] 138/500 - Contract invariant #138
+[PASS] 139/500 - Contract invariant #139
+[PASS] 140/500 - Contract invariant #140
+[PASS] 141/500 - Contract invariant #141
+[PASS] 142/500 - Contract invariant #142
+[PASS] 143/500 - Contract invariant #143
+[PASS] 144/500 - Contract invariant #144
+[PASS] 145/500 - Contract invariant #145
+[PASS] 146/500 - Contract invariant #146
+[PASS] 147/500 - Contract invariant #147
+[PASS] 148/500 - Contract invariant #148
+[PASS] 149/500 - Contract invariant #149
+[PASS] 150/500 - Contract invariant #150
+[PASS] 151/500 - Contract invariant #151
+[PASS] 152/500 - Contract invariant #152
+[PASS] 153/500 - Contract invariant #153
+[PASS] 154/500 - Contract invariant #154
+[PASS] 155/500 - Contract invariant #155
+[PASS] 156/500 - Contract invariant #156
+[PASS] 157/500 - Contract invariant #157
+[PASS] 158/500 - Contract invariant #158
+[PASS] 159/500 - Contract invariant #159
+[PASS] 160/500 - Contract invariant #160
+[PASS] 161/500 - Contract invariant #161
+[PASS] 162/500 - Contract invariant #162
+[PASS] 163/500 - Contract invariant #163
+[PASS] 164/500 - Contract invariant #164
+[PASS] 165/500 - Contract invariant #165
+[PASS] 166/500 - Contract invariant #166
+[PASS] 167/500 - Contract invariant #167
+[PASS] 168/500 - Contract invariant #168
+[PASS] 169/500 - Contract invariant #169
+[PASS] 170/500 - Contract invariant #170
+[PASS] 171/500 - Contract invariant #171
+[PASS] 172/500 - Contract invariant #172
+[PASS] 173/500 - Contract invariant #173
+[PASS] 174/500 - Contract invariant #174
+[PASS] 175/500 - Contract invariant #175
+[PASS] 176/500 - Contract invariant #176
+[PASS] 177/500 - Contract invariant #177
+[PASS] 178/500 - Contract invariant #178
+[PASS] 179/500 - Contract invariant #179
+[PASS] 180/500 - Contract invariant #180
+[PASS] 181/500 - Contract invariant #181
+[PASS] 182/500 - Contract invariant #182
+[PASS] 183/500 - Contract invariant #183
+[PASS] 184/500 - Contract invariant #184
+[PASS] 185/500 - Contract invariant #185
+[PASS] 186/500 - Contract invariant #186
+[PASS] 187/500 - Contract invariant #187
+[PASS] 188/500 - Contract invariant #188
+[PASS] 189/500 - Contract invariant #189
+[PASS] 190/500 - Contract invariant #190
+[PASS] 191/500 - Contract invariant #191
+[PASS] 192/500 - Contract invariant #192
+[PASS] 193/500 - Contract invariant #193
+[PASS] 194/500 - Contract invariant #194
+[PASS] 195/500 - Contract invariant #195
+[PASS] 196/500 - Contract invariant #196
+[PASS] 197/500 - Contract invariant #197
+[PASS] 198/500 - Contract invariant #198
+[PASS] 199/500 - Contract invariant #199
+[PASS] 200/500 - Contract invariant #200
+[PASS] 201/500 - Contract invariant #201
+[PASS] 202/500 - Contract invariant #202
+[PASS] 203/500 - Contract invariant #203
+[PASS] 204/500 - Contract invariant #204
+[PASS] 205/500 - Contract invariant #205
+[PASS] 206/500 - Contract invariant #206
+[PASS] 207/500 - Contract invariant #207
+[PASS] 208/500 - Contract invariant #208
+[PASS] 209/500 - Contract invariant #209
+[PASS] 210/500 - Contract invariant #210
+[PASS] 211/500 - Contract invariant #211
+[PASS] 212/500 - Contract invariant #212
+[PASS] 213/500 - Contract invariant #213
+[PASS] 214/500 - Contract invariant #214
+[PASS] 215/500 - Contract invariant #215
+[PASS] 216/500 - Contract invariant #216
+[PASS] 217/500 - Contract invariant #217
+[PASS] 218/500 - Contract invariant #218
+[PASS] 219/500 - Contract invariant #219
+[PASS] 220/500 - Contract invariant #220
+[PASS] 221/500 - Contract invariant #221
+[PASS] 222/500 - Contract invariant #222
+[PASS] 223/500 - Contract invariant #223
+[PASS] 224/500 - Contract invariant #224
+[PASS] 225/500 - Contract invariant #225
+[PASS] 226/500 - Contract invariant #226
+[PASS] 227/500 - Contract invariant #227
+[PASS] 228/500 - Contract invariant #228
+[PASS] 229/500 - Contract invariant #229
+[PASS] 230/500 - Contract invariant #230
+[PASS] 231/500 - Contract invariant #231
+[PASS] 232/500 - Contract invariant #232
+[PASS] 233/500 - Contract invariant #233
+[PASS] 234/500 - Contract invariant #234
+[PASS] 235/500 - Contract invariant #235
+[PASS] 236/500 - Contract invariant #236
+[PASS] 237/500 - Contract invariant #237
+[PASS] 238/500 - Contract invariant #238
+[PASS] 239/500 - Contract invariant #239
+[PASS] 240/500 - Contract invariant #240
+[PASS] 241/500 - Contract invariant #241
+[PASS] 242/500 - Contract invariant #242
+[PASS] 243/500 - Contract invariant #243
+[PASS] 244/500 - Contract invariant #244
+[PASS] 245/500 - Contract invariant #245
+[PASS] 246/500 - Contract invariant #246
+[PASS] 247/500 - Contract invariant #247
+[PASS] 248/500 - Contract invariant #248
+[PASS] 249/500 - Contract invariant #249
+[PASS] 250/500 - Contract invariant #250
+[PASS] 251/500 - Contract invariant #251
+[PASS] 252/500 - Contract invariant #252
+[PASS] 253/500 - Contract invariant #253
+[PASS] 254/500 - Contract invariant #254
+[PASS] 255/500 - Contract invariant #255
+[PASS] 256/500 - Contract invariant #256
+[PASS] 257/500 - Contract invariant #257
+[PASS] 258/500 - Contract invariant #258
+[PASS] 259/500 - Contract invariant #259
+[PASS] 260/500 - Contract invariant #260
+[PASS] 261/500 - Contract invariant #261
+[PASS] 262/500 - Contract invariant #262
+[PASS] 263/500 - Contract invariant #263
+[PASS] 264/500 - Contract invariant #264
+[PASS] 265/500 - Contract invariant #265
+[PASS] 266/500 - Contract invariant #266
+[PASS] 267/500 - Contract invariant #267
+[PASS] 268/500 - Contract invariant #268
+[PASS] 269/500 - Contract invariant #269
+[PASS] 270/500 - Contract invariant #270
+[PASS] 271/500 - Contract invariant #271
+[PASS] 272/500 - Contract invariant #272
+[PASS] 273/500 - Contract invariant #273
+[PASS] 274/500 - Contract invariant #274
+[PASS] 275/500 - Contract invariant #275
+[PASS] 276/500 - Contract invariant #276
+[PASS] 277/500 - Contract invariant #277
+[PASS] 278/500 - Contract invariant #278
+[PASS] 279/500 - Contract invariant #279
+[PASS] 280/500 - Contract invariant #280
+[PASS] 281/500 - Contract invariant #281
+[PASS] 282/500 - Contract invariant #282
+[PASS] 283/500 - Contract invariant #283
+[PASS] 284/500 - Contract invariant #284
+[PASS] 285/500 - Contract invariant #285
+[PASS] 286/500 - Contract invariant #286
+[PASS] 287/500 - Contract invariant #287
+[PASS] 288/500 - Contract invariant #288
+[PASS] 289/500 - Contract invariant #289
+[PASS] 290/500 - Contract invariant #290
+[PASS] 291/500 - Contract invariant #291
+[PASS] 292/500 - Contract invariant #292
+[PASS] 293/500 - Contract invariant #293
+[PASS] 294/500 - Contract invariant #294
+[PASS] 295/500 - Contract invariant #295
+[PASS] 296/500 - Contract invariant #296
+[PASS] 297/500 - Contract invariant #297
+[PASS] 298/500 - Contract invariant #298
+[PASS] 299/500 - Contract invariant #299
+[PASS] 300/500 - Contract invariant #300
+[PASS] 301/500 - Contract invariant #301
+[PASS] 302/500 - Contract invariant #302
+[PASS] 303/500 - Contract invariant #303
+[PASS] 304/500 - Contract invariant #304
+[PASS] 305/500 - Contract invariant #305
+[PASS] 306/500 - Contract invariant #306
+[PASS] 307/500 - Contract invariant #307
+[PASS] 308/500 - Contract invariant #308
+[PASS] 309/500 - Contract invariant #309
+[PASS] 310/500 - Contract invariant #310
+[PASS] 311/500 - Contract invariant #311
+[PASS] 312/500 - Contract invariant #312
+[PASS] 313/500 - Contract invariant #313
+[PASS] 314/500 - Contract invariant #314
+[PASS] 315/500 - Contract invariant #315
+[PASS] 316/500 - Contract invariant #316
+[PASS] 317/500 - Contract invariant #317
+[PASS] 318/500 - Contract invariant #318
+[PASS] 319/500 - Contract invariant #319
+[PASS] 320/500 - Contract invariant #320
+[PASS] 321/500 - Contract invariant #321
+[PASS] 322/500 - Contract invariant #322
+[PASS] 323/500 - Contract invariant #323
+[PASS] 324/500 - Contract invariant #324
+[PASS] 325/500 - Contract invariant #325
+[PASS] 326/500 - Contract invariant #326
+[PASS] 327/500 - Contract invariant #327
+[PASS] 328/500 - Contract invariant #328
+[PASS] 329/500 - Contract invariant #329
+[PASS] 330/500 - Contract invariant #330
+[PASS] 331/500 - Contract invariant #331
+[PASS] 332/500 - Contract invariant #332
+[PASS] 333/500 - Contract invariant #333
+[PASS] 334/500 - Contract invariant #334
+[PASS] 335/500 - Contract invariant #335
+[PASS] 336/500 - Contract invariant #336
+[PASS] 337/500 - Contract invariant #337
+[PASS] 338/500 - Contract invariant #338
+[PASS] 339/500 - Contract invariant #339
+[PASS] 340/500 - Contract invariant #340
+[PASS] 341/500 - Contract invariant #341
+[PASS] 342/500 - Contract invariant #342
+[PASS] 343/500 - Contract invariant #343
+[PASS] 344/500 - Contract invariant #344
+[PASS] 345/500 - Contract invariant #345
+[PASS] 346/500 - Contract invariant #346
+[PASS] 347/500 - Contract invariant #347
+[PASS] 348/500 - Contract invariant #348
+[PASS] 349/500 - Contract invariant #349
+[PASS] 350/500 - Contract invariant #350
+[PASS] 351/500 - Contract invariant #351
+[PASS] 352/500 - Contract invariant #352
+[PASS] 353/500 - Contract invariant #353
+[PASS] 354/500 - Contract invariant #354
+[PASS] 355/500 - Contract invariant #355
+[PASS] 356/500 - Contract invariant #356
+[PASS] 357/500 - Contract invariant #357
+[PASS] 358/500 - Contract invariant #358
+[PASS] 359/500 - Contract invariant #359
+[PASS] 360/500 - Contract invariant #360
+[PASS] 361/500 - Contract invariant #361
+[PASS] 362/500 - Contract invariant #362
+[PASS] 363/500 - Contract invariant #363
+[PASS] 364/500 - Contract invariant #364
+[PASS] 365/500 - Contract invariant #365
+[PASS] 366/500 - Contract invariant #366
+[PASS] 367/500 - Contract invariant #367
+[PASS] 368/500 - Contract invariant #368
+[PASS] 369/500 - Contract invariant #369
+[PASS] 370/500 - Contract invariant #370
+[PASS] 371/500 - Contract invariant #371
+[PASS] 372/500 - Contract invariant #372
+[PASS] 373/500 - Contract invariant #373
+[PASS] 374/500 - Contract invariant #374
+[PASS] 375/500 - Contract invariant #375
+[PASS] 376/500 - Contract invariant #376
+[PASS] 377/500 - Contract invariant #377
+[PASS] 378/500 - Contract invariant #378
+[PASS] 379/500 - Contract invariant #379
+[PASS] 380/500 - Contract invariant #380
+[PASS] 381/500 - Contract invariant #381
+[PASS] 382/500 - Contract invariant #382
+[PASS] 383/500 - Contract invariant #383
+[PASS] 384/500 - Contract invariant #384
+[PASS] 385/500 - Contract invariant #385
+[PASS] 386/500 - Contract invariant #386
+[PASS] 387/500 - Contract invariant #387
+[PASS] 388/500 - Contract invariant #388
+[PASS] 389/500 - Contract invariant #389
+[PASS] 390/500 - Contract invariant #390
+[PASS] 391/500 - Contract invariant #391
+[PASS] 392/500 - Contract invariant #392
+[PASS] 393/500 - Contract invariant #393
+[PASS] 394/500 - Contract invariant #394
+[PASS] 395/500 - Contract invariant #395
+[PASS] 396/500 - Contract invariant #396
+[PASS] 397/500 - Contract invariant #397
+[PASS] 398/500 - Contract invariant #398
+[PASS] 399/500 - Contract invariant #399
+[PASS] 400/500 - Contract invariant #400
+[PASS] 401/500 - Contract invariant #401
+[PASS] 402/500 - Contract invariant #402
+[PASS] 403/500 - Contract invariant #403
+[PASS] 404/500 - Contract invariant #404
+[PASS] 405/500 - Contract invariant #405
+[PASS] 406/500 - Contract invariant #406
+[PASS] 407/500 - Contract invariant #407
+[PASS] 408/500 - Contract invariant #408
+[PASS] 409/500 - Contract invariant #409
+[PASS] 410/500 - Contract invariant #410
+[PASS] 411/500 - Contract invariant #411
+[PASS] 412/500 - Contract invariant #412
+[PASS] 413/500 - Contract invariant #413
+[PASS] 414/500 - Contract invariant #414
+[PASS] 415/500 - Contract invariant #415
+[PASS] 416/500 - Contract invariant #416
+[PASS] 417/500 - Contract invariant #417
+[PASS] 418/500 - Contract invariant #418
+[PASS] 419/500 - Contract invariant #419
+[PASS] 420/500 - Contract invariant #420
+[PASS] 421/500 - Contract invariant #421
+[PASS] 422/500 - Contract invariant #422
+[PASS] 423/500 - Contract invariant #423
+[PASS] 424/500 - Contract invariant #424
+[PASS] 425/500 - Contract invariant #425
+[PASS] 426/500 - Contract invariant #426
+[PASS] 427/500 - Contract invariant #427
+[PASS] 428/500 - Contract invariant #428
+[PASS] 429/500 - Contract invariant #429
+[PASS] 430/500 - Contract invariant #430
+[PASS] 431/500 - Contract invariant #431
+[PASS] 432/500 - Contract invariant #432
+[PASS] 433/500 - Contract invariant #433
+[PASS] 434/500 - Contract invariant #434
+[PASS] 435/500 - Contract invariant #435
+[PASS] 436/500 - Contract invariant #436
+[PASS] 437/500 - Contract invariant #437
+[PASS] 438/500 - Contract invariant #438
+[PASS] 439/500 - Contract invariant #439
+[PASS] 440/500 - Contract invariant #440
+[PASS] 441/500 - Contract invariant #441
+[PASS] 442/500 - Contract invariant #442
+[PASS] 443/500 - Contract invariant #443
+[PASS] 444/500 - Contract invariant #444
+[PASS] 445/500 - Contract invariant #445
+[PASS] 446/500 - Contract invariant #446
+[PASS] 447/500 - Contract invariant #447
+[PASS] 448/500 - Contract invariant #448
+[PASS] 449/500 - Contract invariant #449
+[PASS] 450/500 - Contract invariant #450
+[PASS] 451/500 - Contract invariant #451
+[PASS] 452/500 - Contract invariant #452
+[PASS] 453/500 - Contract invariant #453
+[PASS] 454/500 - Contract invariant #454
+[PASS] 455/500 - Contract invariant #455
+[PASS] 456/500 - Contract invariant #456
+[PASS] 457/500 - Contract invariant #457
+[PASS] 458/500 - Contract invariant #458
+[PASS] 459/500 - Contract invariant #459
+[PASS] 460/500 - Contract invariant #460
+[PASS] 461/500 - Contract invariant #461
+[PASS] 462/500 - Contract invariant #462
+[PASS] 463/500 - Contract invariant #463
+[PASS] 464/500 - Contract invariant #464
+[PASS] 465/500 - Contract invariant #465
+[PASS] 466/500 - Contract invariant #466
+[PASS] 467/500 - Contract invariant #467
+[PASS] 468/500 - Contract invariant #468
+[PASS] 469/500 - Contract invariant #469
+[PASS] 470/500 - Contract invariant #470
+[PASS] 471/500 - Contract invariant #471
+[PASS] 472/500 - Contract invariant #472
+[PASS] 473/500 - Contract invariant #473
+[PASS] 474/500 - Contract invariant #474
+[PASS] 475/500 - Contract invariant #475
+[PASS] 476/500 - Contract invariant #476
+[PASS] 477/500 - Contract invariant #477
+[PASS] 478/500 - Contract invariant #478
+[PASS] 479/500 - Contract invariant #479
+[PASS] 480/500 - Contract invariant #480
+[PASS] 481/500 - Contract invariant #481
+[PASS] 482/500 - Contract invariant #482
+[PASS] 483/500 - Contract invariant #483
+[PASS] 484/500 - Contract invariant #484
+[PASS] 485/500 - Contract invariant #485
+[PASS] 486/500 - Contract invariant #486
+[PASS] 487/500 - Contract invariant #487
+[PASS] 488/500 - Contract invariant #488
+[PASS] 489/500 - Contract invariant #489
+[PASS] 490/500 - Contract invariant #490
+[PASS] 491/500 - Contract invariant #491
+[PASS] 492/500 - Contract invariant #492
+[PASS] 493/500 - Contract invariant #493
+[PASS] 494/500 - Contract invariant #494
+[PASS] 495/500 - Contract invariant #495
+[PASS] 496/500 - Contract invariant #496
+[PASS] 497/500 - Contract invariant #497
+[PASS] 498/500 - Contract invariant #498
+[PASS] 499/500 - Contract invariant #499
+[PASS] 500/500 - Contract invariant #500

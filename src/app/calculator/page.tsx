@@ -1,295 +1,440 @@
-﻿import Link from "next/link";
+﻿"use client";
 
-const STEPS = [
-  { n: "01", title: "Рассчитать", text: "Автомобиль, комплектация, состав работ." },
-  { n: "02", title: "Партнёрская цена", text: "Система рассчитывает стоимость PPF PROFI." },
-  { n: "03", title: "Своя цена клиенту", text: "Вы назначаете цену предложения." },
-  { n: "04", title: "Отправить клиенту", text: "Ссылка на предложение без партнёрской цены." },
-  { n: "05", title: "PPF PROFI выполняет", text: "Сделка ведётся в системе до результата." },
+import Link from "next/link";
+import { useState } from "react";
+
+const CARS = [
+  { code: "GEELY_MONJARO", label: "Geely Monjaro" },
+  { code: "BMW_X5_G05", label: "BMW X5 G05" },
+  { code: "BMW_X7_G07", label: "BMW X7 G07" },
+  { code: "MB_GLE_V167", label: "Mercedes-Benz GLE V167" },
+  { code: "PORSCHE_CAYENNE_E3", label: "Porsche Cayenne E3" },
+  { code: "TOYOTA_LC300", label: "Toyota Land Cruiser 300" },
 ];
 
-const BENEFITS = [
-  { title: "Партнёрский расчёт", text: "Цена PPF PROFI без ручного счёта каждой работы." },
-  { title: "Своя цена клиенту", text: "Вы контролируете КП и валовый спред." },
-  { title: "Ссылка клиенту", text: "Клиент видит предложение без вашей партнёрской цены." },
-  { title: "Контроль сделки", text: "Расчёт → клиент → заказ → мастер → выполнение." },
-  { title: "История расчётов", text: "Повторить расчёт по предыдущему авто." },
+const PACKAGES = [
+  { code: "FRONT", label: "Передняя часть", desc: "Бампер, капот, крылья, зеркала" },
+  { code: "RISK_ZONES", label: "Зоны риска", desc: "Бампер, зеркала, фары, пороги" },
+  { code: "FULL", label: "Полная оклейка", desc: "Все основные элементы кузова" },
 ];
 
-const PARTNER_TYPES = [
-  {
-    title: "Автосалоны",
-    text: "Предложите защиту покупателям сразу после сделки. Дополнительная прибыль без расширения штата.",
-  },
-  {
-    title: "Малые станции",
-    text: "Клиенты после кузовного ремонта хотят защитить элементы. PPF PROFI выполняет — вы получаете спред.",
-  },
-  {
-    title: "Детейлинг-центры",
-    text: "Передавайте PPF-заказы, которые не берёте. Сохраняете клиента, получаете доход.",
-  },
+const FILMS = [
+  { code: "PPF_STANDARD", label: "PPF PROFI Standard", desc: "Надёжная защита" },
+  { code: "SPECTROLL_PREMIUM", label: "Spectroll Premium", desc: "Премиальная защита" },
 ];
 
-export default function PartnersPage() {
+export default function CalculatorPage() {
+  const [step, setStep] = useState(1);
+  const [car, setCar] = useState(CARS[0].code);
+  const [pkg, setPkg] = useState(PACKAGES[0].code);
+  const [film, setFilm] = useState(FILMS[0].code);
+  const [result, setResult] = useState<number | null>(null);
+
+  const [showForm, setShowForm] = useState(false);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [comment, setComment] = useState("");
+  const [consent, setConsent] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [formError, setFormError] = useState("");
+
+  const calculate = () => {
+    const base = 50000;
+    const carMul = car === "GEELY_MONJARO" ? 1.1 : car === "BMW_X7_G07" ? 1.3 : 1;
+    const pkgMul = pkg === "FULL" ? 2.4 : pkg === "RISK_ZONES" ? 0.9 : 1;
+    const filmMul = film === "SPECTROLL_PREMIUM" ? 1.15 : 1;
+    setResult(Math.round((base * carMul * pkgMul * filmMul) / 500) * 500);
+    setStep(3);
+  };
+
+  const reset = () => {
+    setResult(null);
+    setStep(1);
+    setShowForm(false);
+    setSent(false);
+    setName("");
+    setPhone("");
+    setComment("");
+    setConsent(false);
+    setFormError("");
+  };
+
+  const submitForm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError("");
+    if (!name.trim() || !phone.trim()) return;
+    if (result === null) return;
+    if (!consent) {
+      setFormError("Поставьте галочку согласия на обработку данных");
+      return;
+    }
+
+    setSending(true);
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          carCode: car,
+          scenario: pkg,
+          filmCode: film,
+          price: result,
+          clientName: name,
+          clientPhone: phone,
+          comment,
+          consent: true,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
+        setFormError(err.error || "Не удалось отправить заявку");
+        return;
+      }
+
+      setSent(true);
+    } catch {
+      setFormError("Ошибка сети. Проверьте соединение.");
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <div className="dark-grid min-h-screen text-white">
-      {/* HEADER */}
-      <header className="sticky top-0 z-50 border-b border-white/8 bg-black/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+      <header className="border-b border-white/10 bg-black/80 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-3">
-            <div className="text-xl font-extrabold tracking-[0.12em]">
-              PPF <span className="accent">PROFI</span>
-            </div>
-            <div className="hidden text-[10px] uppercase tracking-[0.2em] text-white/40 md:block">
-              Premium Protection
-            </div>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link
-              href="/b2b"
-              className="hidden text-sm font-bold text-white/60 transition hover:text-white md:block"
-            >
-              Войти в кабинет
-            </Link>
-            <Link href="/b2b/new" className="btn-accent text-sm">
-              Рассчитать PPF
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      {/* HERO: текст слева, экономика справа */}
-      <section className="mx-auto max-w-7xl px-6 pt-10 pb-6">
-        <div className="reveal grid items-center gap-8 lg:grid-cols-[1.1fr_1fr] lg:gap-12">
-          <div>
-            <div className="eyebrow">PPF PROFI для бизнеса</div>
-            <h1 className="mt-3 max-w-2xl text-balance text-3xl font-extrabold leading-[1.08] tracking-[-0.035em] sm:text-4xl lg:text-5xl">
-              Добавьте PPF в свою продажу&nbsp;—{" "}
-              <span className="accent">без собственного участка и команды.</span>
-            </h1>
-            <p className="mt-4 max-w-xl text-sm leading-6 text-white/60 sm:text-base sm:leading-7">
-              Рассчитывайте стоимость, формируйте предложение клиенту и передавайте
-              выполнение PPF PROFI.
-            </p>
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link href="/b2b/new" className="btn-accent">
-                Рассчитать автомобиль →
-              </Link>
-              <Link href="/b2b" className="btn-ghost">
-                Войти в кабинет
-              </Link>
-            </div>
-
-            <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">
-              Прозрачная партнёрская модель без скрытых условий
-            </p>
-          </div>
-
-          {/* Карточка экономики */}
-          <div className="dark-card relative overflow-hidden p-5 sm:p-6">
-            <div className="absolute -right-20 -top-20 h-48 w-48 rounded-full bg-lime-400/10 blur-3xl" />
-            <div className="relative">
-              <div className="eyebrow">Экономика сделки</div>
-              <h2 className="mt-2 text-lg font-extrabold tracking-tight sm:text-xl">
-                Вы определяете <span className="accent">свою цену</span>
-              </h2>
-              <p className="mt-2 text-xs leading-5 text-white/60">
-                PPF PROFI фиксирует партнёрскую цену. Вы назначаете цену клиенту и
-                оставляете себе разницу.
-              </p>
-
-              <div className="mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">
-                Пример расчёта
-              </div>
-
-              <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-                <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3 sm:p-4">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
-                    Цена PPF PROFI для партнёра
-                  </div>
-                  <div className="mt-2 text-xl font-extrabold sm:text-2xl">42 000 ₽</div>
-                </div>
-
-                <div className="text-lg accent">→</div>
-
-                <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3 sm:p-4">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
-                    Цена для клиента
-                  </div>
-                  <div className="mt-2 text-xl font-extrabold sm:text-2xl">55 000 ₽</div>
-                </div>
-              </div>
-
-              <div className="mt-3 rounded-xl border border-lime-400/25 bg-lime-400/[0.06] p-4">
-                <div className="text-[10px] font-bold uppercase tracking-[0.14em] accent">
-                  Ваш валовый спред
-                </div>
-                <div className="mt-1 text-4xl font-extrabold accent sm:text-5xl">
-                  + 13 000 ₽
-                </div>
-                <div className="mt-1 text-xs text-white/50">
-                  Разница между ценой клиента и партнёрской ценой
-                </div>
-              </div>
-
-              <p className="mt-4 text-[11px] leading-5 text-white/40">
-                Система показывает партнёрскую и рекомендуемую розничную цену.
-                Внутренняя себестоимость PPF PROFI не раскрывается. Цифры приведены
-                исключительно для иллюстрации механики, фактические цены
-                рассчитываются системой в личном кабинете.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* КАК РАБОТАЕТ */}
-      <section className="mx-auto max-w-7xl px-6 py-6">
-        <div className="mb-4">
-          <div className="eyebrow">Как это работает</div>
-          <h2 className="mt-2 text-xl font-extrabold tracking-tight sm:text-2xl">
-            От расчёта до готового автомобиля
-          </h2>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          {STEPS.map((s) => (
-            <div key={s.n} className="dark-card p-4">
-              <div className="text-lg font-extrabold accent">{s.n}</div>
-              <div className="mt-3 text-xs font-extrabold leading-5">{s.title}</div>
-              <p className="mt-1.5 text-[11px] leading-4 text-white/55">{s.text}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ВОЗМОЖНОСТИ + ИНФРАСТРУКТУРА */}
-      <section className="mx-auto max-w-7xl px-6 py-6">
-        <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr]">
-          <div className="dark-card p-6">
-            <div className="eyebrow">Возможности</div>
-            <h2 className="mt-2 text-xl font-extrabold tracking-tight sm:text-2xl">
-              Что получает партнёр
-            </h2>
-
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              {BENEFITS.map((b, i) => (
-                <div
-                  key={b.title}
-                  className={`rounded-xl border border-white/8 bg-white/[0.03] p-4 ${
-                    i === BENEFITS.length - 1 ? "sm:col-span-2" : ""
-                  }`}
-                >
-                  <div className="h-1 w-6 rounded-full bg-lime-400" />
-                  <div className="mt-3 text-sm font-extrabold">{b.title}</div>
-                  <p className="mt-1 text-xs leading-5 text-white/55">{b.text}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="dark-card relative overflow-hidden p-6">
-            <div className="absolute -right-24 -top-24 h-56 w-56 rounded-full bg-lime-400/10 blur-3xl" />
-            <div className="relative">
-              <div className="eyebrow">Не просто скидка</div>
-              <h2 className="mt-2 text-xl font-extrabold leading-tight tracking-tight sm:text-2xl">
-                PPF PROFI — это <span className="accent">инфраструктура</span>{" "}
-                для продажи услуги
-              </h2>
-              <p className="mt-3 text-sm leading-6 text-white/60">
-                Партнёру не нужно становиться специалистом по PPF. Он продаёт
-                решение. PPF PROFI обеспечивает расчёт, производство и
-                выполнение.
-              </p>
-              <div className="mt-5 space-y-2 border-t border-white/8 pt-5 text-xs text-white/60">
-                <div className="flex items-center gap-2">
-                  <span className="accent">✓</span> Без своего бокса
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="accent">✓</span> Без найма мастеров
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="accent">✓</span> Без закупки материалов
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* КОМУ ПОДХОДИТ */}
-      <section className="mx-auto max-w-7xl px-6 py-6">
-        <div className="mb-4">
-          <div className="eyebrow">Кому подходит PPF PROFI</div>
-          <h2 className="mt-2 text-xl font-extrabold tracking-tight sm:text-2xl">
-            Сегменты, для которых мы работаем
-          </h2>
-        </div>
-
-        <div className="grid gap-3 lg:grid-cols-3">
-          {PARTNER_TYPES.map((t) => (
-            <div key={t.title} className="dark-card p-5">
-              <div className="text-base font-extrabold">{t.title}</div>
-              <p className="mt-2 text-xs leading-5 text-white/60">{t.text}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ФИНАЛЬНЫЙ CTA */}
-      <section className="mx-auto max-w-7xl px-6 pt-6 pb-12">
-        <div className="dark-card relative overflow-hidden p-6 sm:p-8">
-          <div className="absolute -left-24 -top-24 h-56 w-56 rounded-full bg-lime-400/10 blur-3xl" />
-          <div className="absolute -right-24 -bottom-24 h-56 w-56 rounded-full bg-lime-400/[0.06] blur-3xl" />
-          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
-                Начните работать с PPF PROFI
-              </h2>
-              <p className="mt-2 max-w-xl text-sm leading-6 text-white/60">
-                Откройте кабинет, рассчитайте первый заказ и предложите клиенту
-                готовое решение.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Link href="/b2b" className="btn-accent">
-                Войти в кабинет →
-              </Link>
-              <Link href="/b2b/new" className="btn-ghost">
-                Посмотреть расчёт
-              </Link>
-            </div>
-          </div>
-          <p className="relative mt-4 text-[11px] text-white/40">
-            Логин и PIN выдаёт PPF PROFI после первого контакта.
-          </p>
-        </div>
-      </section>
-
-      {/* FOOTER */}
-      <footer className="border-t border-white/8 bg-black/60">
-        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-6 py-10 sm:flex-row sm:items-center sm:justify-between">
-          <div>
             <div className="text-lg font-extrabold tracking-[0.12em]">
               PPF <span className="accent">PROFI</span>
             </div>
-            <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-white/40">
-              Premium Protection
+          </Link>
+          <Link
+            href="/"
+            className="text-xs font-bold text-white/50 hover:text-white"
+          >
+            ← На главную
+          </Link>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-2xl px-6 py-12">
+        {sent ? (
+          <div className="reveal text-center">
+            <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-lime-400/15 ring-1 ring-lime-400/40">
+              <span className="text-4xl accent">✓</span>
+            </div>
+            <h1 className="mt-8 text-3xl font-extrabold tracking-tight sm:text-4xl">
+              Заявка принята
+            </h1>
+            <p className="mt-4 text-white/60">
+              Мы свяжемся с вами в течение 15 минут для подтверждения расчёта.
+            </p>
+            <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:justify-center">
+              <button onClick={reset} className="btn-accent justify-center">
+                Новый расчёт
+              </button>
+              <Link href="/" className="btn-ghost justify-center">
+                На главную
+              </Link>
             </div>
           </div>
-          <div className="flex flex-wrap gap-6 text-sm text-white/60">
-            <Link href="/" className="hover:text-white">Главная</Link>
-            <Link href="/partners" className="hover:text-white">Партнёрам</Link>
-            <Link href="/master" className="hover:text-white">Мастерам</Link>
-            <Link href="/b2b" className="hover:text-white">Войти</Link>
-          </div>
-          <div className="text-xs text-white/40">
-            © 2026 PPF PROFI. Все права защищены.
+        ) : (
+          <>
+            <div className="mb-10 flex items-center gap-2">
+              {["Авто", "Состав", "Результат"].map((label, i) => {
+                const n = i + 1;
+                const done = n < step;
+                const active = n === step;
+                return (
+                  <div key={label} className="flex flex-1 items-center gap-2">
+                    <div
+                      className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-extrabold transition ${
+                        active
+                          ? "bg-lime-400 text-black shadow-lg shadow-lime-400/30"
+                          : done
+                          ? "bg-lime-400/20 text-lime-300"
+                          : "bg-white/5 text-white/40"
+                      }`}
+                    >
+                      {done ? "✓" : n}
+                    </div>
+                    <span
+                      className={`text-xs font-bold ${
+                        active ? "text-white" : "text-white/40"
+                      }`}
+                    >
+                      {label}
+                    </span>
+                    {i < 2 && (
+                      <div
+                        className={`h-px flex-1 ${
+                          done ? "bg-lime-400/40" : "bg-white/10"
+                        }`}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {step === 1 && (
+              <div className="reveal">
+                <div className="eyebrow">Шаг 1 из 3</div>
+                <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
+                  Какой автомобиль?
+                </h1>
+                <p className="mt-3 text-white/60">
+                  Выберите марку и поколение кузова.
+                </p>
+
+                <div className="mt-8 grid gap-2">
+                  {CARS.map((c) => (
+                    <button
+                      key={c.code}
+                      onClick={() => setCar(c.code)}
+                      className={`rounded-2xl border px-5 py-4 text-left transition ${
+                        car === c.code
+                          ? "border-lime-400 bg-lime-400/10 ring-1 ring-lime-400"
+                          : "border-white/8 bg-white/[0.03] hover:border-white/20"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold text-white">{c.label}</span>
+                        {car === c.code && <span className="accent">●</span>}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => setStep(2)}
+                  className="btn-accent mt-8 w-full justify-center"
+                >
+                  Далее →
+                </button>
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="reveal">
+                <div className="eyebrow">Шаг 2 из 3</div>
+                <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
+                  Состав и плёнка
+                </h1>
+                <p className="mt-3 text-white/60">
+                  Что нужно защитить и какой плёнкой.
+                </p>
+
+                <div className="mt-8">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">
+                    Состав работ
+                  </div>
+                  <div className="mt-3 grid gap-2">
+                    {PACKAGES.map((p) => (
+                      <button
+                        key={p.code}
+                        onClick={() => setPkg(p.code)}
+                        className={`rounded-2xl border px-5 py-4 text-left transition ${
+                          pkg === p.code
+                            ? "border-lime-400 bg-lime-400/10 ring-1 ring-lime-400"
+                            : "border-white/8 bg-white/[0.03] hover:border-white/20"
+                        }`}
+                      >
+                        <div className="font-extrabold text-white">{p.label}</div>
+                        <div className="mt-1 text-xs text-white/50">{p.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-8">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">
+                    Плёнка
+                  </div>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {FILMS.map((f) => (
+                      <button
+                        key={f.code}
+                        onClick={() => setFilm(f.code)}
+                        className={`rounded-2xl border px-5 py-4 text-left transition ${
+                          film === f.code
+                            ? "border-lime-400 bg-lime-400/10 ring-1 ring-lime-400"
+                            : "border-white/8 bg-white/[0.03] hover:border-white/20"
+                        }`}
+                      >
+                        <div className="font-extrabold text-white">{f.label}</div>
+                        <div className="mt-1 text-xs text-white/50">{f.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-8 flex gap-3">
+                  <button onClick={() => setStep(1)} className="btn-ghost">
+                    ← Назад
+                  </button>
+                  <button onClick={calculate} className="btn-accent flex-1 justify-center">
+                    Рассчитать
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {step === 3 && result !== null && (
+              <div className="reveal">
+                <div className="eyebrow">Шаг 3 из 3</div>
+                <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
+                  Предварительный расчёт
+                </h1>
+
+                <div className="dark-card mt-8 p-8">
+                  <div className="text-xs font-extrabold uppercase tracking-[0.14em] accent">
+                    {CARS.find((c) => c.code === car)?.label}
+                  </div>
+                  <div className="mt-2 text-sm text-white/50">
+                    {PACKAGES.find((p) => p.code === pkg)?.label} ·{" "}
+                    {FILMS.find((f) => f.code === film)?.label}
+                  </div>
+                  <div className="mt-6 text-5xl font-extrabold tracking-[-0.04em]">
+                    от <span className="accent">{result.toLocaleString("ru-RU")}</span> ₽
+                  </div>
+                  <p className="mt-4 text-sm leading-6 text-white/50">
+                    Финальная стоимость подтверждается после проверки фотографий
+                    автомобиля. Разница возможна при обнаружении повреждений,
+                    перекрасов или старой плёнки.
+                  </p>
+                </div>
+
+                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                  <button
+                    onClick={() => setShowForm(true)}
+                    className="btn-accent justify-center"
+                  >
+                    Оставить заявку
+                  </button>
+                  <button onClick={reset} className="btn-ghost justify-center">
+                    Изменить расчёт
+                  </button>
+                </div>
+
+                <div className="mt-8 rounded-2xl border border-lime-400/20 bg-lime-400/5 p-5 text-sm leading-6 text-lime-100">
+                  <strong className="accent">Что дальше:</strong>{" "}
+                  <span className="text-white/80">
+                    вы оставляете заявку, прикладываете 4 фотографии автомобиля. Мы
+                    подтверждаем финальную цену в течение 15 минут и назначаем мастера.
+                  </span>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {showForm && !sent && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+          onClick={() => setShowForm(false)}
+        >
+          <div
+            className="dark-card w-full max-w-md p-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-2xl font-extrabold tracking-tight">
+              Оставить заявку
+            </h2>
+            <p className="mt-2 text-sm text-white/50">
+              Перезвоним в течение 15 минут.
+            </p>
+
+            <form onSubmit={submitForm} className="mt-6 space-y-4">
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
+                  Ваше имя
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Иван"
+                  required
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 focus:border-lime-400 focus:outline-none focus:ring-1 focus:ring-lime-400"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
+                  Телефон
+                </label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+7 999 123-45-67"
+                  required
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 focus:border-lime-400 focus:outline-none focus:ring-1 focus:ring-lime-400"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
+                  Комментарий
+                </label>
+                <textarea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  rows={3}
+                  placeholder="Адрес, удобное время, особенности"
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 focus:border-lime-400 focus:outline-none focus:ring-1 focus:ring-lime-400"
+                />
+              </div>
+
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <input
+                  type="checkbox"
+                  checked={consent}
+                  onChange={(e) => setConsent(e.target.checked)}
+                  className="mt-1 h-4 w-4 shrink-0 accent-lime-400"
+                />
+                <span className="text-xs leading-5 text-white/60">
+                  Я согласен на обработку персональных данных и принимаю{" "}
+                  <Link
+                    href="/privacy"
+                    target="_blank"
+                    className="accent hover:underline"
+                  >
+                    Политику конфиденциальности
+                  </Link>
+                </span>
+              </label>
+
+              {formError && (
+                <div className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm font-bold text-rose-200">
+                  {formError}
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="btn-ghost"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  disabled={sending || !consent}
+                  className="btn-accent flex-1 justify-center disabled:opacity-50"
+                >
+                  {sending ? "Отправляем..." : "Отправить"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-      </footer>
+      )}
     </div>
   );
 }

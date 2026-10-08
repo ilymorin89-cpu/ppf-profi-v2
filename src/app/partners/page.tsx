@@ -1,19 +1,22 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 
 const STEPS = [
   { n: "01", title: "Рассчитать", text: "Автомобиль, комплектация, состав работ." },
   { n: "02", title: "Партнёрская цена", text: "Система рассчитывает стоимость PPF PROFI." },
   { n: "03", title: "Своя цена клиенту", text: "Вы назначаете цену предложения." },
-  { n: "04", title: "Отправить клиенту", text: "Ссылка на предложение без вашей цены." },
+  { n: "04", title: "Отправить клиенту", text: "Ссылка на предложение без партнёрской цены." },
   { n: "05", title: "PPF PROFI выполняет", text: "Сделка ведётся в системе до результата." },
 ];
 
 const BENEFITS = [
-  { icon: "🧮", title: "Партнёрский расчёт", text: "Цена PPF PROFI без ручного счёта каждой работы." },
-  { icon: "💵", title: "Своя цена клиенту", text: "Вы контролируете КП и валовый спред." },
-  { icon: "🔗", title: "Ссылка клиенту", text: "Клиент видит предложение без вашей партнёрской цены." },
-  { icon: "📊", title: "Контроль сделки", text: "Расчёт → клиент → заказ → мастер → выполнение." },
-  { icon: "🕓", title: "История расчётов", text: "Повторить расчёт по предыдущему авто." },
+  { title: "Партнёрский расчёт", text: "Цена PPF PROFI без ручного счёта каждой работы." },
+  { title: "Своя цена клиенту", text: "Вы контролируете КП и валовый спред." },
+  { title: "Ссылка клиенту", text: "Клиент видит предложение без вашей партнёрской цены." },
+  { title: "Контроль сделки", text: "Расчёт → клиент → заказ → мастер → выполнение." },
+  { title: "История расчётов", text: "Повторить расчёт по предыдущему авто." },
 ];
 
 const PARTNER_TYPES = [
@@ -31,11 +34,149 @@ const PARTNER_TYPES = [
   },
 ];
 
+const fmt = (n: number) => n.toLocaleString("ru-RU");
+
+function MoneyInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [focused, setFocused] = useState(false);
+  const n = Number(value) || 0;
+
+  return (
+    <label className="block rounded-xl border border-white/8 bg-white/[0.03] p-4 transition focus-within:border-lime-400 focus-within:ring-1 focus-within:ring-lime-400">
+      <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
+        {label}
+      </span>
+      <span className="mt-2 flex items-baseline gap-1">
+        <input
+          type="text"
+          inputMode="numeric"
+          value={focused ? value : value ? fmt(n) : ""}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 8))}
+          placeholder="0"
+          className="w-full min-w-0 bg-transparent text-2xl font-extrabold text-white placeholder:text-white/30 focus:outline-none"
+        />
+        <span className="text-2xl font-extrabold text-white/60">₽</span>
+      </span>
+    </label>
+  );
+}
+
+function EconomyCalculator() {
+  const [partner, setPartner] = useState("42000");
+  const [client, setClient] = useState("55000");
+
+  const p = Number(partner) || 0;
+  const c = Number(client) || 0;
+  const spread = c - p;
+  const positive = spread > 0;
+  const pct = positive && c > 0 ? Math.round((spread / c) * 100) : 0;
+  const isExample = partner === "42000" && client === "55000";
+
+  return (
+    <div className="dark-card overflow-hidden">
+      <div className="grid lg:grid-cols-[1fr_1.2fr]">
+        <div className="border-b border-white/8 p-6 lg:border-b-0 lg:border-r lg:p-8">
+          <div className="eyebrow">Экономика сделки</div>
+          <h2 className="mt-3 text-2xl font-extrabold tracking-tight sm:text-3xl">
+            Вы определяете <span className="accent">свою цену</span>
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-white/60">
+            PPF PROFI фиксирует партнёрскую цену. Вы назначаете цену клиенту и
+            оставляете себе разницу.
+          </p>
+          <p className="mt-3 text-xs leading-5 text-white/40">
+            Система показывает партнёрскую и рекомендуемую розничную цену.
+            Внутренняя себестоимость PPF PROFI не раскрывается.
+          </p>
+        </div>
+
+        <div className="p-6 lg:p-8">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">
+              Пример расчёта · измените цифры
+            </div>
+            {!isExample && (
+              <button
+                type="button"
+                onClick={() => {
+                  setPartner("42000");
+                  setClient("55000");
+                }}
+                className="text-[11px] font-bold text-white/50 transition hover:text-white"
+              >
+                Вернуть пример
+              </button>
+            )}
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
+            <MoneyInput
+              label="Цена PPF PROFI для партнёра"
+              value={partner}
+              onChange={setPartner}
+            />
+            <div className="hidden text-center text-xl accent sm:block">→</div>
+            <MoneyInput label="Цена для клиента" value={client} onChange={setClient} />
+          </div>
+
+          <div
+            className={`mt-4 flex items-center justify-between gap-4 rounded-xl border p-4 ${
+              positive
+                ? "border-lime-400/25 bg-lime-400/[0.06]"
+                : "border-rose-400/30 bg-rose-500/10"
+            }`}
+          >
+            <div>
+              <div
+                className={`text-[10px] font-bold uppercase tracking-[0.14em] ${
+                  positive ? "accent" : "text-rose-200"
+                }`}
+              >
+                Ваш валовый спред
+              </div>
+              <div className="mt-1 text-xs text-white/50">
+                {positive
+                  ? `Разница между ценой клиента и партнёрской ценой · ${pct}% от цены клиента`
+                  : p > 0 && c > 0
+                  ? "Цена клиента не выше партнёрской, спреда нет"
+                  : "Введите обе цены"}
+              </div>
+            </div>
+            <div
+              className={`text-3xl font-extrabold ${
+                positive ? "accent" : "text-rose-200"
+              }`}
+            >
+              {positive ? "+ " : spread < 0 ? "− " : ""}
+              {fmt(Math.abs(spread))} ₽
+            </div>
+          </div>
+
+          <p className="mt-4 text-[11px] leading-5 text-white/40">
+            Цифры приведены исключительно для иллюстрации механики. Фактические
+            цены и доступные условия рассчитываются системой в личном кабинете.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function PartnersPage() {
   return (
     <div className="dark-grid min-h-screen text-white">
+      {/* HEADER */}
       <header className="sticky top-0 z-50 border-b border-white/8 bg-black/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-3">
             <div className="text-xl font-extrabold tracking-[0.12em]">
               PPF <span className="accent">PROFI</span>
@@ -61,11 +202,11 @@ export default function PartnersPage() {
       </header>
 
       {/* HERO */}
-      <section className="mx-auto max-w-7xl px-6 pt-10 pb-8">
+      <section className="mx-auto max-w-7xl px-6 pt-10 pb-6">
         <div className="reveal">
           <div className="eyebrow">PPF PROFI для бизнеса</div>
-          <h1 className="mt-3 max-w-4xl text-3xl font-extrabold leading-[1.08] tracking-[-0.035em] sm:text-4xl lg:text-5xl">
-            Добавьте PPF в свою продажу —{" "}
+          <h1 className="mt-3 max-w-4xl text-balance text-3xl font-extrabold leading-[1.08] tracking-[-0.035em] sm:text-4xl lg:text-5xl">
+            Добавьте PPF в свою продажу&nbsp;—{" "}
             <span className="accent">без собственного участка и команды.</span>
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-white/60 sm:text-base sm:leading-7">
@@ -93,79 +234,18 @@ export default function PartnersPage() {
         </div>
       </section>
 
-      {/* ЭКОНОМИКА */}
-      <section className="mx-auto max-w-7xl px-6 py-8">
-        <div className="dark-card overflow-hidden">
-          <div className="grid gap-0 lg:grid-cols-[1fr_1.2fr]">
-            <div className="border-b border-white/8 p-6 lg:border-b-0 lg:border-r lg:p-8">
-              <div className="eyebrow">Экономика сделки</div>
-              <h2 className="mt-3 text-2xl font-extrabold tracking-tight sm:text-3xl">
-                Вы определяете <span className="accent">свою цену</span>
-              </h2>
-              <p className="mt-3 text-sm leading-6 text-white/60">
-                PPF PROFI фиксирует партнёрскую цену. Вы назначаете цену клиенту
-                и оставляете себе разницу.
-              </p>
-              <p className="mt-3 text-xs leading-5 text-white/40">
-                Система показывает партнёрскую и рекомендуемую розничную цену.
-                Внутренняя себестоимость PPF PROFI не раскрывается.
-              </p>
-            </div>
-
-            <div className="p-6 lg:p-8">
-              <div className="mb-4 text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">
-                Пример расчёта
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
-                <div className="rounded-xl border border-white/8 bg-white/[0.03] p-4">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
-                    Цена PPF PROFI для партнёра
-                  </div>
-                  <div className="mt-2 text-2xl font-extrabold">42 000 ₽</div>
-                </div>
-
-                <div className="hidden text-center text-xl accent sm:block">→</div>
-
-                <div className="rounded-xl border border-white/8 bg-white/[0.03] p-4">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
-                    Цена для клиента
-                  </div>
-                  <div className="mt-2 text-2xl font-extrabold">55 000 ₽</div>
-                </div>
-              </div>
-
-              <div className="mt-4 flex items-center justify-between rounded-xl border border-lime-400/25 bg-lime-400/[0.06] p-4">
-                <div>
-                  <div className="text-[10px] font-bold uppercase tracking-[0.14em] accent">
-                    Ваш валовый спред
-                  </div>
-                  <div className="mt-1 text-xs text-white/50">
-                    Разница между ценой клиента и партнёрской ценой
-                  </div>
-                </div>
-                <div className="text-3xl font-extrabold accent">+ 13 000 ₽</div>
-              </div>
-
-              <p className="mt-4 text-[11px] leading-5 text-white/40">
-                Цифры приведены исключительно для иллюстрации механики.
-                Фактические цены и доступные условия рассчитываются системой в
-                личном кабинете.
-              </p>
-            </div>
-          </div>
-        </div>
+      {/* ЭКОНОМИКА: интерактивный калькулятор */}
+      <section className="mx-auto max-w-7xl px-6 py-6">
+        <EconomyCalculator />
       </section>
 
       {/* КАК РАБОТАЕТ */}
-      <section className="mx-auto max-w-7xl px-6 py-8">
-        <div className="mb-4 flex items-end justify-between">
-          <div>
-            <div className="eyebrow">Как это работает</div>
-            <h2 className="mt-2 text-xl font-extrabold tracking-tight sm:text-2xl">
-              От расчёта до готового автомобиля
-            </h2>
-          </div>
+      <section className="mx-auto max-w-7xl px-6 py-6">
+        <div className="mb-4">
+          <div className="eyebrow">Как это работает</div>
+          <h2 className="mt-2 text-xl font-extrabold tracking-tight sm:text-2xl">
+            От расчёта до готового автомобиля
+          </h2>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -180,7 +260,7 @@ export default function PartnersPage() {
       </section>
 
       {/* ЧТО ПОЛУЧАЕТ ПАРТНЁР + ИНФРАСТРУКТУРА */}
-      <section className="mx-auto max-w-7xl px-6 py-8">
+      <section className="mx-auto max-w-7xl px-6 py-6">
         <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr]">
           <div className="dark-card p-6">
             <div className="eyebrow">Возможности</div>
@@ -189,13 +269,15 @@ export default function PartnersPage() {
             </h2>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              {BENEFITS.map((b) => (
+              {BENEFITS.map((b, i) => (
                 <div
                   key={b.title}
-                  className="rounded-xl border border-white/8 bg-white/[0.03] p-4"
+                  className={`rounded-xl border border-white/8 bg-white/[0.03] p-4 ${
+                    i === BENEFITS.length - 1 ? "sm:col-span-2" : ""
+                  }`}
                 >
-                  <div className="text-base">{b.icon}</div>
-                  <div className="mt-2 text-sm font-extrabold">{b.title}</div>
+                  <div className="h-1 w-6 rounded-full bg-lime-400" />
+                  <div className="mt-3 text-sm font-extrabold">{b.title}</div>
                   <p className="mt-1 text-xs leading-5 text-white/55">{b.text}</p>
                 </div>
               ))}
@@ -232,7 +314,7 @@ export default function PartnersPage() {
       </section>
 
       {/* КОМУ ПОДХОДИТ */}
-      <section className="mx-auto max-w-7xl px-6 py-8">
+      <section className="mx-auto max-w-7xl px-6 py-6">
         <div className="mb-4">
           <div className="eyebrow">Кому подходит PPF PROFI</div>
           <h2 className="mt-2 text-xl font-extrabold tracking-tight sm:text-2xl">
@@ -251,7 +333,7 @@ export default function PartnersPage() {
       </section>
 
       {/* ФИНАЛЬНЫЙ CTA */}
-      <section className="mx-auto max-w-7xl px-6 pt-8 pb-12">
+      <section className="mx-auto max-w-7xl px-6 pt-6 pb-12">
         <div className="dark-card relative overflow-hidden p-6 sm:p-8">
           <div className="absolute -left-24 -top-24 h-56 w-56 rounded-full bg-lime-400/10 blur-3xl" />
           <div className="absolute -right-24 -bottom-24 h-56 w-56 rounded-full bg-lime-400/[0.06] blur-3xl" />

@@ -5,6 +5,10 @@ import { orders, partners } from "@/server/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { sendTelegramNotification } from "@/server/telegram/notify";
 import { getSession } from "@/server/auth/current";
+import { calculateQuote } from "@/server/pricing/quote";
+
+const ALLOWED_SCENARIOS = ["FULL", "RISK_ZONES", "FRONT"] as const;
+const ALLOWED_FILMS = ["PPF_STANDARD", "SPECTROLL_PREMIUM"] as const;
 
 const str = (v: unknown, max: number) =>
   typeof v === "string" ? v.trim().slice(0, max) : "";
@@ -65,16 +69,46 @@ export async function POST(request: Request) {
       );
     }
 
-    const price = Number(body.price) || 0;
-    if (price <= 0 || price > 10_000_000) {
-      return NextResponse.json({ error: "Некорректная цена" }, { status: 400 });
+    if (
+      !ALLOWED_SCENARIOS.includes(scenario as (typeof ALLOWED_SCENARIOS)[number]) ||
+      !ALLOWED_FILMS.includes(filmCode as (typeof ALLOWED_FILMS)[number])
+    ) {
+      return NextResponse.json(
+        { error: "Неизвестная комбинация" },
+        { status: 400 }
+      );
     }
 
+    // Цену считает СЕРВЕР, а не браузер.
+    const quote = calculateQuote({
+      carCode,
+      scenario: scenario as "FULL" | "RISK_ZONES" | "FRONT",
+      filmCode: filmCode as "PPF_STANDARD" | "SPECTROLL_PREMIUM",
+    });
+
+    if (!quote) {
+      return NextResponse.json(
+        { error: "Неизвестная модель автомобиля" },
+        { status: 400 }
+      );
+    }
+
+    // Цена партнёру — target из серверного расчёта. Body игнорируем.
+    const price = quote.target;
+
+    // Цена клиенту приходит из формы, но должна быть выше партнёрской.
     const clientPriceRaw = Number(body.clientPrice);
-    const clientPrice =
-      Number.isInteger(clientPriceRaw) && clientPriceRaw > price
-        ? clientPriceRaw
-        : null;
+    if (
+      !Number.isInteger(clientPriceRaw) ||
+      clientPriceRaw <= price ||
+      clientPriceRaw > 100_000_000
+    ) {
+      return NextResponse.json(
+        { error: "Цена клиенту должна быть выше цены PPF PROFI" },
+        { status: 400 }
+      );
+    }
+    const clientPrice = clientPriceRaw;
 
     const idem = request.headers.get("Idempotency-Key")?.slice(0, 64) || null;
 
@@ -144,7 +178,7 @@ export async function POST(request: Request) {
             `Состав: ${esc(scenario)}\n` +
             `Плёнка: ${esc(filmCode)}\n` +
             `Цена PPF PROFI: ${price} ₽\n` +
-            (clientPrice ? `Цена клиенту: ${clientPrice} ₽\n` : "") +
+            `Цена клиенту: ${clientPrice} ₽\n` +
             `Источник: партнёр ID ${partnerId}\n\n` +
             `<a href="${base}/admin">Открыть админку</a>`
         );
