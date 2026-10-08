@@ -20,8 +20,10 @@ export const orders = pgTable("orders", {
   comment: text("comment"),
   partnerId: integer("partner_id"),
   masterId: integer("master_id"),
-  idempotencyKey: varchar("idempotency_key", { length: 64 }).unique(),
   status: varchar("status", { length: 32 }).notNull().default("NEW"),
+  pricingVersion: varchar("pricing_version", { length: 32 }),
+  paymentStatus: varchar("payment_status", { length: 32 }).notNull().default("NOT_DUE"),
+  idempotencyKey: varchar("idempotency_key", { length: 64 }).unique(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

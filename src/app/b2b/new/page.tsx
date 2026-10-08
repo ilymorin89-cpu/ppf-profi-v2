@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import CarSearch from "@/components/CarSearch";
-import { CARS_LIST } from "@/shared/cars";
 
 type Partner = {
   id: number;
@@ -11,15 +10,16 @@ type Partner = {
   slug: string;
 };
 
-type Quote = {
-  target: number;
-  autoApprove: number;
-  pricingVersion: string;
+type QuoteResponse = {
+  pp: number;
+  low: number;
+  high: number;
 };
 
 const SCENARIOS = [
   { code: "FULL", label: "Полная оклейка", desc: "Все основные элементы кузова" },
   { code: "RISK_ZONES", label: "Зоны риска", desc: "Капот, бампер, зеркала, пороги, фары" },
+  { code: "FRONT", label: "Передняя часть", desc: "Капот, бампер, крылья, зеркала" },
 ];
 
 const FILMS = [
@@ -43,9 +43,10 @@ export default function B2BNewPage() {
   const [scenario, setScenario] = useState(SCENARIOS[0].code);
   const [film, setFilm] = useState(FILMS[0].code);
 
-  const [quote, setQuote] = useState<Quote | null>(null);
+  const [quote, setQuote] = useState<QuoteResponse | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [quoteError, setQuoteError] = useState("");
+  const [noPrice, setNoPrice] = useState(false);
 
   const [clientPrice, setClientPrice] = useState<number>(0);
 
@@ -58,8 +59,6 @@ export default function B2BNewPage() {
   const [sending, setSending] = useState(false);
   const [formError, setFormError] = useState("");
   const [submissionKey, setSubmissionKey] = useState(() => newKey());
-
-  const selectedCar = car ? CARS_LIST.find((c) => c.code === car) : undefined;
 
   useEffect(() => {
     fetch("/api/me", { cache: "no-store" })
@@ -79,19 +78,24 @@ export default function B2BNewPage() {
       return;
     }
     setQuoteError("");
+    setNoPrice(false);
     setQuoteLoading(true);
     try {
       const res = await fetch("/api/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ carCode: car, scenario, filmCode: film }),
+        body: JSON.stringify({ car, pkg: scenario, film }),
       });
       const data = await res.json();
       if (!res.ok) {
+        if (res.status === 404) {
+          setNoPrice(true);
+          return;
+        }
         setQuoteError(data.error || "Не удалось рассчитать");
         return;
       }
-      setQuote(data as Quote);
+      setQuote(data as QuoteResponse);
       setClientPrice(0);
       setSubmissionKey(newKey());
       setStep(3);
@@ -111,7 +115,7 @@ export default function B2BNewPage() {
       return;
     }
     if (!quote || !car) return;
-    if (clientPrice <= quote.target) {
+    if (clientPrice <= quote.pp) {
       setFormError("Цена клиенту должна быть выше цены PPF PROFI");
       return;
     }
@@ -132,7 +136,7 @@ export default function B2BNewPage() {
           carCode: car,
           scenario,
           filmCode: film,
-          price: quote.target,
+          price: quote.pp,
           clientPrice,
           clientName: name,
           clientPhone: phone,
@@ -168,11 +172,12 @@ export default function B2BNewPage() {
     setConsent(false);
     setFormError("");
     setQuoteError("");
+    setNoPrice(false);
     setShowForm(false);
     setSubmissionKey(newKey());
   };
 
-  const spread = quote ? clientPrice - quote.target : 0;
+  const spread = quote ? clientPrice - quote.pp : 0;
 
   if (checking) {
     return (
@@ -236,8 +241,8 @@ export default function B2BNewPage() {
         ) : (
           <>
             <div className="mb-10 flex items-center gap-2">
-              {["Авто", "Состав", "Расчёт"].map((label, i) => {
-                const n = i + 1;
+              {["Авто", "Состав", "Расчёт"].map((label, idx) => {
+                const n = idx + 1;
                 const done = n < step;
                 const active = n === step;
                 return (
@@ -260,7 +265,7 @@ export default function B2BNewPage() {
                     >
                       {label}
                     </span>
-                    {i < 2 && (
+                    {idx < 2 && (
                       <div
                         className={`h-px flex-1 ${
                           done ? "bg-lime-400/40" : "bg-white/10"
@@ -288,18 +293,6 @@ export default function B2BNewPage() {
                   </label>
                   <CarSearch value={car} onChange={setCar} />
                 </div>
-
-                {selectedCar && (
-                  <div className="mt-4 rounded-xl border border-lime-400/20 bg-lime-400/[0.06] p-4 text-xs">
-                    <div className="font-extrabold text-white">
-                      {selectedCar.brand} {selectedCar.model}
-                    </div>
-                    <div className="mt-1 text-white/50">
-                      Класс {selectedCar.class} · полная {selectedCar.areaFull} м ·{" "}
-                      {selectedCar.daysFull} дн
-                    </div>
-                  </div>
-                )}
 
                 <button
                   onClick={() => setStep(2)}
@@ -366,6 +359,26 @@ export default function B2BNewPage() {
                   </div>
                 )}
 
+                {noPrice && (
+                  <div className="mt-6 rounded-2xl border border-amber-400/30 bg-amber-400/5 p-5 text-sm leading-6 text-amber-100">
+                    <div className="font-extrabold text-amber-200">
+                      Цена по запросу
+                    </div>
+                    <p className="mt-2 text-white/70">
+                      Для этой модели расчёт в системе пока не настроен. Напишите
+                      нам в Telegram — вернёмся с ценой в течение 15 минут.
+                    </p>
+                    <a
+                      href="https://t.me/partner_detiling"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-accent mt-4 inline-flex"
+                    >
+                      Написать в Telegram →
+                    </a>
+                  </div>
+                )}
+
                 <div className="mt-8 flex gap-3">
                   <button onClick={() => setStep(1)} className="btn-ghost">
                     ← Назад
@@ -381,7 +394,7 @@ export default function B2BNewPage() {
               </div>
             )}
 
-            {step === 3 && quote && selectedCar && (
+            {step === 3 && quote && (
               <div className="reveal">
                 <div className="eyebrow">Шаг 3 из 3</div>
                 <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
@@ -390,9 +403,6 @@ export default function B2BNewPage() {
 
                 <div className="dark-card mt-8 p-8">
                   <div className="text-xs font-extrabold uppercase tracking-[0.14em] accent">
-                    {selectedCar.brand} {selectedCar.model}
-                  </div>
-                  <div className="mt-2 text-sm text-white/50">
                     {SCENARIOS.find((s) => s.code === scenario)?.label} ·{" "}
                     {FILMS.find((f) => f.code === film)?.label}
                   </div>
@@ -402,10 +412,20 @@ export default function B2BNewPage() {
                       Цена PPF PROFI для вас
                     </div>
                     <div className="mt-2 text-3xl font-extrabold">
-                      {quote.target.toLocaleString("ru-RU")} ₽
+                      {quote.pp.toLocaleString("ru-RU")} ₽
                     </div>
-                    <p className="mt-1 text-[10px] text-white/40">
-                      Версия прайса: {quote.pricingVersion}
+                  </div>
+
+                  <div className="mt-6 border-t border-white/8 pt-6">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">
+                      Рекомендованная розница
+                    </div>
+                    <div className="mt-2 text-lg font-bold accent">
+                      {quote.low.toLocaleString("ru-RU")} –{" "}
+                      {quote.high.toLocaleString("ru-RU")} ₽
+                    </div>
+                    <p className="mt-2 text-xs text-white/40">
+                      Вы сами решаете, за сколько продавать клиенту.
                     </p>
                   </div>
 
@@ -418,7 +438,7 @@ export default function B2BNewPage() {
                       value={clientPrice || ""}
                       onChange={(e) => setClientPrice(Number(e.target.value) || 0)}
                       step={500}
-                      min={quote.target + 500}
+                      min={quote.pp + 500}
                       placeholder="Введите цену для клиента"
                       className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-2xl font-extrabold text-white focus:border-lime-400 focus:outline-none focus:ring-1 focus:ring-lime-400"
                     />
@@ -440,7 +460,7 @@ export default function B2BNewPage() {
                 <div className="mt-6 grid gap-3 sm:grid-cols-2">
                   <button
                     onClick={() => setShowForm(true)}
-                    disabled={clientPrice <= quote.target}
+                    disabled={clientPrice <= quote.pp}
                     className="btn-accent justify-center disabled:opacity-50"
                   >
                     Создать заявку

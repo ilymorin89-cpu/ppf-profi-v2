@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { randomInt } from "node:crypto";
 import { db } from "@/server/db/client";
 import { orders, partners } from "@/server/db/schema";
@@ -80,13 +80,13 @@ export async function POST(request: Request) {
     }
 
     // Цену считает СЕРВЕР, а не браузер.
-    const quote = calculateQuote({
+    const q = calculateQuote({
       carCode,
       scenario: scenario as "FULL" | "RISK_ZONES" | "FRONT",
       filmCode: filmCode as "PPF_STANDARD" | "SPECTROLL_PREMIUM",
     });
 
-    if (!quote) {
+    if (!q.ok) {
       return NextResponse.json(
         { error: "Неизвестная модель автомобиля" },
         { status: 400 }
@@ -94,7 +94,7 @@ export async function POST(request: Request) {
     }
 
     // Цена партнёру — target из серверного расчёта. Body игнорируем.
-    const price = quote.target;
+    const price = q.result.target;
 
     // Цена клиенту приходит из формы, но должна быть выше партнёрской.
     const clientPriceRaw = Number(body.clientPrice);

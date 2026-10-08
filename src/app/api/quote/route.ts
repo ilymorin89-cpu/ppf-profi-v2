@@ -9,17 +9,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Требуется вход" }, { status: 401 });
     }
 
-    const body = (await request.json().catch(() => ({}))) as {
-      car?: unknown;
-      pkg?: unknown;
-      film?: unknown;
-    };
+    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
 
-    const q = quote(
-      String(body.car ?? ""),
-      String(body.pkg ?? ""),
-      String(body.film ?? "")
-    );
+    const car = String(body.car ?? body.carCode ?? "");
+    const pkg = String(body.pkg ?? body.scenario ?? "");
+    const film = String(body.film ?? body.filmCode ?? "");
+
+    const q = quote(car, pkg, film);
 
     if (!q) {
       return NextResponse.json(
@@ -28,8 +24,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Партнёру отдаём только цену PPF PROFI и диапазон розницы.
-    // Cost Floor, Auto-Approve и breakdown остаются на сервере.
     return NextResponse.json({ pp: q.pp, low: q.low, high: q.high });
   } catch (error) {
     console.error("POST /api/quote error:", error);
