@@ -39,3 +39,19 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# --- добавлено: мусор от диагностики и тестов ---
+*.log
+test-ppf.ps1.bak-*
+test-ppf.ps1.green-*
+rate-limit-helper.ps1
+remote-check-report.txt
+AUDIT-*.txt
+patch-*.ps1
+fix-*.ps1
+probe-*.ps1
+debug-*.ps1
+discover-*.ps1
+show-*.ps1
+run-*.ps1
+final-*.ps1
