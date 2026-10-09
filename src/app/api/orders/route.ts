@@ -269,7 +269,10 @@ export async function DELETE(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
-    if (id) {
+    if (searchParams.has("id")) {
+      if (!/^\d+$/.test(id ?? "")) {
+        return NextResponse.json({ error: "Некорректный id" }, { status: 400 });
+      }
       await db.delete(orders).where(eq(orders.id, Number(id)));
       return NextResponse.json({ ok: true });
     }

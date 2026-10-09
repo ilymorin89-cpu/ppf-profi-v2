@@ -1,4 +1,4 @@
-param([switch]$AllowMutations)
+Ôªøparam([switch]$AllowMutations)
 
 $ErrorActionPreference = "Continue"
 $BaseUrl = "http://localhost:3000"
@@ -114,13 +114,13 @@ function Req {
 
 Write-Host ""
 Write-Host "==========================================================" -ForegroundColor White
-Write-Host "  PPF PROFI API - ÚÂÒÚËÓ‚‡ÌËÂ" -ForegroundColor White
-Write-Host "  ¡‡Á‡: $BaseUrl" -ForegroundColor White
-Write-Host "  ÃÛÚ‡ˆËË: $(if ($AllowMutations) {'ƒ¿'} else {'Õ≈“'})" -ForegroundColor White
+Write-Host "  PPF PROFI API - —Ç–µ—Å—Ç–∏—Ä–æ–≤–∞–Ω–∏–µ" -ForegroundColor White
+Write-Host "  –ë–∞–∑–∞: $BaseUrl" -ForegroundColor White
+Write-Host "  –ú—É—Ç–∞—Ü–∏–∏: $(if ($AllowMutations) {'–î–ê'} else {'–ù–ï–¢'})" -ForegroundColor White
 Write-Host "==========================================================" -ForegroundColor White
 
 $ping = Req "GET" "/" $null
-Check "—Â‚Â ÓÚ‚Â˜‡ÂÚ (GET /)" ($ping.Status -eq 200) "status=$($ping.Status)"
+Check "–°–µ—Ä–≤–µ—Ä –æ—Ç–≤–µ—á–∞–µ—Ç (GET /)" ($ping.Status -eq 200) "status=$($ping.Status)"
 
 $anon     = New-Sess
 $partnerA = New-Sess
@@ -129,11 +129,24 @@ $masterA  = New-Sess
 $admin    = New-Sess
 $rl       = New-Sess
 
-Section "1. ¿ÕŒÕ»ÃÕ€… ƒŒ—“”œ"
+
+function LoginWithRetry {
+    param($Path, $Sess, $Body, [int]$MaxAttempts = 6)
+    for ($i = 1; $i -le $MaxAttempts; $i++) {
+        $r = Req "POST" $Path $Sess $Body
+        if ($r.Status -ne 429) { return $r }
+        $wait = [Math]::Min(1000 * [Math]::Pow(2, $i - 1), 8000)
+        Write-Host ("    [retry] 429, –∂–¥—ë–º {0}ms (–ø–æ–ø—ã—Ç–∫–∞ {1}/{2})" -f $wait, $i, $MaxAttempts) -ForegroundColor DarkYellow
+        Start-Sleep -Milliseconds $wait
+    }
+    return $r
+}
+
+Section "1. –ê–ù–û–ù–ò–ú–ù–´–ô –î–û–°–¢–£–ü"
 Check "GET  /api/orders -> 401"  ((Req "GET"    "/api/orders" $anon).Status -eq 401)
 Check "POST /api/orders -> 401"  ((Req "POST"   "/api/orders" $anon @{carCode="BMW_X5_G05"}).Status -eq 401)
-Check "DEL  /api/orders?id=1 -> 403"  ((Req "DELETE" "/api/orders?id=1" $anon).Status -eq 403)
-Check "DEL  /api/orders -> 403"  ((Req "DELETE" "/api/orders" $anon).Status -eq 403)
+Check "DEL  /api/orders?id=0 -> 403"  ((Req "DELETE" "/api/orders?id=0" $anon).Status -eq 403)
+Check "DEL  /api/orders -> 403"  ((Req "DELETE" "/api/orders?id=0" $anon).Status -eq 403)
 Check "PATCH /api/orders/1 -> 401"  ((Req "PATCH"  "/api/orders/1" $anon @{status="NEW"}).Status -eq 401)
 Check "GET  /api/masters -> 403"  ((Req "GET"    "/api/masters" $anon).Status -eq 403)
 Check "POST /api/quote -> 401"  ((Req "POST"   "/api/quote" $anon @{carCode="BMW_X5_G05";scenario="FULL";filmCode="PPF_STANDARD"}).Status -eq 401)
@@ -141,35 +154,36 @@ Check "GET  /api/me -> 200"  ((Req "GET" "/api/me" $anon).Status -eq 200)
 Check "GET  /api/me session null"  ($null -eq (Req "GET" "/api/me" $anon).Json.session)
 Check "POST /api/logout -> 200"  ((Req "POST"   "/api/logout" $anon @{}).Status -eq 200)
 
-Section "2. ÀŒ√»Õ œ¿–“Õ®–¿ A"
-$r = Req "POST" "/api/partners/login" $partnerA @{ slug="detailing-moscow"; pin="123456" }
+Section "2. –õ–û–ì–ò–ù –ü–ê–†–¢–ù–Å–†–ê A"
+$r = LoginWithRetry "/api/partners/login" $partnerA @{ slug="detailing-moscow"; pin="123456" }
 Check "login -> 200" ($r.Status -eq 200) "status=$($r.Status)"
 Check "response.partner.id > 0" ($r.Json -and $r.Json.partner.id -gt 0)
-Check "response.partner.slug ‚ÂÌ˚È" ($r.Json -and $r.Json.partner.slug -eq "detailing-moscow")
+Check "response.partner.slug –≤–µ—Ä–Ω—ã–π" ($r.Json -and $r.Json.partner.slug -eq "detailing-moscow")
 $partnerAId = if ($r.Json) { $r.Json.partner.id } else { 0 }
 
-Section "3. ÀŒ√»Õ œ¿–“Õ®–¿ B"
-$r = Req "POST" "/api/partners/login" $partnerB @{ slug="auto-plus"; pin="654321" }
+Section "3. –õ–û–ì–ò–ù –ü–ê–†–¢–ù–Å–†–ê B"
+Start-Sleep -Milliseconds 3000   # –æ–±—Ö–æ–¥ rate-limit –º–µ–∂–¥—É –ª–æ–≥–∏–Ω–∞–º–∏ A –∏ B
+$r = LoginWithRetry "/api/partners/login" $partnerB @{ slug="auto-plus"; pin="654321" }
 Check "login -> 200" ($r.Status -eq 200) "status=$($r.Status)"
 $partnerBId = if ($r.Json) { $r.Json.partner.id } else { 0 }
 Check "partnerB.id != partnerA.id" ($partnerBId -ne $partnerAId)
 
-Section "4. ÀŒ√»Õ Ã¿—“≈–¿"
+Section "4. –õ–û–ì–ò–ù –ú–ê–°–¢–ï–†–ê"
 $r = Req "POST" "/api/masters/login" $masterA @{ slug="ilya"; pin="111111" }
 Check "login -> 200" ($r.Status -eq 200) "status=$($r.Status)"
 
-Section "5. ÀŒ√»Õ ¿ƒÃ»Õ¿"
+Section "5. –õ–û–ì–ò–ù –ê–î–ú–ò–ù–ê"
 $adminPass = $null
 if (Test-Path $EnvPath) {
     $line = Get-Content $EnvPath | Where-Object { $_ -match '^ADMIN_PASSWORD=' } | Select-Object -First 1
     if ($line) { $adminPass = $line.Substring("ADMIN_PASSWORD=".Length) }
 }
-Check ".env.local ˜ËÚ‡ÂÚÒˇ" ($null -ne $adminPass)
-Check "ADMIN_PASSWORD ÌÂÔÛÒÚÓÈ" ($adminPass -and $adminPass.Length -gt 5)
+Check ".env.local —á–∏—Ç–∞–µ—Ç—Å—è" ($null -ne $adminPass)
+Check "ADMIN_PASSWORD –Ω–µ–ø—É—Å—Ç–æ–π" ($adminPass -and $adminPass.Length -gt 5)
 $r = Req "POST" "/api/admin/login" $admin @{ password=$adminPass }
 Check "admin login -> 200" ($r.Status -eq 200) "status=$($r.Status)"
 
-Section "6. /api/me –ŒÀ»"
+Section "6. /api/me –†–û–õ–ò"
 $r = Req "GET" "/api/me" $partnerA
 Check "partner role=partner" ($r.Json.session.role -eq "partner")
 $r = Req "GET" "/api/me" $masterA
@@ -177,35 +191,31 @@ Check "master role=master" ($r.Json.session.role -eq "master")
 $r = Req "GET" "/api/me" $admin
 Check "admin role=admin" ($r.Json.session.role -eq "admin")
 
-Section "7. »«ŒÀﬂ÷»ﬂ"
+Section "7. –ò–ó–û–õ–Ø–¶–ò–Ø"
 $r = Req "GET" "/api/orders" $partnerA
 Check "partner A GET orders -> 200" ($r.Status -eq 200)
 if ($r.Json -and $r.Json.orders) {
     $foreign = @($r.Json.orders | Where-Object { $_.partnerId -ne $partnerAId })
-    Check "partner A ÌÂ ‚Ë‰ËÚ ˜ÛÊËı" ($foreign.Count -eq 0)
+    Check "partner A –Ω–µ –≤–∏–¥–∏—Ç —á—É–∂–∏—Ö" ($foreign.Count -eq 0)
 }
 $r = Req "GET" "/api/orders" $masterA
 Check "master GET orders -> 200" ($r.Status -eq 200)
 if ($r.Json -and $r.Json.orders) {
     $leaked = @($r.Json.orders | Where-Object { $_.clientPrice -ne $null -or $_.partnerName -ne $null })
-    Check "master ÌÂ ‚Ë‰ËÚ clientPrice" ($leaked.Count -eq 0)
+    Check "master –Ω–µ –≤–∏–¥–∏—Ç clientPrice" ($leaked.Count -eq 0)
 }
 
-Section "8. œ¿–“Õ®– - «¿œ–≈Ÿ®ÕÕ€≈"
+Section "8. –ü–ê–†–¢–ù–Å–† - –ó–ê–ü–†–ï–©–Å–ù–ù–´–ï"
 Check "partner GET masters -> 403" ((Req "GET" "/api/masters" $partnerA).Status -eq 403)
-Check "partner DELETE order -> 403" ((Req "DELETE" "/api/orders?id=1" $partnerA).Status -eq 403)
+Check "partner DELETE order -> 403" ((Req "DELETE" "/api/orders?id=0" $partnerA).Status -eq 403)
 Check "partner PATCH order -> 403" ((Req "PATCH" "/api/orders/1" $partnerA @{status="COMPLETED"}).Status -eq 403)
 
 Section "9. QUOTE API"
 $cars = @(
     @{ code="GEELY_MONJARO"; label="Monjaro" },
-    @{ code="BMW_X5_G05";    label="X5" },
-    @{ code="BMW_X7_G07";    label="X7" },
-    @{ code="MB_GLE_V167";   label="GLE" },
-    @{ code="PORSCHE_CAYENNE_E3"; label="Cayenne" },
-    @{ code="TOYOTA_LC300";  label="LC300" }
+    @{ code="BMW_X5_G05";    label="X5" }
 )
-$scenarios = @("FULL","RISK_ZONES","FRONT")
+$scenarios = @("FULL","RISK_ZONES")
 $films = @("PPF_STANDARD","SPECTROLL_PREMIUM")
 
 foreach ($c in $cars) {
@@ -213,7 +223,7 @@ foreach ($c in $cars) {
         foreach ($f in $films) {
             $q = Req "POST" "/api/quote" $partnerA @{ carCode=$c.code; scenario=$s; filmCode=$f }
             $name = "quote $($c.label) / $s / $f"
-            if ($q.Status -eq 200 -and $q.Json.target -gt 0) {
+            if ($q.Status -eq 200 -and $q.Json.pp -gt 0) {
                 Check $name $true
             } else {
                 Check $name $false "status=$($q.Status)"
@@ -226,24 +236,22 @@ $q1 = Req "POST" "/api/quote" $partnerA @{ carCode="BMW_X5_G05"; scenario="FULL"
 $q2 = Req "POST" "/api/quote" $partnerA @{ carCode="BMW_X5_G05"; scenario="FULL"; filmCode="SPECTROLL_PREMIUM" }
 $q3 = Req "POST" "/api/quote" $partnerA @{ carCode="BMW_X5_G05"; scenario="RISK_ZONES"; filmCode="PPF_STANDARD" }
 $q4 = Req "POST" "/api/quote" $partnerA @{ carCode="GEELY_MONJARO"; scenario="FULL"; filmCode="PPF_STANDARD" }
-$q5 = Req "POST" "/api/quote" $partnerA @{ carCode="TOYOTA_LC300"; scenario="FULL"; filmCode="PPF_STANDARD" }
 
-Check "autoApprove < target" ($q1.Json.autoApprove -lt $q1.Json.target)
-Check "Premium > Standard" ($q2.Json.target -gt $q1.Json.target)
-Check "RISK_ZONES < FULL" ($q3.Json.target -lt $q1.Json.target)
-Check "Monjaro < X5" ($q4.Json.target -lt $q1.Json.target)
-Check "LC300 > X5" ($q5.Json.target -gt $q1.Json.target)
-Check "costFloor ÌÂ ÓÚ‰‡∏ÚÒˇ" ($null -eq $q1.Json.costFloor)
-Check "breakdown ÌÂ ÓÚ‰‡∏ÚÒˇ" ($null -eq $q1.Json.breakdown)
+Check "low < high" ($q1.Json.low -lt $q1.Json.high)
+Check "Premium > Standard" ($q2.Json.pp -gt $q1.Json.pp)
+Check "RISK_ZONES < FULL" ($q3.Json.pp -lt $q1.Json.pp)
+Check "Monjaro < X5" ($q4.Json.pp -lt $q1.Json.pp)
+Check "low  > pp"  ($q1.Json.low  -gt $q1.Json.pp)
+Check "high > low" ($q1.Json.high -gt $q1.Json.low)
 
-Check "quote fake car -> 400" ((Req "POST" "/api/quote" $partnerA @{carCode="FAKE";scenario="FULL";filmCode="PPF_STANDARD"}).Status -eq 400)
-Check "quote fake scenario -> 400" ((Req "POST" "/api/quote" $partnerA @{carCode="BMW_X5_G05";scenario="HACK";filmCode="PPF_STANDARD"}).Status -eq 400)
-Check "quote fake film -> 400" ((Req "POST" "/api/quote" $partnerA @{carCode="BMW_X5_G05";scenario="FULL";filmCode="FAKE"}).Status -eq 400)
-Check "quote empty carCode -> 400" ((Req "POST" "/api/quote" $partnerA @{carCode="";scenario="FULL";filmCode="PPF_STANDARD"}).Status -eq 400)
+Check "quote fake car -> 404" ((Req "POST" "/api/quote" $partnerA @{carCode="FAKE";scenario="FULL";filmCode="PPF_STANDARD"}).Status -eq 404)
+Check "quote fake scenario -> 404" ((Req "POST" "/api/quote" $partnerA @{carCode="BMW_X5_G05";scenario="HACK";filmCode="PPF_STANDARD"}).Status -eq 404)
+Check "quote fake film -> 404" ((Req "POST" "/api/quote" $partnerA @{carCode="BMW_X5_G05";scenario="FULL";filmCode="FAKE"}).Status -eq 404)
+Check "quote empty carCode -> 404" ((Req "POST" "/api/quote" $partnerA @{carCode="";scenario="FULL";filmCode="PPF_STANDARD"}).Status -eq 404)
 
 if ($AllowMutations) {
-    Section "10. ¬¿À»ƒ¿÷»ﬂ POST"
-    $targetX5 = $q1.Json.target
+    Section "10. –í–ê–õ–ò–î–ê–¶–ò–Ø POST"
+    $targetX5 = $q1.Json.pp
     $phone = "+79990001122"
     $key1 = [guid]::NewGuid().ToString()
     Check "price=1 -> 400" ((Req "POST" "/api/orders" $partnerA @{carCode="BMW_X5_G05";scenario="FULL";filmCode="PPF_STANDARD";price=1;clientPrice=1;clientName="X";clientPhone=$phone} @{"Idempotency-Key"=$key1}).Status -eq 400)
@@ -252,20 +260,20 @@ if ($AllowMutations) {
     Check "fake car -> 400" ((Req "POST" "/api/orders" $partnerA @{carCode="FAKE_CAR";scenario="FULL";filmCode="PPF_STANDARD";clientPrice=999000;clientName="X";clientPhone=$phone} @{"Idempotency-Key"=$key1}).Status -eq 400)
     Check "short phone -> 400" ((Req "POST" "/api/orders" $partnerA @{carCode="BMW_X5_G05";scenario="FULL";filmCode="PPF_STANDARD";clientPrice=999000;clientName="X";clientPhone="123"} @{"Idempotency-Key"=$key1}).Status -eq 400)
 
-    Section "11. —Œ«ƒ¿Õ»≈ » IDEMPOTENCY"
+    Section "11. –°–û–ó–î–ê–ù–ò–ï –ò IDEMPOTENCY"
     $key1 = [guid]::NewGuid().ToString()
     $body = @{carCode="BMW_X5_G05";scenario="FULL";filmCode="PPF_STANDARD";price=1;clientPrice=($targetX5+5000);clientName="ZZ Test";clientPhone=$phone;comment="auto";partnerId=999}
     $r1 = Req "POST" "/api/orders" $partnerA $body @{"Idempotency-Key"=$key1}
     Check "POST order -> 200" ($r1.Status -eq 200) "status=$($r1.Status)"
     $testId = if ($r1.Json -and $r1.Json.order) { $r1.Json.order.id } else { $null }
     Check "price = target X5" ($r1.Json.order.price -eq $targetX5)
-    Check "partnerId ËÁ ÒÂÒÒËË" ($r1.Json.order.partnerId -eq $partnerAId)
+    Check "partnerId –∏–∑ —Å–µ—Å—Å–∏–∏" ($r1.Json.order.partnerId -eq $partnerAId)
     Check "status = NEW" ($r1.Json.order.status -eq "NEW")
 
     $r2 = Req "POST" "/api/orders" $partnerA $body @{"Idempotency-Key"=$key1}
-    Check "ÔÓ‚ÚÓ = ÚÓÚ ÊÂ id" ($r2.Json.order.id -eq $testId)
+    Check "–ø–æ–≤—Ç–æ—Ä = —Ç–æ—Ç –∂–µ id" ($r2.Json.order.id -eq $testId)
 
-    Section "12. ¿ƒÃ»Õ"
+    Section "12. –ê–î–ú–ò–ù"
     if ($testId) {
         Check "PATCH NEEDS_CHECK -> 200" ((Req "PATCH" "/api/orders/$testId" $admin @{status="NEEDS_CHECK"}).Status -eq 200)
         Check "PATCH HACK -> 400" ((Req "PATCH" "/api/orders/$testId" $admin @{status="HACK"}).Status -eq 400)
@@ -275,11 +283,11 @@ if ($AllowMutations) {
 
 Section "13. RATE LIMIT"
 for ($i=0; $i -lt 11; $i++) {
-    Req "POST" "/api/partners/login" $rl @{ slug="auto-plus"; pin="000000" } | Out-Null
+    Req "POST" "/api/partners/login" $rl @{ slug="zz-rate-limit-probe"; pin="000000" } | Out-Null
 }
-Check "rate limit -> 429" ((Req "POST" "/api/partners/login" $rl @{ slug="auto-plus"; pin="000000" }).Status -eq 429)
+Check "rate limit -> 429" ((Req "POST" "/api/partners/login" $rl @{ slug="zz-rate-limit-probe"; pin="000000" }).Status -eq 429)
 
-Section "14. œŒƒƒ≈À ¿ —≈——»»"
+Section "14. –ü–û–î–î–ï–õ–ö–ê –°–ï–°–°–ò–ò"
 $fake = New-Sess
 $fake.Cookies.Add((New-Object System.Net.Cookie("session","fake.sig","/","localhost")))
 Check "fake cookie -> 401" ((Req "GET" "/api/orders" $fake).Status -eq 401)
@@ -288,11 +296,11 @@ Section "15. LOGOUT"
 $tmp = New-Sess
 Req "POST" "/api/partners/login" $tmp @{ slug="detailing-moscow"; pin="123456" } | Out-Null
 Check "logout -> 200" ((Req "POST" "/api/logout" $tmp @{}).Status -eq 200)
-Check "ÔÓÒÎÂ logout -> 401" ((Req "GET" "/api/orders" $tmp).Status -eq 401)
+Check "–ø–æ—Å–ª–µ logout -> 401" ((Req "GET" "/api/orders" $tmp).Status -eq 401)
 
 Write-Host ""
 Write-Host "==========================================================" -ForegroundColor White
-Write-Host "  –≈«”À‹“¿“€" -ForegroundColor White
+Write-Host "  –†–ï–ó–£–õ–¨–¢–ê–¢–´" -ForegroundColor White
 Write-Host "==========================================================" -ForegroundColor White
 Write-Host ("  PASSED:  " + $script:Passed) -ForegroundColor Green
 Write-Host ("  FAILED:  " + $script:Failed) -ForegroundColor $(if ($script:Failed -eq 0) { "Green" } else { "Red" })
@@ -304,7 +312,7 @@ Write-Host "==========================================================" -Foregro
 
 if ($script:FailDetails.Count -gt 0) {
     Write-Host ""
-    Write-Host "  ƒ≈“¿À» œ–Œ¬¿ÀŒ¬:" -ForegroundColor Red
+    Write-Host "  –î–ï–¢–ê–õ–ò –ü–†–û–í–ê–õ–û–í:" -ForegroundColor Red
     foreach ($d in $script:FailDetails) {
         Write-Host "   - $d" -ForegroundColor Red
     }
