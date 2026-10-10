@@ -58,3 +58,6 @@ final-*.ps1
 
 *.bak-*
 backups/
+
+# бэкапы правок (вне src)
+.bak/
