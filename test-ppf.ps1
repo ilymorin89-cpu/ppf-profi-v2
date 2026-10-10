@@ -1,4 +1,4 @@
-﻿param([switch]$AllowMutations)
+﻿param([switch]$AllowMutations, [string]$ServerLog)
 
 $ErrorActionPreference = "Continue"
 $BaseUrl = "http://localhost:3000"
@@ -297,6 +297,105 @@ $tmp = New-Sess
 Req "POST" "/api/partners/login" $tmp @{ slug="detailing-moscow"; pin="123456" } | Out-Null
 Check "logout -> 200" ((Req "POST" "/api/logout" $tmp @{}).Status -eq 200)
 Check "после logout -> 401" ((Req "GET" "/api/orders" $tmp).Status -eq 401)
+
+# ==========================================================
+#  content-v2: публичные страницы, утечки цены партнёра, заявки
+# ==========================================================
+
+function Norm($t) { if ($null -eq $t) { return "" }; return ($t -replace '[\s  ]', '') }
+function NoScripts($html) { return [regex]::Replace($html, '(?s)<script.*?</script>', '') }
+function DbLead($num) {
+    $out = & node (Join-Path $PSScriptRoot "tests\db-leads.cjs") get $num
+    try { return ($out | Out-String | ConvertFrom-Json) } catch { return $null }
+}
+$PP = "243500"
+$TargetField = '\?"target\?"\s*:\s*(?!\?"_blank)'
+$PpField = '\?"pp\?"\s*:'
+
+Section "16. ПУБЛИЧНЫЕ СТРАНИЦЫ: ТЕКСТЫ"
+foreach ($p in @("/", "/partners", "/calculator")) {
+    $r = Req "GET" $p $anon
+    Check "GET $p -> 200" ($r.Status -eq 200) "status=$($r.Status)"
+    $raw = $r.Body -replace '\$undefined', ''
+    Check "$p нет 'по запросу'" (-not ($r.Body -match 'по запросу'))
+    Check "$p нет '[N]'" (-not $r.Body.Contains('[N]'))
+    Check "$p нет 'undefined'" (-not ($raw -cmatch 'undefined'))
+    Check "$p нет 'мкм' (страница и метаданные)" (-not $r.Body.Contains('мкм'))
+    Check "$p нет 'TPU' / 'полностью защищает'" (-not ($r.Body -cmatch 'TPU|полностью защищает'))
+}
+foreach ($p in @("/", "/calculator")) {
+    $r = Req "GET" $p $anon
+    Check "$p нет поля 'год'" (-not ($r.Body -match 'Год выпуска|[?&]year='))
+}
+
+Section "17. УТЕЧКА ЦЕНЫ ПАРТНЁРА"
+foreach ($p in @("/", "/calculator")) {
+    foreach ($mode in @("HTML", "RSC")) {
+        $h = if ($mode -eq "RSC") { @{ "RSC" = "1" } } else { @{} }
+        $path = if ($mode -eq "RSC") { "$p" + "?_rsc" } else { $p }   # Next 16: RSC-ответ отдаётся по ?_rsc
+        $r = Req "GET" $path $anon $null $h
+        Check "$p [$mode] -> 200" ($r.Status -eq 200) "status=$($r.Status)"
+        Check "$p [$mode] нет $PP" (-not (Norm $r.Body).Contains($PP))
+        Check "$p [$mode] нет costFloor/autoApprove" (-not ($r.Body -cmatch 'costFloor|autoApprove'))
+        Check "$p [$mode] нет полей target/pp" (-not ($r.Body -cmatch $TargetField -or $r.Body -cmatch $PpField))
+    }
+}
+$q = Req "POST" "/api/public-quote" $anon @{ carCode="BMW_X5_G05"; scenario="FULL"; filmCode="PPF_STANDARD" }
+Check "public-quote X5 -> 200 ok" ($q.Status -eq 200 -and $q.Json.ok -eq $true) "status=$($q.Status)"
+Check "public-quote нет $PP" (-not (Norm $q.Body).Contains($PP))
+$keys = (@($q.Json.PSObject.Properties.Name) | Sort-Object) -join ","
+Check "public-quote отдаёт только ok,low,high" ($keys -eq "high,low,ok") "keys=$keys"
+Check "public-quote нет costFloor/autoApprove/target/pp" (-not ($q.Body -cmatch 'costFloor|autoApprove|target|"pp"'))
+
+$r = Req "GET" "/partners" $anon
+$visible = NoScripts $r.Body
+$econ = [regex]::Match($visible, '(?s)<section[^>]*id="economics".*?</section>')
+Check "/partners есть блок «Экономика сделки»" $econ.Success
+Check "/partners $PP есть в блоке «Экономика сделки»" ($econ.Success -and (Norm $econ.Value).Contains($PP))
+$outside = if ($econ.Success) { $visible.Remove($econ.Index, $econ.Length) } else { $visible }
+Check "/partners $PP нет вне блока «Экономика сделки»" (-not (Norm $outside).Contains($PP))
+Check "/partners нет costFloor/autoApprove" (-not ($r.Body -cmatch 'costFloor|autoApprove'))
+
+if ($AllowMutations) {
+    Section "18. ЗАЯВКИ /api/leads"
+    $ip = "10.77.$(Get-Random -Minimum 0 -Maximum 255).$(Get-Random -Minimum 1 -Maximum 255)"
+    $xff = @{ "X-Forwarded-For" = $ip }
+    $low = $q.Json.low
+
+    $r = Req "POST" "/api/leads" $anon @{ kind="client"; carCode="BMW_X5_G05"; scenario="FULL"; filmCode="PPF_STANDARD"; clientName="ZZ TEST Client"; clientPhone="+79990001122"; comment="price 1 RUB"; price=1; low=1; high=2; consent=$true } $xff
+    Check "client lead -> 200" ($r.Status -eq 200) "status=$($r.Status) body=$($r.Body)"
+    Check "ответ /api/leads без цены" ($null -eq $r.Json.price -and -not (Norm $r.Body).Contains($PP))
+    $row = DbLead $r.Json.publicNumber
+    Check "подделанная цена игнорируется: в БД серверная low" ($row -and $row.price -eq $low) "db=$($row.price) low=$low"
+    Check "client lead kind=client" ($row -and $row.kind -eq "client")
+
+    $r = Req "POST" "/api/leads" $anon @{ kind="partner"; company="ZZ TEST Partner"; companyType="detailing"; city="Moscow"; carsPerMonth=12; clientPhone="@zz_test_partner"; referral="test"; utm_source="test"; utm_medium="cpc"; utm_campaign="content-v2"; consent=$true } $xff
+    Check "partner lead -> 200" ($r.Status -eq 200) "status=$($r.Status) body=$($r.Body)"
+    $row = DbLead $r.Json.publicNumber
+    Check "partner lead kind=partner" ($row -and $row.kind -eq "partner")
+    Check "partner lead поля сохранены" ($row -and $row.company -eq "ZZ TEST Partner" -and $row.company_type -eq "detailing" -and $row.cars_per_month -eq 12)
+    Check "partner lead referral и UTM сохранены" ($row -and $row.referral -eq "test" -and $row.utm_source -eq "test" -and $row.utm_campaign -eq "content-v2")
+    if ($ServerLog -and (Test-Path $ServerLog)) {
+        Start-Sleep -Milliseconds 1500
+        $tail = Get-Content $ServerLog -Tail 200 -Encoding UTF8 | Out-String
+        Check "Telegram-уведомление отправлено без ошибок" (-not ($tail -match 'Telegram notify failed|Telegram API error|Telegram send error|Telegram not configured'))
+    } else {
+        Skip "Telegram-уведомление" "не передан -ServerLog"
+    }
+
+    $r = Req "POST" "/api/leads" $anon @{ kind="client"; carCode="FAKE_CAR"; scenario="FULL"; filmCode="PPF_STANDARD"; clientName="ZZ TEST"; clientPhone="+79990001122"; consent=$true } $xff
+    Check "fake car -> 400 + fields.carCode" ($r.Status -eq 400 -and $r.Json.fields.carCode)
+    $r = Req "POST" "/api/leads" $anon @{ kind="partner"; company=""; companyType="hack"; city=""; clientPhone="1"; consent=$false } $xff
+    Check "partner invalid -> 400 + ошибки полей" ($r.Status -eq 400 -and $r.Json.fields.company -and $r.Json.fields.companyType -and $r.Json.fields.consent)
+
+    Section "19. RATE LIMIT /api/leads"
+    $rlXff = @{ "X-Forwarded-For" = "10.78.$(Get-Random -Minimum 0 -Maximum 255).$(Get-Random -Minimum 1 -Maximum 255)" }
+    for ($i = 0; $i -lt 10; $i++) { Req "POST" "/api/leads" $anon @{} $rlXff | Out-Null }
+    Check "leads 11-й запрос -> 429" ((Req "POST" "/api/leads" $anon @{} $rlXff).Status -eq 429)
+
+    $clean = & node (Join-Path $PSScriptRoot "tests\db-leads.cjs") cleanup | Out-String | ConvertFrom-Json
+    Check "тестовые заявки удалены" ($clean.deleted -ge 2) "deleted=$($clean.deleted)"
+}
 
 Write-Host ""
 Write-Host "==========================================================" -ForegroundColor White
