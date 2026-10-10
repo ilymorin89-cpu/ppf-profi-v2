@@ -18,8 +18,7 @@ type QuoteResponse = {
 
 const SCENARIOS = [
   { code: "FULL", label: "Полная оклейка", desc: "Все основные элементы кузова" },
-  { code: "RISK_ZONES", label: "Зоны риска", desc: "Капот, бампер, зеркала, пороги, фары" },
-  { code: "FRONT", label: "Передняя часть", desc: "Капот, бампер, крылья, зеркала" },
+  { code: "RISK_ZONES", label: "Зоны риска", desc: "Бампер, зеркала, стойки, полоса на крышу, капот, крылья, фары, туманки" },
 ];
 
 const FILMS = [
@@ -288,7 +287,7 @@ export default function B2BNewPage() {
                 </p>
 
                 <div className="mt-8">
-                  <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-white/55">
                     Автомобиль
                   </label>
                   <CarSearch value={car} onChange={setCar} />
@@ -311,7 +310,7 @@ export default function B2BNewPage() {
                   Состав и плёнка
                 </h1>
                 <div className="mt-8">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">
+                  <div className="text-xs font-bold uppercase tracking-[0.16em] text-white/55">
                     Состав работ
                   </div>
                   <div className="mt-3 grid gap-2">
@@ -332,7 +331,7 @@ export default function B2BNewPage() {
                   </div>
                 </div>
                 <div className="mt-8">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">
+                  <div className="text-xs font-bold uppercase tracking-[0.16em] text-white/55">
                     Плёнка
                   </div>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -408,7 +407,7 @@ export default function B2BNewPage() {
                   </div>
 
                   <div className="mt-6 border-t border-white/8 pt-6">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">
+                    <div className="text-xs font-bold uppercase tracking-[0.16em] text-white/55">
                       Цена PPF PROFI для вас
                     </div>
                     <div className="mt-2 text-3xl font-extrabold">
@@ -417,20 +416,20 @@ export default function B2BNewPage() {
                   </div>
 
                   <div className="mt-6 border-t border-white/8 pt-6">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">
+                    <div className="text-xs font-bold uppercase tracking-[0.16em] text-white/55">
                       Рекомендованная розница
                     </div>
                     <div className="mt-2 text-lg font-bold accent">
                       {quote.low.toLocaleString("ru-RU")} –{" "}
                       {quote.high.toLocaleString("ru-RU")} ₽
                     </div>
-                    <p className="mt-2 text-xs text-white/40">
+                    <p className="mt-2 text-sm text-white/55">
                       Вы сами решаете, за сколько продавать клиенту.
                     </p>
                   </div>
 
                   <div className="mt-6 border-t border-white/8 pt-6">
-                    <label className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">
+                    <label className="text-xs font-bold uppercase tracking-[0.16em] text-white/55">
                       Ваша цена клиенту
                     </label>
                     <input
@@ -442,7 +441,7 @@ export default function B2BNewPage() {
                       placeholder="Введите цену для клиента"
                       className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-2xl font-extrabold text-white focus:border-lime-400 focus:outline-none focus:ring-1 focus:ring-lime-400"
                     />
-                    <p className="mt-2 text-xs text-white/40">
+                    <p className="mt-2 text-sm text-white/55">
                       Должна быть выше цены PPF PROFI. Разница — ваш спред.
                     </p>
                   </div>
@@ -496,7 +495,7 @@ export default function B2BNewPage() {
 
             <form onSubmit={submitForm} className="mt-6 space-y-4">
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
+                <label className="text-xs font-bold uppercase tracking-[0.14em] text-white/55">
                   Имя клиента
                 </label>
                 <input
@@ -509,7 +508,7 @@ export default function B2BNewPage() {
                 />
               </div>
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
+                <label className="text-xs font-bold uppercase tracking-[0.14em] text-white/55">
                   Телефон клиента
                 </label>
                 <input
@@ -522,7 +521,7 @@ export default function B2BNewPage() {
                 />
               </div>
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
+                <label className="text-xs font-bold uppercase tracking-[0.14em] text-white/55">
                   Комментарий
                 </label>
                 <textarea

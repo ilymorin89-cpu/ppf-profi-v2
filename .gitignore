@@ -55,3 +55,6 @@ discover-*.ps1
 show-*.ps1
 run-*.ps1
 final-*.ps1
+
+*.bak-*
+backups/

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -32,7 +32,6 @@ const CAR_LABELS: Record<string, string> = {
 };
 
 const PKG_LABELS: Record<string, string> = {
-  FRONT: "Передняя часть",
   RISK_ZONES: "Зоны риска",
   FULL: "Полная оклейка",
 };

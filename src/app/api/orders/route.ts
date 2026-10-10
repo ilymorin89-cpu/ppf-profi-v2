@@ -7,7 +7,7 @@ import { sendTelegramNotification } from "@/server/telegram/notify";
 import { getSession } from "@/server/auth/current";
 import { calculateQuote } from "@/server/pricing/quote";
 
-const ALLOWED_SCENARIOS = ["FULL", "RISK_ZONES", "FRONT"] as const;
+const ALLOWED_SCENARIOS = ["FULL", "RISK_ZONES"] as const;
 const ALLOWED_FILMS = ["PPF_STANDARD", "SPECTROLL_PREMIUM"] as const;
 
 const str = (v: unknown, max: number) =>
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     // Цену считает СЕРВЕР, а не браузер.
     const q = calculateQuote({
       carCode,
-      scenario: scenario as "FULL" | "RISK_ZONES" | "FRONT",
+      scenario: scenario as "FULL" | "RISK_ZONES",
       filmCode: filmCode as "PPF_STANDARD" | "SPECTROLL_PREMIUM",
     });
 

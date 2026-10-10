@@ -1,5 +1,5 @@
 export type ClassCode = "L" | "XL" | "XL+";
-export type ScenarioCode = "FULL" | "RISK_ZONES" | "FRONT";
+export type ScenarioCode = "FULL" | "RISK_ZONES";
 export type FilmCode = "PPF_STANDARD" | "SPECTROLL_PREMIUM";
 
 export const CLASS_COEFFICIENT: Record<ClassCode, number> = {

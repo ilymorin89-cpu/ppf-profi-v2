@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const NAV = [
   { label: "Главная", href: "#top" },
@@ -55,9 +55,47 @@ const HERO_FEATURES = [
 ];
 
 export default function HomePage() {
-  const [brand, setBrand] = useState("BMW");
-  const [model, setModel] = useState("X5");
-  const [year, setYear] = useState("2023");
+  const [cars, setCars] = useState<Array<{ code: string; brand: string; model: string }>>([]);
+  const [brands, setBrands] = useState<string[]>([]);
+  const [brand, setBrand] = useState("");
+  const [carCode, setCarCode] = useState("");
+  const [year, setYear] = useState("2025");
+  const [priceLow, setPriceLow] = useState<number | null>(null);
+  const [priceHigh, setPriceHigh] = useState<number | null>(null);
+  const [priceStatus, setPriceStatus] = useState<"idle" | "loading" | "ok" | "unavailable">("idle");
+
+  useEffect(() => {
+    fetch("/api/cars", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.cars && d?.brands) {
+          setCars(d.cars);
+          setBrands(d.brands);
+          const first = d.cars[0];
+          if (first) { setBrand(first.brand); setCarCode(first.code); }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!carCode) return;
+    setPriceStatus("loading");
+    fetch("/api/public-quote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ carCode, scenario: "FULL", filmCode: "PPF_STANDARD" }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.ok && typeof d.low === "number" && typeof d.high === "number") {
+          setPriceLow(d.low); setPriceHigh(d.high); setPriceStatus("ok");
+        } else {
+          setPriceLow(null); setPriceHigh(null); setPriceStatus("unavailable");
+        }
+      })
+      .catch(() => setPriceStatus("unavailable"));
+  }, [carCode]);
 
   return (
     <div id="top" className="dark-grid min-h-screen text-white">
@@ -92,7 +130,7 @@ export default function HomePage() {
             >
               Для партнёров
             </Link>
-            <Link href="/calculator" className="btn-accent text-sm">
+            <Link href={carCode ? `/calculator?car=${carCode}&year=${year}` : "/calculator"} className="btn-accent text-sm">
               Рассчитать PPF
             </Link>
           </div>
@@ -169,7 +207,7 @@ export default function HomePage() {
                     Сохраняет идеальный вид автомобиля на годы.
                   </p>
                   <Link
-                    href="/calculator"
+                    href={carCode ? `/calculator?car=${carCode}&year=${year}` : "/calculator"}
                     className="btn-accent mt-5 w-full justify-center"
                   >
                     Рассчитать стоимость →
@@ -183,7 +221,7 @@ export default function HomePage() {
                   <h2 className="text-lg font-extrabold">Калькулятор PPF</h2>
                   <div className="text-right text-[10px] font-bold uppercase tracking-[0.14em] text-lime-400">
                     PPF PROFI
-                    <div className="text-white/40">Premium Protection</div>
+                    <div className="text-white/55 text-sm">Premium Protection</div>
                   </div>
                 </div>
 
@@ -198,46 +236,44 @@ export default function HomePage() {
                   </div>
                   <span className="font-bold text-white">Выбор автомобиля</span>
                   <div className="h-px flex-1 bg-white/10" />
-                  <div className="text-white/40">2 Параметры</div>
-                  <div className="text-white/40">3 Результат</div>
+                  <div className="text-white/55 text-sm">2 Параметры</div>
+                  <div className="text-white/55 text-sm">3 Результат</div>
                 </div>
 
                 {/* Поля */}
                 <div className="mt-5 space-y-3">
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
+                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-white/55">
                       Марка
                     </label>
                     <select
                       value={brand}
-                      onChange={(e) => setBrand(e.target.value)}
+                      onChange={(e) => { const b = e.target.value; setBrand(b); const f = cars.find((c) => c.brand === b); if (f) setCarCode(f.code); }}
                       className="mt-1.5 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-bold text-white focus:border-lime-400 focus:outline-none"
                     >
-                      <option className="bg-neutral-900 text-white">BMW</option>
-                      <option className="bg-neutral-900 text-white">Mercedes-Benz</option>
-                      <option className="bg-neutral-900 text-white">Porsche</option>
-                      <option className="bg-neutral-900 text-white">Toyota</option>
+                      {brands.map((b) => (
+                        <option key={b} className="bg-neutral-900 text-white">{b}</option>
+                      ))}
                     </select>
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
+                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-white/55">
                       Модель
                     </label>
                     <select
-                      value={model}
-                      onChange={(e) => setModel(e.target.value)}
+                      value={carCode}
+                      onChange={(e) => setCarCode(e.target.value)}
                       className="mt-1.5 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-bold text-white focus:border-lime-400 focus:outline-none"
                     >
-                      <option className="bg-neutral-900 text-white">X5</option>
-                      <option className="bg-neutral-900 text-white">X7</option>
-                      <option className="bg-neutral-900 text-white">GLE</option>
-                      <option className="bg-neutral-900 text-white">Cayenne</option>
+                      {cars.filter((c) => c.brand === brand).map((c) => (
+                        <option key={c.code} value={c.code} className="bg-neutral-900 text-white">{c.model}</option>
+                      ))}
                     </select>
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
+                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-white/55">
                       Год выпуска
                     </label>
                     <select
@@ -245,16 +281,16 @@ export default function HomePage() {
                       onChange={(e) => setYear(e.target.value)}
                       className="mt-1.5 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-bold text-white focus:border-lime-400 focus:outline-none"
                     >
-                      <option className="bg-neutral-900 text-white">2024</option>
-                      <option className="bg-neutral-900 text-white">2023</option>
-                      <option className="bg-neutral-900 text-white">2022</option>
-                      <option className="bg-neutral-900 text-white">2021</option>
+                  <option className="bg-neutral-900 text-white">2026</option>
+                  <option className="bg-neutral-900 text-white">2025</option>
+                  <option className="bg-neutral-900 text-white">2024</option>
+                  <option className="bg-neutral-900 text-white">2023</option>
                     </select>
                   </div>
 
                   <Link
-                    href="/calculator"
-                    className="btn-accent w-full justify-center"
+                    href={carCode ? `/calculator?car=${carCode}&year=${year}` : "/calculator"}
+                    className="btn-accent w-full justify-center text-base"
                   >
                     Далее →
                   </Link>
@@ -262,35 +298,40 @@ export default function HomePage() {
 
                 {/* Предпросмотр цены */}
                 <div className="mt-5 rounded-xl border border-white/10 bg-black/40 p-4">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
+                  <div className="text-xs font-bold uppercase tracking-[0.14em] text-white/55">
                     Предварительная стоимость
                   </div>
                   <div className="mt-2 text-sm font-extrabold">
-                    {brand} {model} ({year})
+                    {brand} {cars.find((c) => c.code === carCode)?.model ?? ""} ({year})
                   </div>
                   <div className="mt-3 space-y-1.5 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-white/60">Полная оклейка</span>
-                      <span className="font-bold">450 000 ₽</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-white/60">Материалы (премиум)</span>
-                      <span className="font-bold">+ 80 000 ₽</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-white/60">Работа</span>
-                      <span className="font-bold">+ 120 000 ₽</span>
-                    </div>
+                    {priceStatus === "loading" && (<div className="text-white/50">Считаем...</div>)}
+                    {priceStatus === "ok" && priceLow !== null && priceHigh !== null && (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-white/70 text-sm">Полная оклейка · PPF Standard</span>
+                          <span className="font-bold">от {priceLow.toLocaleString("ru-RU")} ₽</span>
+                        </div>
+                        <div className="text-white/55 text-sm">
+                          Диапазон: {priceLow.toLocaleString("ru-RU")} – {priceHigh.toLocaleString("ru-RU")} ₽
+                        </div>
+                      </>
+                    )}
+                    {priceStatus === "unavailable" && (
+                      <div className="text-white/60">Цена по запросу. Оставьте заявку — перезвоним.</div>
+                    )}
                   </div>
-                  <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
-                    <span className="text-sm font-extrabold">Итого</span>
-                    <span className="text-xl font-extrabold accent">650 000 ₽</span>
-                  </div>
-                  <p className="mt-2 text-[10px] leading-4 text-white/40">
+                  {priceStatus === "ok" && priceLow !== null && (
+                    <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
+                      <span className="text-sm font-extrabold">Итого</span>
+                      <span className="text-xl font-extrabold accent">от {priceLow.toLocaleString("ru-RU")} ₽</span>
+                    </div>
+                  )}
+                  <p className="mt-2 text-xs leading-5 text-white/55">
                     Окончательная стоимость может отличаться после осмотра автомобиля.
                   </p>
                   <Link
-                    href="/calculator"
+                    href={carCode ? `/calculator?car=${carCode}&year=${year}` : "/calculator"}
                     className="btn-accent mt-3 w-full justify-center"
                   >
                     Оставить заявку
@@ -407,7 +448,7 @@ export default function HomePage() {
                       <div className="text-sm font-extrabold tracking-[0.12em]">
                         PPF <span className="accent">PROFI</span>
                       </div>
-                      <div className="text-white/40">☰</div>
+                      <div className="text-white/55 text-sm">☰</div>
                     </div>
 
                     {/* Заголовок */}
@@ -463,7 +504,7 @@ export default function HomePage() {
               </div>
             </div>
             <div className="text-sm">
-              <div className="text-white/40">Телефон</div>
+              <div className="text-white/55 text-sm">Телефон</div>
               <div className="mt-1 font-bold">+7 (952) 857-54-23</div>
               <div className="mt-3 text-white/40">Email</div>
               <div className="mt-1 font-bold">kent777_09@mail.ru</div>
@@ -478,7 +519,7 @@ export default function HomePage() {
               </a>
             </div>
             <div className="text-sm">
-              <div className="text-white/40">ИП Морин Илья Владимирович</div>
+              <div className="text-white/55 text-sm">ИП Морин Илья Владимирович</div>
               <div className="mt-1 text-white/70">ИНН 740414579370</div>
               <div className="mt-1 text-white/70">ОГРНИП 321745600022340</div>
             </div>

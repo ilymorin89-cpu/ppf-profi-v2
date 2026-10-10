@@ -32,7 +32,6 @@ const CAR_LABELS: Record<string, string> = {
 };
 
 const PKG_LABELS: Record<string, string> = {
-  FRONT: "Передняя часть",
   RISK_ZONES: "Зоны риска",
   FULL: "Полная оклейка",
 };

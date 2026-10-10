@@ -1,7 +1,8 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 const CARS = [
   { code: "GEELY_MONJARO", label: "Geely Monjaro" },
@@ -10,11 +11,16 @@ const CARS = [
   { code: "MB_GLE_V167", label: "Mercedes-Benz GLE V167" },
   { code: "PORSCHE_CAYENNE_E3", label: "Porsche Cayenne E3" },
   { code: "TOYOTA_LC300", label: "Toyota Land Cruiser 300" },
+  { code: "HAVAL_JOLION", label: "Haval Jolion" },
+  { code: "BELGEE_X50", label: "Belgee X50" },
+  { code: "BELGEE_X70", label: "Belgee X70" },
+  { code: "CHERY_TIGGO_4_PRO", label: "Chery Tiggo 4 Pro" },
+  { code: "GEELY_ATLAS", label: "Geely Atlas" },
+  { code: "HYUNDAI_CRETA", label: "Hyundai Creta" },
 ];
 
 const PACKAGES = [
-  { code: "FRONT", label: "Передняя часть", desc: "Бампер, капот, крылья, зеркала" },
-  { code: "RISK_ZONES", label: "Зоны риска", desc: "Бампер, зеркала, фары, пороги" },
+  { code: "RISK_ZONES", label: "Зоны риска", desc: "Бампер, зеркала, стойки, полоса на крышу, капот, крылья, фары, туманки" },
   { code: "FULL", label: "Полная оклейка", desc: "Все основные элементы кузова" },
 ];
 
@@ -23,12 +29,23 @@ const FILMS = [
   { code: "SPECTROLL_PREMIUM", label: "Spectroll Premium", desc: "Премиальная защита" },
 ];
 
-export default function CalculatorPage() {
+type Quote =
+  | { status: "ok"; low: number; high: number }
+  | { status: "unavailable" }
+  | null;
+
+const fmt = (n: number) => n.toLocaleString("ru-RU");
+
+function CalculatorInner() {
+  const searchParams = useSearchParams();
+  const carFromUrl  = searchParams.get("car");
+  const yearFromUrl = searchParams.get("year");
   const [step, setStep] = useState(1);
   const [car, setCar] = useState(CARS[0].code);
   const [pkg, setPkg] = useState(PACKAGES[0].code);
   const [film, setFilm] = useState(FILMS[0].code);
-  const [result, setResult] = useState<number | null>(null);
+  const [quote, setQuote] = useState<Quote>(null);
+  const [calculating, setCalculating] = useState(false);
 
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
@@ -39,17 +56,47 @@ export default function CalculatorPage() {
   const [sending, setSending] = useState(false);
   const [formError, setFormError] = useState("");
 
-  const calculate = () => {
-    const base = 50000;
-    const carMul = car === "GEELY_MONJARO" ? 1.1 : car === "BMW_X7_G07" ? 1.3 : 1;
-    const pkgMul = pkg === "FULL" ? 2.4 : pkg === "RISK_ZONES" ? 0.9 : 1;
-    const filmMul = film === "SPECTROLL_PREMIUM" ? 1.15 : 1;
-    setResult(Math.round((base * carMul * pkgMul * filmMul) / 500) * 500);
+  useEffect(() => {
+    if (!carFromUrl) return;
+    // принимаем любую машину из списка CARS
+    if (CARS.some((c) => c.code === carFromUrl)) {
+      setCar(carFromUrl);
+      setStep(2);
+    }
+    if (yearFromUrl && ["2023","2024","2025","2026"].includes(yearFromUrl)) {
+      // год не влияет на расчёт, но сохраняем для отображения
+    }
+  }, [carFromUrl, yearFromUrl]);
+
+  const calculate = async () => {
+    setCalculating(true);
+    setQuote(null);
     setStep(3);
+    try {
+      const res = await fetch("/api/public-quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ carCode: car, scenario: pkg, filmCode: film }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        low?: number;
+        high?: number;
+      };
+      if (res.ok && data.ok && typeof data.low === "number" && typeof data.high === "number") {
+        setQuote({ status: "ok", low: data.low, high: data.high });
+      } else {
+        setQuote({ status: "unavailable" });
+      }
+    } catch {
+      setQuote({ status: "unavailable" });
+    } finally {
+      setCalculating(false);
+    }
   };
 
   const reset = () => {
-    setResult(null);
+    setQuote(null);
     setStep(1);
     setShowForm(false);
     setSent(false);
@@ -64,7 +111,6 @@ export default function CalculatorPage() {
     e.preventDefault();
     setFormError("");
     if (!name.trim() || !phone.trim()) return;
-    if (result === null) return;
     if (!consent) {
       setFormError("Поставьте галочку согласия на обработку данных");
       return;
@@ -72,14 +118,13 @@ export default function CalculatorPage() {
 
     setSending(true);
     try {
-      const res = await fetch("/api/orders", {
+      const res = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           carCode: car,
           scenario: pkg,
           filmCode: film,
-          price: result,
           clientName: name,
           clientPhone: phone,
           comment,
@@ -110,10 +155,7 @@ export default function CalculatorPage() {
               PPF <span className="accent">PROFI</span>
             </div>
           </Link>
-          <Link
-            href="/"
-            className="text-xs font-bold text-white/50 hover:text-white"
-          >
+          <Link href="/" className="text-xs font-bold text-white/50 hover:text-white">
             ← На главную
           </Link>
         </div>
@@ -160,19 +202,11 @@ export default function CalculatorPage() {
                     >
                       {done ? "✓" : n}
                     </div>
-                    <span
-                      className={`text-xs font-bold ${
-                        active ? "text-white" : "text-white/40"
-                      }`}
-                    >
+                    <span className={`text-sm font-bold ${active ? "text-white" : "text-white/40"}`}>
                       {label}
                     </span>
                     {i < 2 && (
-                      <div
-                        className={`h-px flex-1 ${
-                          done ? "bg-lime-400/40" : "bg-white/10"
-                        }`}
-                      />
+                      <div className={`h-px flex-1 ${done ? "bg-lime-400/40" : "bg-white/10"}`} />
                     )}
                   </div>
                 );
@@ -185,9 +219,7 @@ export default function CalculatorPage() {
                 <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
                   Какой автомобиль?
                 </h1>
-                <p className="mt-3 text-white/60">
-                  Выберите марку и поколение кузова.
-                </p>
+                <p className="mt-3 text-white/60">Выберите марку и поколение кузова.</p>
 
                 <div className="mt-8 grid gap-2">
                   {CARS.map((c) => (
@@ -208,10 +240,7 @@ export default function CalculatorPage() {
                   ))}
                 </div>
 
-                <button
-                  onClick={() => setStep(2)}
-                  className="btn-accent mt-8 w-full justify-center"
-                >
+                <button onClick={() => setStep(2)} className="btn-accent mt-8 w-full justify-center">
                   Далее →
                 </button>
               </div>
@@ -223,12 +252,10 @@ export default function CalculatorPage() {
                 <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
                   Состав и плёнка
                 </h1>
-                <p className="mt-3 text-white/60">
-                  Что нужно защитить и какой плёнкой.
-                </p>
+                <p className="mt-3 text-white/60">Что нужно защитить и какой плёнкой.</p>
 
                 <div className="mt-8">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">
+                  <div className="text-xs font-bold uppercase tracking-[0.16em] text-white/50">
                     Состав работ
                   </div>
                   <div className="mt-3 grid gap-2">
@@ -250,7 +277,7 @@ export default function CalculatorPage() {
                 </div>
 
                 <div className="mt-8">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">
+                  <div className="text-xs font-bold uppercase tracking-[0.16em] text-white/50">
                     Плёнка
                   </div>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -275,14 +302,18 @@ export default function CalculatorPage() {
                   <button onClick={() => setStep(1)} className="btn-ghost">
                     ← Назад
                   </button>
-                  <button onClick={calculate} className="btn-accent flex-1 justify-center">
-                    Рассчитать
+                  <button
+                    onClick={calculate}
+                    disabled={calculating}
+                    className="btn-accent flex-1 justify-center disabled:opacity-60"
+                  >
+                    {calculating ? "Считаем..." : "Рассчитать"}
                   </button>
                 </div>
               </div>
             )}
 
-            {step === 3 && result !== null && (
+            {step === 3 && (
               <div className="reveal">
                 <div className="eyebrow">Шаг 3 из 3</div>
                 <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
@@ -290,17 +321,42 @@ export default function CalculatorPage() {
                 </h1>
 
                 <div className="dark-card mt-8 p-8">
-                  <div className="text-xs font-extrabold uppercase tracking-[0.14em] accent">
+                  <div className="text-sm font-extrabold uppercase tracking-[0.14em] accent">
                     {CARS.find((c) => c.code === car)?.label}
                   </div>
-                  <div className="mt-2 text-sm text-white/50">
+                  <div className="mt-2 text-base text-white/60">
                     {PACKAGES.find((p) => p.code === pkg)?.label} ·{" "}
                     {FILMS.find((f) => f.code === film)?.label}
                   </div>
-                  <div className="mt-6 text-5xl font-extrabold tracking-[-0.04em]">
-                    от <span className="accent">{result.toLocaleString("ru-RU")}</span> ₽
-                  </div>
-                  <p className="mt-4 text-sm leading-6 text-white/50">
+
+                  {calculating && (
+                    <div className="mt-6 text-sm text-white/50">Запрашиваем цену...</div>
+                  )}
+
+                  {!calculating && quote?.status === "ok" && (
+                    <>
+                      <div className="mt-6 text-5xl font-extrabold tracking-[-0.04em]">
+                        от <span className="accent">{fmt(quote.low)}</span> ₽
+                      </div>
+                      <p className="mt-3 text-base text-white/60">
+                        Ориентировочный диапазон: {fmt(quote.low)} – {fmt(quote.high)} ₽
+                      </p>
+                    </>
+                  )}
+
+                  {!calculating && quote?.status === "unavailable" && (
+                    <>
+                      <div className="mt-6 text-3xl font-extrabold tracking-[-0.02em] sm:text-4xl">
+                        Цена по запросу
+                      </div>
+                      <p className="mt-3 text-base text-white/60">
+                        Для этой модели стоимость рассчитывается индивидуально. Оставьте
+                        заявку — мы свяжемся и назовём точную цену.
+                      </p>
+                    </>
+                  )}
+
+                  <p className="mt-6 text-sm leading-6 text-white/55">
                     Финальная стоимость подтверждается после проверки фотографий
                     автомобиля. Разница возможна при обнаружении повреждений,
                     перекрасов или старой плёнки.
@@ -310,7 +366,8 @@ export default function CalculatorPage() {
                 <div className="mt-6 grid gap-3 sm:grid-cols-2">
                   <button
                     onClick={() => setShowForm(true)}
-                    className="btn-accent justify-center"
+                    disabled={calculating}
+                    className="btn-accent justify-center disabled:opacity-60"
                   >
                     Оставить заявку
                   </button>
@@ -319,7 +376,7 @@ export default function CalculatorPage() {
                   </button>
                 </div>
 
-                <div className="mt-8 rounded-2xl border border-lime-400/20 bg-lime-400/5 p-5 text-sm leading-6 text-lime-100">
+                <div className="mt-8 rounded-2xl border border-lime-400/20 bg-lime-400/5 p-6 text-base leading-7 text-lime-100">
                   <strong className="accent">Что дальше:</strong>{" "}
                   <span className="text-white/80">
                     вы оставляете заявку, прикладываете 4 фотографии автомобиля. Мы
@@ -337,16 +394,9 @@ export default function CalculatorPage() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
           onClick={() => setShowForm(false)}
         >
-          <div
-            className="dark-card w-full max-w-md p-8"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-2xl font-extrabold tracking-tight">
-              Оставить заявку
-            </h2>
-            <p className="mt-2 text-sm text-white/50">
-              Перезвоним в течение 15 минут.
-            </p>
+          <div className="dark-card w-full max-w-md p-8" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-2xl font-extrabold tracking-tight">Оставить заявку</h2>
+            <p className="mt-2 text-base text-white/60">Перезвоним в течение 15 минут.</p>
 
             <form onSubmit={submitForm} className="mt-6 space-y-4">
               <div>
@@ -399,11 +449,7 @@ export default function CalculatorPage() {
                 />
                 <span className="text-xs leading-5 text-white/60">
                   Я согласен на обработку персональных данных и принимаю{" "}
-                  <Link
-                    href="/privacy"
-                    target="_blank"
-                    className="accent hover:underline"
-                  >
+                  <Link href="/privacy" target="_blank" className="accent hover:underline">
                     Политику конфиденциальности
                   </Link>
                 </span>
@@ -416,11 +462,7 @@ export default function CalculatorPage() {
               )}
 
               <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowForm(false)}
-                  className="btn-ghost"
-                >
+                <button type="button" onClick={() => setShowForm(false)} className="btn-ghost">
                   Отмена
                 </button>
                 <button
@@ -436,5 +478,13 @@ export default function CalculatorPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function CalculatorPage() {
+  return (
+    <Suspense fallback={<div className="dark-grid min-h-screen grid place-items-center text-white"><div className="text-sm text-white/50">Загрузка...</div></div>}>
+      <CalculatorInner />
+    </Suspense>
   );
 }

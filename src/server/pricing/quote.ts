@@ -1,7 +1,7 @@
 import { PRICING_CONFIG, FILMS, type FilmCode } from "./config";
 import { getCar, type CarEntry } from "./catalog";
 
-export type ScenarioCode = "FULL" | "RISK_ZONES" | "FRONT";
+export type ScenarioCode = "FULL" | "RISK_ZONES";
 
 export type QuoteInput = {
   carCode: string;
@@ -41,14 +41,12 @@ function roundUp(value: number, step: number): number {
 function pickMeters(car: CarEntry, scenario: ScenarioCode): number | null {
   if (scenario === "FULL") return car.filmMFull;
   if (scenario === "RISK_ZONES") return car.filmMRisk;
-  if (scenario === "FRONT") return car.filmMFront;
   return null;
 }
 
 function pickDays(car: CarEntry, scenario: ScenarioCode): number | null {
   if (scenario === "FULL") return car.daysFull;
   if (scenario === "RISK_ZONES") return car.daysRisk;
-  if (scenario === "FRONT") return car.daysFront;
   return null;
 }
 
