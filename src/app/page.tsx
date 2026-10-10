@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { filmLabel } from "@/content/site";
 
 const NAV = [
   { label: "Главная", href: "#top" },
@@ -309,7 +310,7 @@ export default function HomePage() {
                     {priceStatus === "ok" && priceLow !== null && priceHigh !== null && (
                       <>
                         <div className="flex justify-between">
-                          <span className="text-white/70 text-sm">Полная оклейка · PPF Standard</span>
+                          <span className="text-white/70 text-sm">Полная оклейка · {filmLabel("PPF_STANDARD")}</span>
                           <span className="font-bold">от {priceLow.toLocaleString("ru-RU")} ₽</span>
                         </div>
                         <div className="text-white/55 text-sm">

@@ -3,6 +3,7 @@ import { randomInt, createHash } from "node:crypto";
 import { db } from "@/server/db/client";
 import { leads } from "@/server/db/schema";
 import { sendTelegramNotification } from "@/server/telegram/notify";
+import { filmLabel } from "@/content/site";
 import { calculateQuote } from "@/server/pricing/quote";
 
 const ALLOWED_SCENARIOS = ["FULL", "RISK_ZONES"] as const;
@@ -137,7 +138,7 @@ export async function POST(request: Request) {
           `Телефон: ${esc(clientPhone)}\n` +
           `Авто: ${esc(carCode)}\n` +
           `Состав: ${esc(scenario)}\n` +
-          `Плёнка: ${esc(filmCode)}\n` +
+          `Плёнка: ${esc(filmLabel(filmCode))}\n` +
           `Цена: ${price ? price.toLocaleString("ru-RU") + " ₽" : "по запросу"}\n` +
           (comment ? `Комментарий: ${esc(comment)}\n` : "") +
           `\n<a href="${base}/admin">Открыть админку</a>`

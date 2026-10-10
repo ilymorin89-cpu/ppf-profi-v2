@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { filmLabel } from "@/content/site";
 
 const CARS = [
   { code: "GEELY_MONJARO", label: "Geely Monjaro" },
@@ -25,8 +26,8 @@ const PACKAGES = [
 ];
 
 const FILMS = [
-  { code: "PPF_STANDARD", label: "PPF PROFI Standard", desc: "Надёжная защита" },
-  { code: "SPECTROLL_PREMIUM", label: "Spectroll Premium", desc: "Премиальная защита" },
+  { code: "PPF_STANDARD", label: filmLabel("PPF_STANDARD"), desc: "Надёжная защита" },
+  { code: "SPECTROLL_PREMIUM", label: filmLabel("SPECTROLL_PREMIUM"), desc: "Премиальная защита" },
 ];
 
 type Quote =

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import CarSearch from "@/components/CarSearch";
+import { filmLabel } from "@/content/site";
 
 type Partner = {
   id: number;
@@ -22,8 +23,8 @@ const SCENARIOS = [
 ];
 
 const FILMS = [
-  { code: "PPF_STANDARD", label: "PPF PROFI Standard", desc: "Надёжная защита" },
-  { code: "SPECTROLL_PREMIUM", label: "Spectroll Premium", desc: "Премиальная защита" },
+  { code: "PPF_STANDARD", label: filmLabel("PPF_STANDARD"), desc: "Надёжная защита" },
+  { code: "SPECTROLL_PREMIUM", label: filmLabel("SPECTROLL_PREMIUM"), desc: "Премиальная защита" },
 ];
 
 function newKey(): string {

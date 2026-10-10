@@ -1,3 +1,5 @@
+import { filmLabel } from "@/content/site";
+
 export type ClassCode = "L" | "XL" | "XL+";
 export type ScenarioCode = "FULL" | "RISK_ZONES";
 export type FilmCode = "PPF_STANDARD" | "SPECTROLL_PREMIUM";
@@ -75,11 +77,11 @@ export type FilmConfig = {
 
 export const FILMS: Record<FilmCode, FilmConfig> = {
   PPF_STANDARD: {
-    label: "PPF PROFI Standard",
+    label: filmLabel("PPF_STANDARD"),
     pricePerMeter: 2300,
   },
   SPECTROLL_PREMIUM: {
-    label: "Spectroll Premium",
+    label: filmLabel("SPECTROLL_PREMIUM"),
     pricePerMeter: 4000,
   },
 };

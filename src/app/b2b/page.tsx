@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { filmLabel } from "@/content/site";
 
 type Partner = {
   id: number;
@@ -36,10 +37,6 @@ const PKG_LABELS: Record<string, string> = {
   FULL: "Полная оклейка",
 };
 
-const FILM_LABELS: Record<string, string> = {
-  PPF_STANDARD: "PPF PROFI Standard",
-  SPECTROLL_PREMIUM: "Spectroll Premium",
-};
 
 const STATUS_LABELS: Record<string, string> = {
   NEW: "Новая",
@@ -147,7 +144,7 @@ export default function B2BPage() {
     if (o.clientPrice == null) return;
     const text =
       `${CAR_LABELS[o.carCode] || o.carCode}\n` +
-      `${PKG_LABELS[o.scenario] || o.scenario} · ${FILM_LABELS[o.filmCode] || o.filmCode}\n` +
+      `${PKG_LABELS[o.scenario] || o.scenario} · ${filmLabel(o.filmCode)}\n` +
       `Стоимость: ${rub(o.clientPrice)} (предварительно)`;
     try {
       await navigator.clipboard.writeText(text);
@@ -369,7 +366,7 @@ export default function B2BPage() {
                           <div className="mt-2 text-sm text-white/50">
                             {CAR_LABELS[o.carCode] || o.carCode} ·{" "}
                             {PKG_LABELS[o.scenario] || o.scenario} ·{" "}
-                            {FILM_LABELS[o.filmCode] || o.filmCode}
+                            {filmLabel(o.filmCode)}
                           </div>
 
                           {o.clientPrice != null && (

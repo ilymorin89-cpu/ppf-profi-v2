@@ -4,6 +4,7 @@ import { db } from "@/server/db/client";
 import { orders, partners } from "@/server/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { sendTelegramNotification } from "@/server/telegram/notify";
+import { filmLabel } from "@/content/site";
 import { getSession } from "@/server/auth/current";
 import { calculateQuote } from "@/server/pricing/quote";
 
@@ -176,7 +177,7 @@ export async function POST(request: Request) {
             `Телефон: ${esc(clientPhone)}\n` +
             `Авто: ${esc(carCode)}\n` +
             `Состав: ${esc(scenario)}\n` +
-            `Плёнка: ${esc(filmCode)}\n` +
+            `Плёнка: ${esc(filmLabel(filmCode))}\n` +
             `Цена PPF PROFI: ${price} ₽\n` +
             `Цена клиенту: ${clientPrice} ₽\n` +
             `Источник: партнёр ID ${partnerId}\n\n` +

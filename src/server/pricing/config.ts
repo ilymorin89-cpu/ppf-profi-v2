@@ -1,3 +1,5 @@
+import { filmLabel } from "@/content/site";
+
 export type FilmCode = "PPF_STANDARD" | "SPECTROLL_PREMIUM";
 
 export const PRICING_CONFIG = {
@@ -14,11 +16,11 @@ export const PRICING_CONFIG = {
 
 export const FILMS: Record<FilmCode, { label: string; pricePerMeter: number }> = {
   PPF_STANDARD: {
-    label: "PPF PROFI Standard",
+    label: filmLabel("PPF_STANDARD"),
     pricePerMeter: 2_700,
   },
   SPECTROLL_PREMIUM: {
-    label: "Spectroll Premium",
+    label: filmLabel("SPECTROLL_PREMIUM"),
     pricePerMeter: 4_000,
   },
 };

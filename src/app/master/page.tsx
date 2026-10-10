@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { filmLabel } from "@/content/site";
 
 type Master = {
   id: number;
@@ -36,10 +37,6 @@ const PKG_LABELS: Record<string, string> = {
   FULL: "Полная оклейка",
 };
 
-const FILM_LABELS: Record<string, string> = {
-  PPF_STANDARD: "PPF PROFI Standard",
-  SPECTROLL_PREMIUM: "Spectroll Premium",
-};
 
 const STATUS_LABELS: Record<string, string> = {
   NEW: "Новая",
@@ -309,7 +306,7 @@ export default function MasterPage() {
                           <div className="mt-2 text-sm text-white/50">
                             {CAR_LABELS[o.carCode] || o.carCode} ·{" "}
                             {PKG_LABELS[o.scenario] || o.scenario} ·{" "}
-                            {FILM_LABELS[o.filmCode] || o.filmCode}
+                            {filmLabel(o.filmCode)}
                           </div>
                           {o.comment && (
                             <div className="mt-3 rounded-lg bg-white/5 px-3 py-2 text-sm text-white/70">
