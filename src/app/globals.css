@@ -98,3 +98,11 @@ body {
 .reveal {
   animation: reveal 0.55s cubic-bezier(0.23, 1, 0.32, 1) both;
 }
+/* --- content-v2: дополнения поверх существующих стилей --- */
+html {
+  scroll-behavior: smooth;
+}
+
+details > summary::-webkit-details-marker {
+  display: none;
+}

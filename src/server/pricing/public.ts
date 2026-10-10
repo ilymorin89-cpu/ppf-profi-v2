@@ -1,7 +1,13 @@
 import "server-only";
 import { quote } from "./quote";
 import { getCars } from "./catalog";
-import { FILM_CODES, SCENARIO_CODES, type FilmCode, type ScenarioCode } from "@/content/site";
+import {
+  FILM_CODES,
+  PRICE_EXAMPLE,
+  SCENARIO_CODES,
+  type FilmCode,
+  type ScenarioCode,
+} from "@/content/site";
 
 // Публичная цена для клиента: только диапазон low..high.
 // Цена партнёра, target, costFloor, autoApprove из этого модуля наружу не выходят.
@@ -44,4 +50,10 @@ export function isKnownCar(carCode: string): boolean {
 export function carName(carCode: string): string {
   const c = getCars().find((x) => x.code === carCode);
   return c ? `${c.brand} ${c.model}` : carCode;
+}
+
+/** Цена «от» для H1 и метаданных главной: Standard FULL X5 G05; fallback из site.ts. */
+export function getExampleLow(): number {
+  const p = getPublicPrice(PRICE_EXAMPLE.carCode, PRICE_EXAMPLE.scenario, PRICE_EXAMPLE.film);
+  return p ? p.low : PRICE_EXAMPLE.fallbackLow;
 }

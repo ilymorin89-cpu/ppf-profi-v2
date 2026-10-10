@@ -1,10 +1,10 @@
-import Link from "next/link";
+import SiteHeader from "@/components/site/SiteHeader";
+import SiteFooter from "@/components/site/SiteFooter";
 import { Suspense } from "react";
 import Calculator, { type CalcCar } from "@/components/calculator/Calculator";
 import { getPublicCatalog } from "@/server/pricing/public";
 import {
   CALCULATOR,
-  CONTACTS,
   FILMS,
   FILM_CODES,
   FORM_TEXTS,
@@ -31,21 +31,7 @@ export default function CalculatorPage() {
 
   return (
     <div className="dark-grid min-h-screen text-white">
-      <header className="border-b border-white/10 bg-black/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-4xl items-center justify-between gap-4 px-4 sm:px-6">
-          <Link href="/" className="text-lg font-extrabold tracking-[0.12em]">
-            PPF <span className="accent">PROFI</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/" className="hidden text-xs font-bold text-white/50 hover:text-white sm:block">
-              ← На главную
-            </Link>
-            <a href={CONTACTS.phoneHref} className="text-sm font-bold accent">
-              Позвонить
-            </a>
-          </div>
-        </div>
-      </header>
+      <SiteHeader />
 
       <Suspense
         fallback={
@@ -70,6 +56,8 @@ export default function CalculatorPage() {
           form={{ texts: FORM_TEXTS, telegram: TELEGRAM }}
         />
       </Suspense>
+
+      <SiteFooter />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CONTACTS } from "@/content/site";
 
 export default function PrivacyPage() {
   return (
@@ -111,7 +112,7 @@ export default function PrivacyPage() {
             </ul>
             <p className="mt-3">
               Для реализации прав направьте обращение на адрес:{" "}
-              <span className="accent">kent777_09@mail.ru</span>
+              <span className="accent">{CONTACTS.email}</span>
             </p>
           </section>
 
@@ -143,9 +144,9 @@ export default function PrivacyPage() {
             <p className="mt-3">
               ИП Морин Илья Владимирович
               <br />
-              Email: <span className="accent">kent777_09@mail.ru</span>
+              Email: <span className="accent">{CONTACTS.email}</span>
               <br />
-              Телефон: +7 (952) 857-54-23
+              Телефон: {CONTACTS.phone}
             </p>
           </section>
         </div>
