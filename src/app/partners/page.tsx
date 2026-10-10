@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import SiteHeader from "@/components/site/SiteHeader";
 import SiteFooter from "@/components/site/SiteFooter";
@@ -13,6 +14,7 @@ import {
   PARTNER_TYPES,
   PRICE_EXAMPLE,
   SCENARIOS,
+  SEO,
   TELEGRAM,
   THICKNESS_UNIT,
   daysLabel,
@@ -21,6 +23,13 @@ import {
 } from "@/content/site";
 
 export const revalidate = 3600;
+
+export function generateMetadata(): Metadata {
+  const k = spreadK(getPartnerExample());
+  const title = fillTemplate(SEO.partners.title, k);
+  const description = fillTemplate(SEO.partners.description, k);
+  return { title, description, openGraph: { title, description } };
+}
 
 const fmt = (n: number) => n.toLocaleString("ru-RU");
 

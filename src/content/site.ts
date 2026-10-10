@@ -398,3 +398,19 @@ export const PARTNER_FORM = {
   successTitle: "Заявка отправлена",
   successText: "Свяжемся, расскажем условия и выдадим доступ в кабинет.",
 };
+
+// ---------- SEO ----------
+// Ограничения: title ≤ 65 символов, description ≤ 160.
+
+export const SEO = {
+  home: {
+    title: "PPF оклейка BMW, Mercedes, Porsche, LC300 в Москве | PPF PROFI",
+    /** {price} — цена «от» Standard FULL X5 G05. */
+    description: `Защитная плёнка Spectroll на премиум-авто. Полная оклейка X5 G05 от {price}, зоны риска за ${daysLabel(SCENARIOS.RISK_ZONES.days)}, гарантия ${FACTS.warrantyMonths} месяцев. Расчёт онлайн.`,
+  },
+  partners: {
+    title: "PPF партнёрам: спред {from}–{to} тыс. ₽ с машины | PPF PROFI",
+    description:
+      "Продавайте PPF своим клиентам без участка и команды. Пример: X5 G05, полная оклейка, ваш спред {from}–{to} тыс. ₽. Заявка за минуту.",
+  },
+};

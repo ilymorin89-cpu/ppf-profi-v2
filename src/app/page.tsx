@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import SiteHeader from "@/components/site/SiteHeader";
 import SiteFooter from "@/components/site/SiteFooter";
@@ -18,6 +19,7 @@ import {
   PARTNER_SPREAD_K,
   SCENARIOS,
   SCENARIO_CODES,
+  SEO,
   TELEGRAM,
   TOP_MODELS,
   daysLabel,
@@ -27,6 +29,12 @@ import {
 } from "@/content/site";
 
 export const revalidate = 3600;
+
+export function generateMetadata(): Metadata {
+  const title = SEO.home.title;
+  const description = fillTemplate(SEO.home.description, { price: formatRub(getExampleLow()) });
+  return { title, description, openGraph: { title, description } };
+}
 
 const STD = "PPF_STANDARD" as const;
 
