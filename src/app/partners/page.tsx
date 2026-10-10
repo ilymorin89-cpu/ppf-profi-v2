@@ -2,14 +2,18 @@ import Link from "next/link";
 import SiteHeader from "@/components/site/SiteHeader";
 import SiteFooter from "@/components/site/SiteFooter";
 import EconomyCalculator from "@/components/partners/EconomyCalculator";
+import PartnerLeadForm from "@/components/forms/PartnerLeadForm";
 import { getPartnerExample, spreadK } from "@/server/pricing/partner-example";
 import { carsLabel, fillTemplate } from "@/shared/format";
 import {
   FILMS,
   FORM_TEXTS,
   PARTNERS,
+  PARTNER_FORM,
+  PARTNER_TYPES,
   PRICE_EXAMPLE,
   SCENARIOS,
+  TELEGRAM,
   THICKNESS_UNIT,
   daysLabel,
   formatRub,
@@ -149,8 +153,15 @@ export default function PartnersPage() {
         <div className="dark-card p-6 sm:p-10">
           <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{PARTNERS.finalTitle}</h2>
           <p className="mt-3 max-w-xl text-sm leading-6 text-white/60">{PARTNERS.finalText}</p>
+          <div className="mt-8">
+            <PartnerLeadForm
+              content={{ texts: FORM_TEXTS, telegram: TELEGRAM }}
+              types={PARTNER_TYPES}
+              texts={PARTNER_FORM}
+            />
+          </div>
           <div className="mt-6 flex flex-wrap gap-3">
-            <a href={telegramUrl()} target="_blank" rel="noopener noreferrer" className="btn-accent">
+            <a href={telegramUrl()} target="_blank" rel="noopener noreferrer" className="btn-ghost">
               {FORM_TEXTS.telegramButton}
             </a>
             <Link href="/b2b" className="btn-ghost">

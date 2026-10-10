@@ -6,7 +6,9 @@ import {
   timestamp,
   text,
   boolean,
+  check,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
@@ -61,4 +63,14 @@ export const leads = pgTable("leads", {
   status: varchar("status", { length: 32 }).notNull().default("NEW"),
   ipHash: varchar("ip_hash", { length: 64 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+  // content-v2: заявки партнёров, источник и UTM
+  kind: text("kind").notNull().default("client"),
+  company: varchar("company", { length: 160 }),
+  companyType: varchar("company_type", { length: 32 }),
+  city: varchar("city", { length: 120 }),
+  carsPerMonth: integer("cars_per_month"),
+  referral: varchar("referral", { length: 160 }),
+  utmSource: varchar("utm_source", { length: 120 }),
+  utmMedium: varchar("utm_medium", { length: 120 }),
+  utmCampaign: varchar("utm_campaign", { length: 120 }),
+}, (t) => [check("leads_kind_check", sql`${t.kind} in ('client', 'partner')`)]);

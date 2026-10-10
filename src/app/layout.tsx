@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
+import UtmCapture from "@/components/forms/UtmCapture";
 
 const manrope = Manrope({
   subsets: ["latin", "cyrillic"],
@@ -17,7 +18,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ru" className={manrope.variable}>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        <UtmCapture />
+        {children}
+      </body>
     </html>
   );
 }

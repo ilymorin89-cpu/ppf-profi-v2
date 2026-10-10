@@ -374,3 +374,27 @@ export const PARTNERS = {
   finalTitle: "Станьте партнёром",
   finalText: "Оставьте заявку — свяжемся, расскажем условия и выдадим доступ в кабинет.",
 };
+
+// ---------- Заявка партнёра ----------
+
+export const PARTNER_TYPES: { code: string; label: string }[] = [
+  { code: "dealer", label: "Автосалон" },
+  { code: "detailing", label: "Детейлинг" },
+  { code: "sto", label: "СТО" },
+  { code: "body", label: "Кузовной" },
+  { code: "carpicking", label: "Автоподбор" },
+];
+
+export const PARTNER_FORM = {
+  company: "Компания",
+  companyPlaceholder: "Название",
+  type: "Тип",
+  city: "Город",
+  cityPlaceholder: "Москва",
+  carsPerMonth: "Сколько машин в месяц проходит у вас",
+  contact: "Телефон или Telegram",
+  contactPlaceholder: "+7 999 123-45-67 или @username",
+  submit: "Отправить заявку",
+  successTitle: "Заявка отправлена",
+  successText: "Свяжемся, расскажем условия и выдадим доступ в кабинет.",
+};
