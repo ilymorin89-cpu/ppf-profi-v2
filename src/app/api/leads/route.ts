@@ -3,8 +3,8 @@ import { randomInt, createHash } from "node:crypto";
 import { db } from "@/server/db/client";
 import { leads } from "@/server/db/schema";
 import { sendTelegramNotification } from "@/server/telegram/notify";
-import { filmLabel } from "@/content/site";
-import { calculateQuote } from "@/server/pricing/quote";
+import { SCENARIOS, filmLabel, formatRub, type ScenarioCode } from "@/content/site";
+import { carName, getPublicPrice, isKnownCar } from "@/server/pricing/public";
 
 const ALLOWED_SCENARIOS = ["FULL", "RISK_ZONES"] as const;
 const ALLOWED_FILMS = ["PPF_STANDARD", "SPECTROLL_PREMIUM"] as const;
@@ -71,34 +71,30 @@ export async function POST(request: Request) {
     const comment = str(body.comment, 1000);
     const consent = body.consent === true;
 
-    if (!carCode || !scenario || !filmCode || !clientName || !clientPhone) {
-      return NextResponse.json({ error: "Заполните все обязательные поля" }, { status: 400 });
-    }
-    if (clientName.length < 2) {
-      return NextResponse.json({ error: "Проверьте имя" }, { status: 400 });
-    }
-    if (clientPhone.replace(/\D/g, "").length < 10) {
-      return NextResponse.json({ error: "Проверьте номер телефона" }, { status: 400 });
-    }
-    if (!consent) {
-      return NextResponse.json(
-        { error: "Необходимо согласие на обработку персональных данных" },
-        { status: 400 }
-      );
-    }
+    // Ошибки по полям: форма показывает их рядом с полями и не теряет введённое.
+    const fields: Record<string, string> = {};
+    if (clientName.length < 2) fields.clientName = "Укажите имя";
+    if (clientPhone.replace(/\D/g, "").length < 10) fields.clientPhone = "Проверьте номер телефона";
+    if (!consent) fields.consent = "Необходимо согласие на обработку персональных данных";
+    // Белый список: модель из каталога, состав и плёнка из допустимых кодов.
     if (
+      !isKnownCar(carCode) ||
       !ALLOWED_SCENARIOS.includes(scenario as (typeof ALLOWED_SCENARIOS)[number]) ||
       !ALLOWED_FILMS.includes(filmCode as (typeof ALLOWED_FILMS)[number])
     ) {
-      return NextResponse.json({ error: "Неизвестная комбинация" }, { status: 400 });
+      fields.carCode = "Выберите модель из списка";
+    }
+    if (Object.keys(fields).length > 0) {
+      return NextResponse.json(
+        { error: Object.values(fields)[0], fields },
+        { status: 400 }
+      );
     }
 
-    const q = calculateQuote({
-      carCode,
-      scenario: scenario as "FULL" | "RISK_ZONES",
-      filmCode: filmCode as "PPF_STANDARD" | "SPECTROLL_PREMIUM",
-    });
-    const price = q.ok ? q.result.target : null;
+    // Цена только серверная, тем же кодом, что /api/public-quote.
+    // Цена из тела запроса и из комментария игнорируется.
+    const publicPrice = getPublicPrice(carCode, scenario, filmCode);
+    const price = publicPrice ? publicPrice.low : null;
 
     const ipHash = createHash("sha256").update(ip).digest("hex").slice(0, 32);
 
@@ -136,10 +132,14 @@ export async function POST(request: Request) {
         `<b>🆕 ПУБЛИЧНАЯ ЗАЯВКА ${esc(created.publicNumber)}</b>\n\n` +
           `Клиент: ${esc(clientName)}\n` +
           `Телефон: ${esc(clientPhone)}\n` +
-          `Авто: ${esc(carCode)}\n` +
-          `Состав: ${esc(scenario)}\n` +
+          `Авто: ${esc(carName(carCode))}\n` +
+          `Состав: ${esc(SCENARIOS[scenario as ScenarioCode].label)}\n` +
           `Плёнка: ${esc(filmLabel(filmCode))}\n` +
-          `Цена: ${price ? price.toLocaleString("ru-RU") + " ₽" : "по запросу"}\n` +
+          `Расчёт на сайте: ${
+            publicPrice
+              ? `${formatRub(publicPrice.low)} – ${formatRub(publicPrice.high)}`
+              : "нет цены в каталоге"
+          }\n` +
           (comment ? `Комментарий: ${esc(comment)}\n` : "") +
           `\n<a href="${base}/admin">Открыть админку</a>`
       );
@@ -150,7 +150,6 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       publicNumber: created.publicNumber,
-      price,
     });
   } catch (error) {
     console.error("POST /api/leads error:", error);

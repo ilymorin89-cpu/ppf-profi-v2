@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { calculateQuote } from "@/server/pricing/quote";
+import { getPublicPrice } from "@/server/pricing/public";
 
 const ALLOWED_SCENARIOS = ["FULL", "RISK_ZONES"] as const;
 const ALLOWED_FILMS = ["PPF_STANDARD", "SPECTROLL_PREMIUM"] as const;
@@ -61,13 +61,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Не указан автомобиль" }, { status: 400 });
     }
 
-    const q = calculateQuote({
-      carCode,
-      scenario: scenario as "FULL" | "RISK_ZONES",
-      filmCode: filmCode as "PPF_STANDARD" | "SPECTROLL_PREMIUM",
-    });
+    const price = getPublicPrice(carCode, scenario, filmCode);
 
-    if (!q.ok) {
+    if (!price) {
       // Не verified / нет замеров / неизвестная модель — публично отдаём
       // «Цена по запросу», без деталей, чтобы не раскрывать экономику.
       return NextResponse.json(
@@ -77,13 +73,8 @@ export async function POST(request: Request) {
     }
 
     // Публично отдаём ТОЛЬКО диапазон для клиента (low..high).
-    // pp (себестоимость партнёра) не отдаём ни под каким видом.
-    // low/high считаем из target той же формулой, что в обёртке quote().
-    // Себестоимость (pp, costFloor, autoApprove) наружу не отдаём.
-    const pp = q.result.target;
-    const low  = Math.round(pp / 0.85 / 500) * 500;
-    const high = Math.round(pp / 0.80 / 500) * 500;
-    return NextResponse.json({ ok: true, low, high });
+    // pp, target, costFloor, autoApprove наружу не отдаём.
+    return NextResponse.json({ ok: true, low: price.low, high: price.high });
   } catch (error) {
     console.error("POST /api/public-quote error:", error);
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });
