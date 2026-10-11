@@ -27,11 +27,16 @@ export function filmLabel(code: string): string {
 
 // ---------- Состав работ ----------
 
-export const SCENARIOS: Record<ScenarioCode, { label: string; desc: string; days: number }> = {
+/** days — срок в днях; daysMax — верх диапазона, если срок задан вилкой. */
+export const SCENARIOS: Record<
+  ScenarioCode,
+  { label: string; desc: string; days: number; daysMax?: number }
+> = {
   FULL: {
     label: "Полная оклейка",
     desc: "Все окрашенные элементы кузова",
     days: 5,
+    daysMax: 7,
   },
   RISK_ZONES: {
     label: "Зоны риска",
@@ -42,13 +47,20 @@ export const SCENARIOS: Record<ScenarioCode, { label: string; desc: string; days
 
 export const SCENARIO_CODES = Object.keys(SCENARIOS) as ScenarioCode[];
 
-/** «1 день», «5 дней». */
-export function daysLabel(n: number): string {
-  const m10 = n % 10;
-  const m100 = n % 100;
-  if (m10 === 1 && m100 !== 11) return `${n} день`;
-  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return `${n} дня`;
-  return `${n} дней`;
+/** «1 день», «5 дней»; с max — «5–7 дней». */
+export function daysLabel(n: number, max?: number): string {
+  const last = max && max > n ? max : n;
+  const prefix = last === n ? "" : `${n}–`;
+  const m10 = last % 10;
+  const m100 = last % 100;
+  if (m10 === 1 && m100 !== 11) return `${prefix}${last} день`;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return `${prefix}${last} дня`;
+  return `${prefix}${last} дней`;
+}
+
+/** Срок состава работ: «1 день», «5–7 дней». */
+export function scenarioDays(code: ScenarioCode): string {
+  return daysLabel(SCENARIOS[code].days, SCENARIOS[code].daysMax);
 }
 
 // ---------- Модели ----------
@@ -124,6 +136,26 @@ export const CALCULATOR = {
   leadText: "Перезвоним и подтвердим расчёт.",
   successTitle: "Заявка принята",
   successText: "Мы свяжемся с вами в течение 15 минут для подтверждения расчёта.",
+  addonsTitle: "Дополнительно",
+  addonsNote: "Отметьте то, что есть на вашей машине и что нужно защитить.",
+  addonsTotal: "Итого",
+  qtyLess: "Меньше",
+  qtyMore: "Больше",
+};
+
+// ---------- Допы ----------
+// Цены — только в src/server/pricing/config.ts (ADDONS). Здесь подписи.
+
+export const ADDON_TEXTS: Record<string, { label: string; desc?: string; unit?: string }> = {
+  PILLARS: { label: "Стойки", desc: "Цена за штуку", unit: "шт" },
+  SILLS_INNER: { label: "Пороги внутри" },
+  SCREENS: { label: "Экраны в салоне" },
+  PANORAMA: { label: "Панорамная крыша, если есть", desc: "Бронирование стекла" },
+  WINDSHIELD: { label: "Броня лобового стекла" },
+  TINT: {
+    label: "Тонировка",
+    desc: "В рамках требований к светопропусканию стёкол",
+  },
 };
 
 // ---------- Факты о мастере ----------
@@ -138,14 +170,15 @@ export const FACTS = {
 
 // ---------- Fallback-значения (если расчёт недоступен) ----------
 
-/** Пример для /partners и heading главной: BMW X5 G05, полная оклейка, Spectroll Standard. */
+/** Пример для /partners и heading главной: BMW X5 G05, полная оклейка, Spectroll Standard.
+ *  Цена «от» для главной — прямая цена из src/server/pricing/config.ts (DIRECT_PRICES).
+ *  fallbackLow/High/Partner — расчётные значения, используются только /partners, если расчёт недоступен. */
 export const PRICE_EXAMPLE = {
   carCode: "BMW_X5_G05",
   carName: "X5 G05",
   carFullName: "BMW X5 G05",
   scenario: "FULL" as ScenarioCode,
   film: "PPF_STANDARD" as FilmCode,
-  /** Розница X5 G05 FULL Standard «от» — fallback для H1 и метаданных главной. */
   fallbackLow: 286_500,
   fallbackHigh: 304_500,
   /** Цена партнёру — только для /partners. */
@@ -175,6 +208,11 @@ export const HOME = {
   pricesFull: "Полная — от {price}",
   pricesRisk: "Зоны риска — от {price}",
   pricesNote: "Цены для плёнки Spectroll Standard. Точную цену подтвердим после осмотра.",
+  /** Пример расчёта: {car}, {items} — список допов, {total} — итог «от». */
+  exampleTitle: "Пример расчёта",
+  exampleText: "{car}, полная оклейка, Spectroll Standard",
+  exampleBase: "Полная оклейка — от {price}",
+  exampleTotal: "Итого — от {price}",
 
   wrapEyebrow: "Что клеим",
   wrapTitle: "Полная оклейка или зоны риска",
@@ -218,7 +256,7 @@ export const HOME = {
 export const FACT_TILES: { value: string; label: string }[] = [
   { value: `${FACTS.experienceYears} лет`, label: "опыт мастера" },
   {
-    value: `${daysLabel(SCENARIOS.RISK_ZONES.days)} / ${daysLabel(SCENARIOS.FULL.days)}`,
+    value: `${scenarioDays("RISK_ZONES")} / ${scenarioDays("FULL")}`,
     label: "зоны риска / полная оклейка",
   },
   { value: `${FACTS.warrantyMonths} мес`, label: "гарантия на работу и материал" },
@@ -237,7 +275,7 @@ export const HOW_STEPS: { title: string; text: string }[] = [
   { title: "Осмотр", text: "Смотрим машину и подтверждаем точную цену." },
   {
     title: "Оклейка",
-    text: `Зоны риска — ${daysLabel(SCENARIOS.RISK_ZONES.days)}, полная оклейка — ${daysLabel(SCENARIOS.FULL.days)}.`,
+    text: `Зоны риска — ${scenarioDays("RISK_ZONES")}, полная оклейка — ${scenarioDays("FULL")}.`,
   },
   {
     title: "Выдача",
@@ -249,7 +287,7 @@ export const HOW_STEPS: { title: string; text: string }[] = [
 export const FAQ: { q: string; a: string }[] = [
   {
     q: "Сколько времени занимает оклейка?",
-    a: `Зоны риска — ${daysLabel(SCENARIOS.RISK_ZONES.days)}, полная оклейка — ${daysLabel(SCENARIOS.FULL.days)}.`,
+    a: `Зоны риска — ${scenarioDays("RISK_ZONES")}, полная оклейка — ${scenarioDays("FULL")}.`,
   },
   {
     q: "Какую плёнку выбрать?",
@@ -330,7 +368,7 @@ export const PARTNERS = {
   econSpreadSuffix: "с машины",
   econTenCars: "{n} в месяц — {from}–{to} ₽ спреда.",
   econTenCarsCount: 10,
-  econClientGets: `Что получает ваш клиент: плёнка Spectroll, гарантия ${FACTS.warrantyMonths} месяцев на работу и материал, зоны риска за ${daysLabel(SCENARIOS.RISK_ZONES.days)}.`,
+  econClientGets: `Что получает ваш клиент: плёнка Spectroll, гарантия ${FACTS.warrantyMonths} месяцев на работу и материал, зоны риска за ${scenarioDays("RISK_ZONES")}.`,
   econFootnote:
     "Спред — разница между ценой, которую вы назвали клиенту, и ценой для партнёра. Диапазон розницы — рекомендация, цену клиенту назначаете вы. Цены на другие модели — в кабинете партнёра.",
 
@@ -406,7 +444,7 @@ export const SEO = {
   home: {
     title: "PPF оклейка BMW, Mercedes, Porsche, LC300 в Москве | PPF PROFI",
     /** {price} — цена «от» Standard FULL X5 G05. */
-    description: `Защитная плёнка Spectroll на премиум-авто. Полная оклейка X5 G05 от {price}, зоны риска за ${daysLabel(SCENARIOS.RISK_ZONES.days)}, гарантия ${FACTS.warrantyMonths} месяцев. Расчёт онлайн.`,
+    description: `Защитная плёнка Spectroll на премиум-авто. Полная оклейка X5 G05 от {price}, зоны риска за ${scenarioDays("RISK_ZONES")}, гарантия ${FACTS.warrantyMonths} месяцев. Расчёт онлайн.`,
   },
   partners: {
     title: "PPF партнёрам: спред {from}–{to} тыс. ₽ с машины | PPF PROFI",
