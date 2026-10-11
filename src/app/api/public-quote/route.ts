@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getPublicPrice } from "@/server/pricing/public";
+import { getPublicTotal, parsePublicAddons } from "@/server/pricing/public";
 
 const ALLOWED_SCENARIOS = ["FULL", "RISK_ZONES"] as const;
 const ALLOWED_FILMS = ["PPF_STANDARD", "SPECTROLL_PREMIUM"] as const;
@@ -60,8 +60,14 @@ export async function POST(request: Request) {
     if (!carCode) {
       return NextResponse.json({ error: "Не указан автомобиль" }, { status: 400 });
     }
+    const addons = parsePublicAddons(body.addons);
+    if (!addons) {
+      return NextResponse.json({ error: "Некорректные допы" }, { status: 400 });
+    }
 
-    const price = getPublicPrice(carCode, scenario, filmCode);
+    // Итог = оклейка + допы, считается только здесь, на сервере.
+    const totals = getPublicTotal(carCode, scenario, filmCode, addons);
+    const price = totals ? totals.total : null;
 
     if (!price) {
       // Не verified / нет замеров / неизвестная модель — публично отдаём

@@ -13,7 +13,13 @@ import {
   type FormContent,
 } from "./FormParts";
 
-type Selection = { carCode: string; scenario: string; filmCode: string };
+/** addons — количество по коду допа; цену сервер считает сам. */
+type Selection = {
+  carCode: string;
+  scenario: string;
+  filmCode: string;
+  addons?: Record<string, number>;
+};
 
 type Props = {
   content: FormContent;
@@ -55,6 +61,7 @@ export default function LeadForm({
       carCode: selection?.carCode ?? carCode,
       scenario: selection?.scenario ?? defaults?.scenario ?? "",
       filmCode: selection?.filmCode ?? defaults?.filmCode ?? "",
+      addons: selection?.addons ?? {},
       clientName: name,
       clientPhone: phone,
       referral,

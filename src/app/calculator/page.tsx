@@ -2,8 +2,9 @@ import SiteHeader from "@/components/site/SiteHeader";
 import SiteFooter from "@/components/site/SiteFooter";
 import { Suspense } from "react";
 import Calculator, { type CalcCar } from "@/components/calculator/Calculator";
-import { getPublicCatalog } from "@/server/pricing/public";
+import { getPublicAddonPrices, getPublicCatalog } from "@/server/pricing/public";
 import {
+  ADDON_TEXTS,
   CALCULATOR,
   FILMS,
   FILM_CODES,
@@ -51,6 +52,13 @@ export default function CalculatorPage() {
             label: filmLabel(code),
             name: FILMS[code].name,
             desc: FILMS[code].short,
+          }))}
+          addons={Object.entries(getPublicAddonPrices()).map(([code, a]) => ({
+            code,
+            ...a,
+            label: ADDON_TEXTS[code]?.label ?? code,
+            desc: ADDON_TEXTS[code]?.desc,
+            unit: ADDON_TEXTS[code]?.unit,
           }))}
           texts={CALCULATOR}
           form={{ texts: FORM_TEXTS, telegram: TELEGRAM }}
