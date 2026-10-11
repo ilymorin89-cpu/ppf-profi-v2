@@ -192,9 +192,9 @@ export const PARTNER_SPREAD_K = { from: 43, to: 61 };
 
 export const HOME = {
   eyebrow: "Оклейка защитной плёнкой",
-  h1Lead: "PPF на BMW, Mercedes, Porsche, Land Cruiser и Monjaro.",
+  h1Lead: "Оклейка авто защитной плёнкой PPF в Москве.",
   /** {price} — цена Standard FULL X5 G05. */
-  h1Price: "Полная оклейка X5 G05 — от {price}",
+  h1Price: "Гарантия 12 месяцев на работу и материал",
   subtitle: `${FACTS.experienceYears} лет опыта, гарантия ${FACTS.warrantyMonths} месяцев на работу и материал, ${CONTACTS.city}. Посчитайте свою машину за минуту.`,
   ctaCalc: "Рассчитать стоимость →",
   ctaTelegram: "Написать в Telegram",
@@ -352,7 +352,7 @@ export const FOOTER_LINKS: NavItem[] = [
 
 export const PARTNERS = {
   eyebrow: "PPF PROFI для бизнеса",
-  h1: "Продавайте PPF своим клиентам: {from}–{to} тыс. ₽ спреда с каждой машины",
+  h1: "Зарабатывайте {from}–{to} тыс. ₽ с каждой машины на оклейке PPF",
   subtitle: "Вы называете клиенту цену, мы оклеиваем. Без участка и команды.",
   ctaCalc: "Рассчитать под ваш поток →",
   ctaJoin: "Стать партнёром →",

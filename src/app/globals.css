@@ -106,3 +106,22 @@ html {
 details > summary::-webkit-details-marker {
   display: none;
 }
+
+
+/* --- Читаемость текста: крупнее и контрастнее (весь сайт) --- */
+@theme {
+  --text-xs: 0.875rem;    /* мелкие подписи: было 12px, стало 14px */
+  --text-sm: 1rem;        /* меню, примечания, списки: было 14px, стало 16px */
+  --text-base: 1.0625rem; /* основной текст: было 16px, стало 17px */
+}
+
+@layer utilities {
+  .text-\[10px\] { font-size: 0.8125rem; }  /* было 10px, стало 13px */
+  .text-\[11px\] { font-size: 0.875rem; }   /* было 11px, стало 14px */
+
+  .text-white\/40 { color: rgb(255 255 255 / 0.62); }
+  .text-white\/45 { color: rgb(255 255 255 / 0.66); }
+  .text-white\/50 { color: rgb(255 255 255 / 0.7); }
+  .text-white\/55 { color: rgb(255 255 255 / 0.74); }
+  .text-white\/60 { color: rgb(255 255 255 / 0.78); }
+}

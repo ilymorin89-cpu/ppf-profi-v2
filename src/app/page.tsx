@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import SiteHeader from "@/components/site/SiteHeader";
 import SiteFooter from "@/components/site/SiteFooter";
@@ -90,6 +91,19 @@ export default function HomePage() {
               <a href={telegramUrl()} target="_blank" rel="noopener noreferrer" className="btn-ghost">
                 {HOME.ctaTelegram}
               </a>
+            </div>
+
+            {/* Картинка первого экрана: файл public/hero.jpg */}
+            <div className="mt-10 overflow-hidden rounded-3xl border border-white/8 bg-black">
+              <Image
+                src="/hero.jpg"
+                alt="Премиальный внедорожник"
+                width={1672}
+                height={941}
+                sizes="(min-width: 1024px) 50vw, 100vw"
+                preload
+                className="h-auto w-full"
+              />
             </div>
           </div>
 
