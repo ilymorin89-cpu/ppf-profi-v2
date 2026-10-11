@@ -383,6 +383,14 @@ if ($AllowMutations) {
         Skip "Telegram-уведомление" "не передан -ServerLog"
     }
 
+    $r = Req "POST" "/api/leads" $anon @{ kind="client"; carCode="BMW_X5_G05"; scenario="FULL"; filmCode="PPF_STANDARD"; addons=@{ PILLARS=6; SILLS_INNER=1 }; clientName="ZZ TEST Addons"; clientPhone="+79990001122"; price=1; total=1; low=1; high=1; consent=$true } $xff
+    Check "lead с допами -> 200" ($r.Status -eq 200) "status=$($r.Status) body=$($r.Body)"
+    $row = DbLead $r.Json.publicNumber
+    Check "lead с допами: подделанная сумма игнорируется, в БД 464000" ($row -and $row.price -eq 464000) "db=$($row.price)"
+    Check "lead с допами: допы в комментарии" ($row -and $row.comment -match 'Стойки' -and $row.comment -match 'Пороги внутри')
+    $r = Req "POST" "/api/leads" $anon @{ kind="client"; carCode="BMW_X5_G05"; scenario="FULL"; filmCode="PPF_STANDARD"; addons=@{ PILLARS=7 }; clientName="ZZ TEST Addons"; clientPhone="+79990001122"; consent=$true } $xff
+    Check "lead 7 стоек -> 400 + fields.addons" ($r.Status -eq 400 -and $r.Json.fields.addons)
+
     $r = Req "POST" "/api/leads" $anon @{ kind="client"; carCode="FAKE_CAR"; scenario="FULL"; filmCode="PPF_STANDARD"; clientName="ZZ TEST"; clientPhone="+79990001122"; consent=$true } $xff
     Check "fake car -> 400 + fields.carCode" ($r.Status -eq 400 -and $r.Json.fields.carCode)
     $r = Req "POST" "/api/leads" $anon @{ kind="partner"; company=""; companyType="hack"; city=""; clientPhone="1"; consent=$false } $xff
@@ -396,6 +404,43 @@ if ($AllowMutations) {
     $clean = & node (Join-Path $PSScriptRoot "tests\db-leads.cjs") cleanup | Out-String | ConvertFrom-Json
     Check "тестовые заявки удалены" ($clean.deleted -ge 2) "deleted=$($clean.deleted)"
 }
+
+Section "20. ПРЯМОЙ ПРАЙС И ДОПЫ"
+$pqXff = @{ "X-Forwarded-For" = "10.79.$(Get-Random -Minimum 0 -Maximum 255).$(Get-Random -Minimum 1 -Maximum 255)" }
+function PQ($addons, $extra = @{}) {
+    $b = @{ carCode="BMW_X5_G05"; scenario="FULL"; filmCode="PPF_STANDARD"; addons=$addons }
+    foreach ($k in $extra.Keys) { $b[$k] = $extra[$k] }
+    return Req "POST" "/api/public-quote" $anon $b $pqXff
+}
+$r = PQ @{}
+Check "X5 Full Standard = 450000" ($r.Status -eq 200 -and $r.Json.low -eq 450000) "low=$($r.Json.low)"
+$r = PQ @{ PILLARS=6; SILLS_INNER=1 }
+Check "Full + 6 стоек + пороги = 464000 (сервер)" ($r.Status -eq 200 -and $r.Json.low -eq 464000) "low=$($r.Json.low)"
+$r = PQ @{ PILLARS=6; SILLS_INNER=1; SCREENS=1; PANORAMA=1; WINDSHIELD=1; TINT=1 }
+Check "все допы = от 536000" ($r.Status -eq 200 -and $r.Json.low -eq 536000) "low=$($r.Json.low)"
+$r = PQ @{ PILLARS=6; SILLS_INNER=1 } @{ price=1; total=1; low=1; high=1 }
+Check "подделанная сумма в теле игнорируется" ($r.Status -eq 200 -and $r.Json.low -eq 464000) "low=$($r.Json.low)"
+$r = PQ @{ PILLARS=0 }
+Check "стойки 0 -> 200, 450000" ($r.Status -eq 200 -and $r.Json.low -eq 450000) "status=$($r.Status) low=$($r.Json.low)"
+Check "стойки 6 -> 200" ((PQ @{ PILLARS=6 }).Status -eq 200)
+Check "стойки 7 -> 400" ((PQ @{ PILLARS=7 }).Status -eq 400)
+Check "стойки -1 -> 400" ((PQ @{ PILLARS=-1 }).Status -eq 400)
+Check "тонировка 2 -> 400" ((PQ @{ TINT=2 }).Status -eq 400)
+Check "неизвестный доп -> 400" ((PQ @{ HACK=1 }).Status -eq 400)
+$r = Req "POST" "/api/public-quote" $anon @{ carCode="GEELY_MONJARO"; scenario="FULL"; filmCode="PPF_STANDARD" } $pqXff
+$r2 = Req "POST" "/api/public-quote" $anon @{ carCode="GEELY_MONJARO"; scenario="FULL"; filmCode="PPF_STANDARD"; addons=@{ PILLARS=6; SILLS_INNER=1 } } $pqXff
+Check "допы одинаковы для других моделей (Monjaro +14000)" ($r2.Json.low - $r.Json.low -eq 14000) "diff=$($r2.Json.low - $r.Json.low)"
+
+$Forbidden = 'лучш|№\s?1|номер один|гарантия на \d+ лет|гарантия \d+ лет|выгодн|самая низкая цена|любая степень затемнения'
+foreach ($p in @("/", "/calculator")) {
+    $r = Req "GET" $p $anon
+    $m = [regex]::Match($r.Body, $Forbidden, 'IgnoreCase')
+    Check "$p нет запрещённых слов" (-not $m.Success) "найдено: $($m.Value)"
+}
+$h = Norm (Req "GET" "/" $anon).Body
+Check "/ есть 450 000 и пример 464 000" ($h.Contains("450000") -and $h.Contains("464000"))
+$c = (Req "GET" "/calculator" $anon).Body
+Check "/calculator есть допы (стойки, крыша «если есть», тонировка)" ($c.Contains("Стойки") -and $c.Contains("если есть") -and $c.Contains("Тонировка"))
 
 Write-Host ""
 Write-Host "==========================================================" -ForegroundColor White
