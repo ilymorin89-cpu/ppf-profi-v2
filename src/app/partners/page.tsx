@@ -17,7 +17,7 @@ import {
   SEO,
   TELEGRAM,
   THICKNESS_UNIT,
-  daysLabel,
+  scenarioDays,
   formatRub,
   telegramUrl,
 } from "@/content/site";
@@ -73,7 +73,7 @@ export default function PartnersPage() {
               car: PRICE_EXAMPLE.carFullName,
               scenario: SCENARIOS[PRICE_EXAMPLE.scenario].label.toLowerCase(),
               film: `${film.name} (${film.thickness} ${THICKNESS_UNIT})`,
-              days: daysLabel(SCENARIOS[PRICE_EXAMPLE.scenario].days),
+              days: scenarioDays(PRICE_EXAMPLE.scenario),
             })}
           </p>
 

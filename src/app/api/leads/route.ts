@@ -3,8 +3,22 @@ import { randomInt, createHash } from "node:crypto";
 import { db } from "@/server/db/client";
 import { leads } from "@/server/db/schema";
 import { sendTelegramNotification } from "@/server/telegram/notify";
-import { PARTNER_TYPES, SCENARIOS, filmLabel, formatRub, type ScenarioCode } from "@/content/site";
-import { carName, getPublicPrice, isKnownCar } from "@/server/pricing/public";
+import {
+  ADDON_TEXTS,
+  PARTNER_TYPES,
+  SCENARIOS,
+  filmLabel,
+  formatRub,
+  type ScenarioCode,
+} from "@/content/site";
+import {
+  carName,
+  getPublicAddonPrices,
+  getPublicTotal,
+  isKnownCar,
+  parsePublicAddons,
+} from "@/server/pricing/public";
+import type { AddonSelection } from "@/shared/addons";
 
 const ALLOWED_SCENARIOS = ["FULL", "RISK_ZONES"] as const;
 const ALLOWED_FILMS = ["PPF_STANDARD", "SPECTROLL_PREMIUM"] as const;
@@ -14,6 +28,22 @@ const str = (v: unknown, max: number) =>
 
 const esc = (t: string) =>
   t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+const range = (p: { low: number; high: number }) =>
+  p.high > p.low ? `${formatRub(p.low)} – ${formatRub(p.high)}` : `от ${formatRub(p.low)}`;
+
+/** «Стойки × 6 — 12 000 ₽; Пороги внутри — 2 000 ₽». Цены из config.ts. */
+function addonsSummary(addons: AddonSelection): string {
+  const prices = getPublicAddonPrices() as Record<string, { price: number; priceMax?: number }>;
+  return Object.entries(addons)
+    .map(([code, qty]) => {
+      const a = prices[code];
+      const label = ADDON_TEXTS[code]?.label ?? code;
+      const from = a.priceMax && a.priceMax > a.price ? "от " : "";
+      return `${label}${qty > 1 ? ` × ${qty}` : ""} — ${from}${formatRub(a.price * qty)}`;
+    })
+    .join("; ");
+}
 
 function newPublicNumber() {
   const now = new Date();
@@ -89,6 +119,8 @@ export async function POST(request: Request) {
       carsPerMonth: number | null;
     };
     let publicPrice: { low: number; high: number } | null = null;
+    let addons: AddonSelection = {};
+    let addonsText = "";
 
     if (kind === "partner") {
       const company = str(body.company, 160);
@@ -123,6 +155,9 @@ export async function POST(request: Request) {
       const clientName = str(body.clientName, 160);
       if (clientName.length < 2) fields.clientName = "Укажите имя";
       if (clientPhone.replace(/\D/g, "").length < 10) fields.clientPhone = "Проверьте номер телефона";
+      const parsedAddons = parsePublicAddons(body.addons);
+      if (!parsedAddons) fields.addons = "Проверьте дополнительные опции";
+      else addons = parsedAddons;
       // Белый список: модель из каталога, состав и плёнка из допустимых кодов.
       if (
         !isKnownCar(carCode) ||
@@ -131,10 +166,12 @@ export async function POST(request: Request) {
       ) {
         fields.carCode = "Выберите модель из списка";
       } else {
-        // Цена только серверная, тем же кодом, что /api/public-quote.
+        // Цена только серверная, тем же кодом, что /api/public-quote (оклейка + допы).
         // Цена из тела запроса и из комментария игнорируется.
-        publicPrice = getPublicPrice(carCode, scenario, filmCode);
+        const totals = getPublicTotal(carCode, scenario, filmCode, addons);
+        publicPrice = totals ? totals.total : null;
       }
+      addonsText = addonsSummary(addons);
       lead = {
         carCode,
         scenario,
@@ -167,7 +204,15 @@ export async function POST(request: Request) {
             kind,
             ...lead,
             clientPhone,
-            comment: comment || null,
+            // Допы и итог — отдельной строкой в комментарии (без миграции схемы).
+            comment:
+              [
+                comment,
+                addonsText &&
+                  `Допы: ${addonsText}. Итого: ${publicPrice ? range(publicPrice) : "нет цены"}`,
+              ]
+                .filter(Boolean)
+                .join("\n") || null,
             consent,
             status: "NEW",
             ipHash,
@@ -207,11 +252,8 @@ export async function POST(request: Request) {
             `Авто: ${esc(carName(lead.carCode))}\n` +
             `Состав: ${esc(SCENARIOS[lead.scenario as ScenarioCode].label)}\n` +
             `Плёнка: ${esc(filmLabel(lead.filmCode))}\n` +
-            `Расчёт на сайте: ${
-              publicPrice
-                ? `${formatRub(publicPrice.low)} – ${formatRub(publicPrice.high)}`
-                : "нет цены в каталоге"
-            }\n` +
+            (addonsText ? `Допы: ${esc(addonsText)}\n` : "") +
+            `Итого на сайте: ${publicPrice ? range(publicPrice) : "нет цены в каталоге"}\n` +
             (comment ? `Комментарий: ${esc(comment)}\n` : "") +
             source;
       await sendTelegramNotification(text + `\n<a href="${base}/admin">Открыть админку</a>`);

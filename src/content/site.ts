@@ -254,7 +254,7 @@ export const HOME = {
 
 /** Полоса фактов. Плитка с числом машин добавляется, только если FACTS.carsDone задан. */
 export const FACT_TILES: { value: string; label: string }[] = [
-  { value: `${FACTS.experienceYears} лет`, label: "опыт мастера" },
+  { value: `${FACTS.experienceYears} лет`, label: "опыт мастеров" },
   {
     value: `${scenarioDays("RISK_ZONES")} / ${scenarioDays("FULL")}`,
     label: "зоны риска / полная оклейка",

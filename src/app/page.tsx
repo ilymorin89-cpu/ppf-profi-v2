@@ -5,9 +5,15 @@ import SiteFooter from "@/components/site/SiteFooter";
 import HeroCalculator, { type MiniCar } from "@/components/site/HeroCalculator";
 import HomeLeadForm from "@/components/site/HomeLeadForm";
 import CaseCard from "@/components/site/CaseCard";
-import { getExampleLow, getPublicCatalog } from "@/server/pricing/public";
+import {
+  getExampleLow,
+  getHomeExample,
+  getPublicAddonPrices,
+  getPublicCatalog,
+} from "@/server/pricing/public";
 import { fillTemplate } from "@/shared/format";
 import {
+  ADDON_TEXTS,
   CALCULATOR,
   CASES,
   FACT_TILES,
@@ -17,13 +23,14 @@ import {
   HOME,
   HOW_STEPS,
   PARTNER_SPREAD_K,
+  PRICE_EXAMPLE,
   SCENARIOS,
   SCENARIO_CODES,
   SEO,
   TELEGRAM,
   TOP_MODELS,
-  daysLabel,
   filmLabel,
+  scenarioDays,
   formatRub,
   telegramUrl,
 } from "@/content/site";
@@ -54,6 +61,9 @@ export default function HomePage() {
   // Сначала шесть основных моделей — мини-калькулятор открывается на X5 G05.
   const orderedCars = [...topCars, ...miniCars.filter((c) => !topCars.includes(c))];
   const formCars = orderedCars.map((c) => ({ code: c.code, label: `${c.brand} ${c.model}` }));
+  // Пример расчёта: X5 G05 Full Standard + допы, все числа из src/server/pricing/config.ts.
+  const example = getHomeExample();
+  const addonPrices = getPublicAddonPrices() as Record<string, { price: number }>;
 
   return (
     <div className="dark-grid min-h-screen text-white">
@@ -143,6 +153,29 @@ export default function HomePage() {
             ))}
           </div>
           <p className="mt-4 text-xs text-white/50">{HOME.pricesNote}</p>
+
+          {example && (
+            <div className="dark-card mt-8 max-w-xl p-5 sm:p-6">
+              <div className="text-sm font-extrabold uppercase tracking-[0.14em] accent">
+                {HOME.exampleTitle}
+              </div>
+              <div className="mt-2 text-sm text-white/60">
+                {fillTemplate(HOME.exampleText, { car: PRICE_EXAMPLE.carFullName })}
+              </div>
+              <div className="mt-4 space-y-1.5 text-sm text-white/75">
+                <div>{fillTemplate(HOME.exampleBase, { price: formatRub(example.base.low) })}</div>
+                {Object.entries(example.selection).map(([code, qty]) => (
+                  <div key={code}>
+                    {ADDON_TEXTS[code]?.label ?? code}
+                    {qty > 1 ? ` × ${qty}` : ""} — {formatRub(addonPrices[code].price * qty)}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 text-lg font-extrabold">
+                {fillTemplate(HOME.exampleTotal, { price: formatRub(example.total.low) })}
+              </div>
+            </div>
+          )}
         </section>
       )}
 
@@ -155,7 +188,7 @@ export default function HomePage() {
             <div key={code} className="dark-card p-6">
               <div className="flex items-baseline justify-between gap-3">
                 <div className="text-lg font-extrabold">{SCENARIOS[code].label}</div>
-                <div className="shrink-0 text-sm font-bold accent">{daysLabel(SCENARIOS[code].days)}</div>
+                <div className="shrink-0 text-sm font-bold accent">{scenarioDays(code)}</div>
               </div>
               <p className="mt-2 text-sm leading-6 text-white/60">{SCENARIOS[code].desc}</p>
             </div>
