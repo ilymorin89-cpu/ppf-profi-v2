@@ -34,7 +34,20 @@ export const DIRECT_PRICES: {
   scenario: "FULL" | "RISK_ZONES";
   filmCode: FilmCode;
   price: number;
-}[] = [{ carCode: "BMW_X5_G05", scenario: "FULL", filmCode: "PPF_STANDARD", price: 450_000 }];
+}[] = [
+  { carCode: "BMW_X5_G05",         scenario: "FULL",       filmCode: "PPF_STANDARD", price: 450000 },
+  { carCode: "BMW_X5_G05",         scenario: "RISK_ZONES", filmCode: "PPF_STANDARD", price: 122000 },
+  { carCode: "BMW_X7_G07",         scenario: "FULL",       filmCode: "PPF_STANDARD", price: 550000 },
+  { carCode: "BMW_X7_G07",         scenario: "RISK_ZONES", filmCode: "PPF_STANDARD", price: 130000 },
+  { carCode: "MB_GLE_V167",        scenario: "FULL",       filmCode: "PPF_STANDARD", price: 450000 },
+  { carCode: "MB_GLE_V167",        scenario: "RISK_ZONES", filmCode: "PPF_STANDARD", price: 122000 },
+  { carCode: "PORSCHE_CAYENNE_E3", scenario: "FULL",       filmCode: "PPF_STANDARD", price: 450000 },
+  { carCode: "PORSCHE_CAYENNE_E3", scenario: "RISK_ZONES", filmCode: "PPF_STANDARD", price: 122000 },
+  { carCode: "TOYOTA_LC300",       scenario: "FULL",       filmCode: "PPF_STANDARD", price: 500000 },
+  { carCode: "TOYOTA_LC300",       scenario: "RISK_ZONES", filmCode: "PPF_STANDARD", price: 125000 },
+  { carCode: "GEELY_MONJARO",      scenario: "FULL",       filmCode: "PPF_STANDARD", price: 380000 },
+  { carCode: "GEELY_MONJARO",      scenario: "RISK_ZONES", filmCode: "PPF_STANDARD", price: 100000 },
+];
 
 export type AddonCode = "PILLARS" | "SILLS_INNER" | "SCREENS" | "PANORAMA" | "WINDSHIELD" | "TINT";
 

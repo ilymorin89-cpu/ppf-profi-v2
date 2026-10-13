@@ -192,7 +192,7 @@ export const PARTNER_SPREAD_K = { from: 43, to: 61 };
 
 export const HOME = {
   eyebrow: "Оклейка защитной плёнкой",
-  h1Lead: "Оклейка авто защитной плёнкой PPF в Москве.",
+  h1Lead: "Оклейка авто защитной плёнкой PPF в Москве. 1000+ машин с 2022 года",
   /** {price} — цена Standard FULL X5 G05. */
   h1Price: "Гарантия 12 месяцев на работу и материал",
   subtitle: `${FACTS.experienceYears} лет опыта, гарантия ${FACTS.warrantyMonths} месяцев на работу и материал, ${CONTACTS.city}. Посчитайте свою машину за минуту.`,
@@ -338,6 +338,7 @@ export const NAV: NavItem[] = [
   { label: "Цены", href: "/#prices", anchor: "prices" },
   ...(CASES.length > 0 ? [{ label: "Работы", href: "/#works", anchor: "works" }] : []),
   { label: "Гарантия", href: "/#warranty", anchor: "warranty" },
+  { label: "Мастерам", href: "/master" },
   { label: "Партнёрам", href: "/partners" },
 ];
 
