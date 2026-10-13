@@ -186,7 +186,7 @@ export const PRICE_EXAMPLE = {
 };
 
 /** Спред партнёра в тыс. ₽ для тизера на главной (на /partners считается из расчёта). */
-export const PARTNER_SPREAD_K = { from: 43, to: 61 };
+export const PARTNER_SPREAD_K = { from: 125, to: 130 };
 
 // ---------- Главная ----------
 

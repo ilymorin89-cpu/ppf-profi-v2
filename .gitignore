@@ -61,3 +61,8 @@ backups/
 
 # бэкапы правок (вне src)
 .bak/
+
+# локальные скрипты с секретами
+push-github.ps1
+*.bak-*
+*.bundle

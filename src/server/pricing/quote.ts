@@ -1,4 +1,4 @@
-import { PRICING_CONFIG, FILMS, type FilmCode } from "./config";
+import { PRICING_CONFIG, FILMS, DIRECT_PRICES, type FilmCode } from "./config";
 import { getCar, type CarEntry } from "./catalog";
 
 export type ScenarioCode = "FULL" | "RISK_ZONES";
@@ -117,6 +117,14 @@ export function quote(car: string, pkg: string, film: string) {
   });
   if (!r.ok) return null;
   const pp = r.result.target;
+
+  // Если для комбинации задана прямая цена — берём её как low/high.
+  // Это синхронизирует партнёрский расчёт с тем, что видит клиент на сайте.
+  const direct = DIRECT_PRICES.find(
+    (d) => d.carCode === car && d.scenario === pkg && d.filmCode === film
+  );
+  if (direct) return { pp, low: direct.price, high: direct.price };
+
   const low = Math.round(pp / 0.85 / 500) * 500;
   const high = Math.round(pp / 0.8 / 500) * 500;
   return { pp, low, high };
