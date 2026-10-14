@@ -160,6 +160,43 @@ export const BRANDS: BrandPage[] = [
   },
 ];
 
+/**
+ * Вопросы-ответы для страницы марки. Только подтверждённые факты: цены из каталога, сроки, плёнки, гарантия.
+ * minRisk / minFull — минимальные цены «от» по моделям марки (null — нет цен).
+ */
+export function brandFaq(
+  brandName: string,
+  minRisk: number | null,
+  minFull: number | null
+): { q: string; a: string }[] {
+  const items: { q: string; a: string }[] = [];
+  if (minRisk !== null && minFull !== null) {
+    items.push({
+      q: `Сколько стоит оклейка ${brandName} плёнкой?`,
+      a: `Зоны риска — от ${formatRub(minRisk)}, полная оклейка — от ${formatRub(minFull)} на плёнке ${filmLabel("PPF_STANDARD")}. Точную цену подтвердим после осмотра.`,
+    });
+  }
+  items.push(
+    {
+      q: `Сколько времени занимает оклейка ${brandName}?`,
+      a: `Зоны риска — ${scenarioDays("RISK_ZONES")}, полная оклейка — ${scenarioDays("FULL")}.`,
+    },
+    {
+      q: "Какую плёнку выбрать?",
+      a: `${filmLabel("PPF_STANDARD")} подходит для большинства машин. ${filmLabel("SPECTROLL_PREMIUM")} — слой толще, дольше сохраняет вид при езде по трассе.`,
+    },
+    {
+      q: "Какая гарантия?",
+      a: `Гарантия ${WARRANTY_WORK}: отслоение, пузыри, поднятые края по вине монтажа. ${FILM_LIFE}. Сколы, порезы и царапины на плёнке гарантией не покрываются.`,
+    },
+    {
+      q: "Где проходит оклейка?",
+      a: `${CONTACTS.city}. Работаем на проверенных площадках.`,
+    }
+  );
+  return items;
+}
+
 export function getBrand(slug: string): BrandPage | undefined {
   return BRANDS.find((b) => b.slug === slug);
 }
@@ -201,8 +238,32 @@ export const BRAND_PAGE = {
   pickerButton: "Показать цену",
   allBrands: "Все марки →",
   formTitle: "Узнайте цену для своей машины",
+  faqTitle: "Частые вопросы",
   breadcrumbHome: "Главная",
   breadcrumbList: "Марки",
+};
+
+// ---------- /ceny ----------
+
+export const PRICES_PAGE = {
+  seoTitle: "Цены на оклейку авто плёнкой PPF в Москве — от {price} | PPF PROFI",
+  seoDescription:
+    "Цены на оклейку защитной плёнкой Spectroll по маркам и моделям: зоны риска, полная оклейка, допы. BMW, Mercedes-Benz, Porsche, Land Rover, Lexus, Toyota и другие.",
+  eyebrow: "Цены",
+  h1: "Цены на оклейку авто защитной плёнкой PPF в Москве",
+  lead: "Цены «от» на плёнке Spectroll по маркам, моделям и поколениям кузова. Точную стоимость подтвердим после осмотра.",
+  colModel: "Модель",
+  colYears: "Поколение",
+  colRisk: "Зоны риска · TPU-S",
+  colFull: "FULL · TPU-S",
+  colPremium: "FULL · Premium",
+  otherBrands: "Другие марки",
+  addonsTitle: "Дополнительные работы",
+  addonsNote: "Цены допов одинаковые для всех моделей.",
+  calcCta: "Посчитать свою машину →",
+  brandLink: "Страница марки →",
+  /** Строка «от {price}» для допов с диапазоном: {from}–{to} */
+  addonRange: "{from}–{to}",
 };
 
 // ---------- Контакты ----------
@@ -485,7 +546,7 @@ export type NavItem = { label: string; href: string; anchor?: string };
 /** Пункты шапки. anchor — id блока на главной; «Работы» скрыт, если CASES пуст. */
 export const NAV: NavItem[] = [
   { label: "Калькулятор", href: "/#calculator", anchor: "calculator" },
-  { label: "Цены", href: "/#prices", anchor: "prices" },
+  { label: "Цены", href: "/ceny" },
   ...(CASES.length > 0 ? [{ label: "Работы", href: "/#works", anchor: "works" }] : []),
   { label: "Марки", href: "/ppf" },
   { label: "Гарантия", href: "/#warranty", anchor: "warranty" },
@@ -496,6 +557,7 @@ export const NAV: NavItem[] = [
 export const FOOTER_LINKS: NavItem[] = [
   { label: "Калькулятор", href: "/calculator" },
   { label: "Марки", href: "/ppf" },
+  { label: "Цены", href: "/ceny" },
   { label: "Партнёрам", href: "/partners" },
   { label: "Мастерам", href: "/master" },
   { label: "Политика конфиденциальности", href: "/privacy" },

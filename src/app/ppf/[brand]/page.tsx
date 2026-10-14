@@ -16,6 +16,7 @@ import {
   HOME,
   TELEGRAM,
   WARRANTY_WORK,
+  brandFaq,
   formatRub,
   getBrand,
   telegramUrl,
@@ -76,6 +77,10 @@ export default async function BrandPage({ params }: Props) {
   const cars = brandCars(b);
   const h1 = fillTemplate(BRAND_PAGE.h1, { brand: b.name });
   const formCars = cars.map((c) => ({ code: c.code, label: `${c.brand} ${c.model}` }));
+  const fullLows = cars
+    .map((c) => c.prices.FULL?.[STD]?.low)
+    .filter((v): v is number => typeof v === "number");
+  const faq = brandFaq(b.name, minRisk(b.slug), fullLows.length > 0 ? Math.min(...fullLows) : null);
 
   return (
     <div className="dark-grid min-h-screen text-white">
@@ -205,6 +210,21 @@ export default async function BrandPage({ params }: Props) {
           </div>
         </section>
       )}
+
+      <section className="mx-auto max-w-4xl px-4 pb-16 sm:px-6">
+        <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{BRAND_PAGE.faqTitle}</h2>
+        <div className="mt-6 space-y-2">
+          {faq.map((f) => (
+            <details key={f.q} className="dark-card group p-5">
+              <summary className="cursor-pointer list-none font-extrabold">
+                <span className="accent mr-2 inline-block transition group-open:rotate-45">+</span>
+                {f.q}
+              </summary>
+              <p className="mt-3 text-sm leading-6 text-white/65">{f.a}</p>
+            </details>
+          ))}
+        </div>
+      </section>
 
       <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6">
         <Link href="/ppf" className="text-sm font-bold accent hover:underline">

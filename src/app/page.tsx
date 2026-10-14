@@ -185,9 +185,14 @@ export default function HomePage() {
             ))}
           </div>
           <p className="mt-4 text-xs text-white/50">{HOME.pricesNote}</p>
-          <Link href="/ppf" className="mt-3 inline-block text-sm font-bold accent hover:underline">
-            {BRAND_PAGE.allBrands}
-          </Link>
+          <div className="mt-3 flex flex-wrap gap-5">
+            <Link href="/ceny" className="text-sm font-bold accent hover:underline">
+              Все цены →
+            </Link>
+            <Link href="/ppf" className="text-sm font-bold accent hover:underline">
+              {BRAND_PAGE.allBrands}
+            </Link>
+          </div>
 
           {HOME.showExample && example && (
             <div className="dark-card mt-8 max-w-xl p-5 sm:p-6">

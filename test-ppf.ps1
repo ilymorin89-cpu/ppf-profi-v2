@@ -470,6 +470,10 @@ $r = PQ @{} @{ carCode="LR_RR_L460" }
 Check "Range Rover L460 FULL TPU-S = 429000 (цена класса XL+)" ($r.Status -eq 200 -and $r.Json.low -eq 429000) "low=$($r.Json.low)"
 $h1 = [regex]::Match((Req "GET" "/" $anon).Body, '(?s)<h1.*?</h1>').Value
 Check "H1 главной: «цены от 94 000», без «Гарантия»" ((Norm $h1).Contains("94000") -and -not $h1.Contains("Гарантия"))
+$r = Req "GET" "/ceny" $anon
+$n = Norm $r.Body
+Check "/ceny -> 200, canonical, X5 349 000, допы, без цены партнёра" ($r.Status -eq 200 -and $r.Body.Contains('rel="canonical" href="https://ppfprofi.ru/ceny"') -and $n.Contains("349000") -and $r.Body.Contains("Броня лобового стекла") -and -not $n.Contains("243500"))
+Check "/ppf/bmw есть вопросы-ответы" ((Req "GET" "/ppf/bmw" $anon).Body.Contains("Сколько стоит оклейка BMW плёнкой?"))
 Check "/ppf/unknown -> 404" ((Req "GET" "/ppf/unknown-brand" $anon).Status -eq 404)
 Check "/partners: noindex" ((Req "GET" "/partners" $anon).Body -match 'name="robots" content="noindex')
 Check "/admin: noindex" ((Req "GET" "/admin" $anon).Body -match 'name="robots" content="noindex')
