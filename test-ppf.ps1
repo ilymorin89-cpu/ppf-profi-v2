@@ -465,7 +465,11 @@ $n = Norm $r.Body
 Check "/ppf/bmw -> 200, canonical, цена зон риска 129 000" ($r.Status -eq 200 -and $r.Body.Contains('rel="canonical" href="https://ppfprofi.ru/ppf/bmw"') -and $n.Contains("129000"))
 Check "/ppf/bmw есть JSON-LD Service и нет цены партнёра" ($r.Body.Contains('"@type":"Service"') -and -not $n.Contains("243500"))
 $r = Req "GET" "/ppf/lexus" $anon
-Check "/ppf/lexus -> 200, «индивидуально»" ($r.Status -eq 200 -and $r.Body.Contains("индивидуально"))
+Check "/ppf/lexus -> 200, есть LX 600 и цена" ($r.Status -eq 200 -and $r.Body.Contains("LX 600") -and (Norm $r.Body).Contains("124000"))
+$r = PQ @{} @{ carCode="LR_RR_L460" }
+Check "Range Rover L460 FULL TPU-S = 429000 (цена класса XL+)" ($r.Status -eq 200 -and $r.Json.low -eq 429000) "low=$($r.Json.low)"
+$h1 = [regex]::Match((Req "GET" "/" $anon).Body, '(?s)<h1.*?</h1>').Value
+Check "H1 главной: «цены от 94 000», без «Гарантия»" ((Norm $h1).Contains("94000") -and -not $h1.Contains("Гарантия"))
 Check "/ppf/unknown -> 404" ((Req "GET" "/ppf/unknown-brand" $anon).Status -eq 404)
 Check "/partners: noindex" ((Req "GET" "/partners" $anon).Body -match 'name="robots" content="noindex')
 Check "/admin: noindex" ((Req "GET" "/admin" $anon).Body -match 'name="robots" content="noindex')

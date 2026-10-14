@@ -21,7 +21,7 @@ import {
   telegramUrl,
 } from "@/content/site";
 import { fillTemplate } from "@/shared/format";
-import { pickerBrands } from "@/server/seo/brands";
+import { genLabel, pickerBrands } from "@/server/seo/brands";
 import { breadcrumbSchema, brandCars, organizationSchema, serviceSchema } from "@/server/seo/schema";
 
 export const revalidate = 3600;
@@ -122,6 +122,7 @@ export default async function BrandPage({ params }: Props) {
             title: BRAND_PAGE.pickerTitle,
             brand: BRAND_PAGE.pickerBrand,
             model: BRAND_PAGE.pickerModel,
+            gen: BRAND_PAGE.pickerGen,
             other: BRAND_PAGE.pickerOther,
             button: BRAND_PAGE.pickerButton,
           }}
@@ -146,6 +147,7 @@ export default async function BrandPage({ params }: Props) {
                     <div className="text-lg font-extrabold">
                       {c.brand} {c.model}
                     </div>
+                    {c.years && <div className="mt-1 text-xs text-white/50">{genLabel(c)}</div>}
                     {/* Сначала зоны риска: вход в услугу с меньшей суммы. */}
                     {risk && (
                       <div className="mt-3 text-sm font-bold">

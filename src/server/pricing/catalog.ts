@@ -15,6 +15,14 @@ export type CarEntry = {
   daysFront: number | null;
   daysRisk: number | null;
   verified: boolean;
+  /** Модель без поколения: «X5». Для группировки в выборе «марка → модель → поколение». */
+  base: string;
+  /** Поколение / кузов: «G05». */
+  gen: string;
+  /** Годы выпуска: «2018–н.в.». */
+  years: string;
+  /** "premium" — цена по классу кузова (CLASS_PRICES), иначе — расчёт по формуле. */
+  tier: string;
 };
 
 function parseNum(v: string | undefined): number | null {
@@ -55,6 +63,10 @@ export function getCars(): CarEntry[] {
       daysFront: parseNum(c[idx.days_front]),
       daysRisk: parseNum(c[idx.days_risk]),
       verified: parseBool(c[idx.verified]),
+      base: (c[idx.base] || "").trim() || (c[idx.model] || "").trim(),
+      gen: (c[idx.gen] || "").trim(),
+      years: (c[idx.years] || "").trim(),
+      tier: (c[idx.tier] || "").trim(),
     });
   }
   return rows;

@@ -1,7 +1,7 @@
 import "server-only";
 import { quote } from "./quote";
 import { getCars } from "./catalog";
-import { ADDONS, DIRECT_PRICES, HOME_ADDON_EXAMPLE } from "./config";
+import { ADDONS, DIRECT_PRICES, HOME_ADDON_EXAMPLE, fixedRetailPrice } from "./config";
 import { addonsRange, parseAddons, type AddonSelection } from "@/shared/addons";
 import {
   FILM_CODES,
@@ -21,6 +21,10 @@ export type PublicCar = {
   code: string;
   brand: string;
   model: string;
+  /** Модель без поколения («X5»), поколение («G05»), годы («2018–н.в.»). */
+  base: string;
+  gen: string;
+  years: string;
   prices: Record<ScenarioCode, Record<FilmCode, PublicPrice | null>>;
 };
 
@@ -29,10 +33,10 @@ export function getPublicPrice(
   scenario: string,
   filmCode: string
 ): PublicPrice | null {
-  const direct = DIRECT_PRICES.find(
-    (d) => d.carCode === carCode && d.scenario === scenario && d.filmCode === filmCode
-  );
-  if (direct && isKnownCar(carCode)) return { low: direct.price, high: direct.price };
+  const car = getCars().find((c) => c.code === carCode);
+  if (!car) return null;
+  const fixed = fixedRetailPrice(car, scenario, filmCode);
+  if (fixed !== null) return { low: fixed, high: fixed };
   const q = quote(carCode, scenario, filmCode);
   if (!q) return null;
   return { low: q.low, high: q.high };
@@ -74,7 +78,7 @@ export function getPublicCatalog(): PublicCar[] {
       prices[s] = {} as Record<FilmCode, PublicPrice | null>;
       for (const f of FILM_CODES) prices[s][f] = getPublicPrice(c.code, s, f);
     }
-    return { code: c.code, brand: c.brand, model: c.model, prices };
+    return { code: c.code, brand: c.brand, model: c.model, base: c.base, gen: c.gen, years: c.years, prices };
   });
 }
 

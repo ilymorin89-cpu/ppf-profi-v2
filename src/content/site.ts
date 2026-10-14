@@ -90,7 +90,7 @@ export type BrandPage = {
   slug: string;
   /** Название на сайте */
   name: string;
-  /** Как марка записана в data/pricing-cars.csv (колонка brand). null — моделей с ценой нет. */
+  /** Как марка записана в data/pricing-cars.csv (колонка brand). null — моделей в каталоге нет. */
   catalogBrand: string | null;
   /** Короткий вводный абзац, свой для каждой марки. */
   intro: string;
@@ -102,61 +102,61 @@ export const BRANDS: BrandPage[] = [
     slug: "bmw",
     name: "BMW",
     catalogBrand: "BMW",
-    intro: "Клеим X5 G05 и X7 G07: цены ниже. Для других моделей BMW посчитаю стоимость после осмотра — напишите модель и год в Telegram.",
+    intro: "X3, X4, X5, X6, X7, XM, 5 и 7 серии — цены ниже по поколениям кузова. Для других моделей BMW посчитаю стоимость после осмотра.",
   },
   {
     slug: "mercedes",
     name: "Mercedes-Benz",
     catalogBrand: "Mercedes-Benz",
-    intro: "Цены на GLE V167 — ниже. Для GLS, G-класса, S-класса и других моделей Mercedes-Benz посчитаю стоимость после осмотра.",
+    intro: "GLE, GLE Coupe, GLS, G-класс, GLC, E- и S-класс — цены ниже по поколениям кузова. Для других моделей Mercedes-Benz посчитаю стоимость после осмотра.",
   },
   {
     slug: "porsche",
     name: "Porsche",
     catalogBrand: "Porsche",
-    intro: "Цены на Cayenne E3 — ниже. Для Macan, Panamera и 911 посчитаю стоимость после осмотра.",
+    intro: "Cayenne, Cayenne Coupe, Macan, Panamera, Taycan и 911 — цены ниже по поколениям кузова.",
   },
   {
     slug: "land-rover",
     name: "Land Rover",
-    catalogBrand: null,
-    intro: "Range Rover, Range Rover Sport, Velar и Defender: стоимость зависит от кузова и комплектации, поэтому считаю индивидуально.",
+    catalogBrand: "Land Rover",
+    intro: "Range Rover, Range Rover Sport, Velar, Defender и Discovery — цены ниже по поколениям кузова.",
   },
   {
     slug: "lynk-co",
     name: "Lynk & Co",
-    catalogBrand: null,
-    intro: "Lynk & Co 01, 08, 09 и другие модели: стоимость считаю индивидуально по модели и составу работ.",
+    catalogBrand: "Lynk & Co",
+    intro: "Lynk & Co 01, 05, 08, 09 и 900 — цены ниже. Точную стоимость подтвердим после осмотра.",
   },
   {
     slug: "toyota",
     name: "Toyota",
     catalogBrand: "Toyota",
-    intro: "Цены на Land Cruiser 300 — ниже. Для Land Cruiser Prado, Camry и других моделей Toyota посчитаю стоимость после осмотра.",
+    intro: "Land Cruiser 300, Land Cruiser Prado, Highlander, Camry и RAV4 — цены ниже по поколениям кузова.",
   },
   {
     slug: "lexus",
     name: "Lexus",
-    catalogBrand: null,
-    intro: "Lexus LX, GX, RX и другие модели: стоимость считаю индивидуально по кузову и составу работ.",
+    catalogBrand: "Lexus",
+    intro: "LX, GX, RX, NX, ES и LM — цены ниже по поколениям кузова.",
   },
   {
     slug: "geely",
     name: "Geely",
     catalogBrand: "Geely",
-    intro: "Цены на Monjaro и Atlas — ниже. Для других моделей Geely посчитаю стоимость после осмотра.",
+    intro: "Monjaro, Atlas, Coolray, Tugella, Okavango и Preface — цены ниже.",
   },
   {
     slug: "lixiang",
     name: "LiXiang",
-    catalogBrand: null,
-    intro: "LiXiang L7, L8, L9 и другие модели: стоимость считаю индивидуально по кузову и составу работ.",
+    catalogBrand: "LiXiang",
+    intro: "LiXiang L6, L7, L8, L9 и Mega — цены ниже. Точную стоимость подтвердим после осмотра.",
   },
   {
     slug: "zeekr",
     name: "Zeekr",
-    catalogBrand: null,
-    intro: "Zeekr 001, 7X, 9X и другие модели: стоимость считаю индивидуально по кузову и составу работ.",
+    catalogBrand: "Zeekr",
+    intro: "Zeekr 001, 7X, 009, 9X и X — цены ниже. Точную стоимость подтвердим после осмотра.",
   },
 ];
 
@@ -196,6 +196,7 @@ export const BRAND_PAGE = {
   pickerTitle: "Подбор по автомобилю",
   pickerBrand: "Марка",
   pickerModel: "Модель",
+  pickerGen: "Поколение / кузов",
   pickerOther: "Другая модель",
   pickerButton: "Показать цену",
   allBrands: "Все марки →",
@@ -336,7 +337,8 @@ export const PRICE_EXAMPLE = {
 export const HOME = {
   eyebrow: "Оклейка защитной плёнкой",
   h1Lead: "Оклейка авто защитной плёнкой PPF в Москве — BMW, Mercedes, Porsche, Range Rover",
-  h1Price: `Гарантия ${WARRANTY_WORK}`,
+  /** {price} — минимальная цена «от» (зоны риска) среди моделей главной. */
+  h1Price: "Плёнка Spectroll, цены от {price}",
   subtitle: `${FACTS.experienceYears} лет опыта, гарантия ${WARRANTY_WORK}, плёнка Spectroll, ${CONTACTS.city}. Посчитайте свою машину за минуту.`,
   ctaCalc: "Рассчитать стоимость →",
   ctaTelegram: "Написать в Telegram",

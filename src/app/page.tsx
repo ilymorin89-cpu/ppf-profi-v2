@@ -90,7 +90,7 @@ export default function HomePage() {
             <h1 className="mt-5 text-3xl font-extrabold leading-[1.08] tracking-[-0.035em] sm:text-5xl">
               {HOME.h1Lead}{" "}
               <span className="accent">
-                {fillTemplate(HOME.h1Price, { price: formatRub(getExampleLow()) })}
+                {fillTemplate(HOME.h1Price, { price: formatRub(minRisk ?? getExampleLow()) })}
               </span>
             </h1>
             <p className="mt-6 max-w-xl text-base leading-7 text-white/70 sm:text-lg sm:leading-8">

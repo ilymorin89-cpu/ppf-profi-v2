@@ -51,6 +51,7 @@ export default function BrandsPage() {
             title: BRAND_PAGE.pickerTitle,
             brand: BRAND_PAGE.pickerBrand,
             model: BRAND_PAGE.pickerModel,
+            gen: BRAND_PAGE.pickerGen,
             other: BRAND_PAGE.pickerOther,
             button: BRAND_PAGE.pickerButton,
           }}
