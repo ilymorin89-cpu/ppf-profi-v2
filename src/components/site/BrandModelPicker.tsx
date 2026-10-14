@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
 
 export type PickerGen = { code: string; label: string };
@@ -22,6 +22,7 @@ const OTHER = "__other__";
  * Поколение из каталога ведёт в калькулятор, «Другая модель» — на страницу марки.
  */
 export default function BrandModelPicker({ brands, initialSlug, texts }: Props) {
+  const uid = useId();
   const router = useRouter();
   const start = brands.find((b) => b.slug === initialSlug) ?? brands[0];
   const [slug, setSlug] = useState(start?.slug ?? "");
@@ -53,8 +54,8 @@ export default function BrandModelPicker({ brands, initialSlug, texts }: Props) 
       <h2 className="text-lg font-extrabold">{texts.title}</h2>
       <div className="mt-4 grid gap-3">
         <div>
-          <label className="text-xs font-bold uppercase tracking-[0.14em] text-white/55">{texts.brand}</label>
-          <select value={slug} onChange={(e) => pickBrand(e.target.value)} className={selectClass}>
+          <label htmlFor={`${uid}-1`} className="text-xs font-bold uppercase tracking-[0.14em] text-white/55">{texts.brand}</label>
+          <select id={`${uid}-1`} value={slug} onChange={(e) => pickBrand(e.target.value)} className={selectClass}>
             {brands.map((b) => (
               <option key={b.slug} value={b.slug} className="bg-neutral-900 text-white">
                 {b.name}
@@ -64,8 +65,8 @@ export default function BrandModelPicker({ brands, initialSlug, texts }: Props) 
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className="text-xs font-bold uppercase tracking-[0.14em] text-white/55">{texts.model}</label>
-            <select value={base} onChange={(e) => pickModel(e.target.value)} className={selectClass}>
+            <label htmlFor={`${uid}-2`} className="text-xs font-bold uppercase tracking-[0.14em] text-white/55">{texts.model}</label>
+            <select id={`${uid}-2`} value={base} onChange={(e) => pickModel(e.target.value)} className={selectClass}>
               {brand?.models.map((m) => (
                 <option key={m.base} value={m.base} className="bg-neutral-900 text-white">
                   {m.base}
@@ -77,8 +78,8 @@ export default function BrandModelPicker({ brands, initialSlug, texts }: Props) 
             </select>
           </div>
           <div>
-            <label className="text-xs font-bold uppercase tracking-[0.14em] text-white/55">{texts.gen}</label>
-            <select
+            <label htmlFor={`${uid}-3`} className="text-xs font-bold uppercase tracking-[0.14em] text-white/55">{texts.gen}</label>
+            <select id={`${uid}-3`}
               value={code}
               onChange={(e) => setCode(e.target.value)}
               disabled={!model}

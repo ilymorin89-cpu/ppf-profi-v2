@@ -1,5 +1,7 @@
 "use client";
 
+import { useId } from "react";
+
 import Link from "next/link";
 import { buildTelegramUrl, type TelegramContact } from "@/shared/format";
 import type { SubmitResult } from "./submit";
@@ -70,10 +72,11 @@ export function ReferralInput({
   onChange: (v: string) => void;
   texts: FormTexts;
 }) {
+  const uid = useId();
   return (
     <div>
-      <label className={labelClass}>{texts.referralLabel}</label>
-      <input
+      <label htmlFor={`${uid}-1`} className={labelClass}>{texts.referralLabel}</label>
+      <input id={`${uid}-1`}
         type="text"
         value={value}
         maxLength={160}

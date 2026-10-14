@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useId } from "react";
 import { filmLabel } from "@/content/site";
 
 type Master = {
@@ -47,6 +47,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function MasterPage() {
+  const uid = useId();
   const [slug, setSlug] = useState("ilya");
   const [pin, setPin] = useState("");
   const [master, setMaster] = useState<Master | null>(null);
@@ -182,10 +183,10 @@ export default function MasterPage() {
 
             <form onSubmit={handleLogin} className="dark-card mt-8 p-8">
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
+                <label htmlFor={`${uid}-1`} className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
                   Slug мастера
                 </label>
-                <input
+                <input id={`${uid}-1`}
                   type="text"
                   value={slug}
                   onChange={(e) => setSlug(e.target.value)}
@@ -196,10 +197,10 @@ export default function MasterPage() {
               </div>
 
               <div className="mt-5">
-                <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
+                <label htmlFor={`${uid}-2`} className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
                   PIN-код
                 </label>
-                <input
+                <input id={`${uid}-2`}
                   type="text"
                   inputMode="numeric"
                   value={pin}

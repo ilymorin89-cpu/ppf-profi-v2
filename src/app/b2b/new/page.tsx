@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useId } from "react";
 import CarSearch from "@/components/CarSearch";
 import { filmLabel } from "@/content/site";
 
@@ -35,6 +35,7 @@ function newKey(): string {
 }
 
 export default function B2BNewPage() {
+  const uid = useId();
   const [partner, setPartner] = useState<Partner | null>(null);
   const [checking, setChecking] = useState(true);
 
@@ -430,10 +431,10 @@ export default function B2BNewPage() {
                   </div>
 
                   <div className="mt-6 border-t border-white/8 pt-6">
-                    <label className="text-xs font-bold uppercase tracking-[0.16em] text-white/55">
+                    <label htmlFor={`${uid}-1`} className="text-xs font-bold uppercase tracking-[0.16em] text-white/55">
                       Ваша цена клиенту
                     </label>
-                    <input
+                    <input id={`${uid}-1`}
                       type="number"
                       value={clientPrice || ""}
                       onChange={(e) => setClientPrice(Number(e.target.value) || 0)}
@@ -496,10 +497,10 @@ export default function B2BNewPage() {
 
             <form onSubmit={submitForm} className="mt-6 space-y-4">
               <div>
-                <label className="text-xs font-bold uppercase tracking-[0.14em] text-white/55">
+                <label htmlFor={`${uid}-2`} className="text-xs font-bold uppercase tracking-[0.14em] text-white/55">
                   Имя клиента
                 </label>
-                <input
+                <input id={`${uid}-2`}
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -509,10 +510,10 @@ export default function B2BNewPage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-bold uppercase tracking-[0.14em] text-white/55">
+                <label htmlFor={`${uid}-3`} className="text-xs font-bold uppercase tracking-[0.14em] text-white/55">
                   Телефон клиента
                 </label>
-                <input
+                <input id={`${uid}-3`}
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
@@ -522,10 +523,10 @@ export default function B2BNewPage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-bold uppercase tracking-[0.14em] text-white/55">
+                <label htmlFor={`${uid}-4`} className="text-xs font-bold uppercase tracking-[0.14em] text-white/55">
                   Комментарий
                 </label>
-                <textarea
+                <textarea id={`${uid}-4`}
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                   rows={3}
