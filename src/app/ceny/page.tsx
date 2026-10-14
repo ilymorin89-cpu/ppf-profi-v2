@@ -48,42 +48,97 @@ function Price({ v }: { v: number | undefined }) {
   return <>{typeof v === "number" ? `от ${formatRub(v)}` : "—"}</>;
 }
 
-function Table({ cars }: { cars: PublicCar[] }) {
+const TH = "px-3 py-3 align-bottom font-normal first:pl-0 last:pr-0";
+const TD = "px-3 py-3 align-middle first:pl-0 last:pr-0";
+
+/** Двухстрочная шапка колонки: крупное название + подпись мелко. */
+function ColHead({ title, sub }: { title: string; sub: string }) {
   return (
-    <div className="mt-4 overflow-x-auto">
-      <table className="w-full min-w-[640px] text-left text-sm">
-        <thead className="text-xs uppercase tracking-[0.1em] text-white/50">
+    <>
+      <span className="block text-xs font-extrabold uppercase tracking-[0.1em] text-white/80">{title}</span>
+      <span className="mt-1 block text-xs leading-4 text-white/45">{sub}</span>
+    </>
+  );
+}
+
+function SimpleHead({ title }: { title: string }) {
+  return (
+    <span className="block text-xs font-extrabold uppercase tracking-[0.1em] text-white/50">{title}</span>
+  );
+}
+
+function Table({ cars }: { cars: PublicCar[] }) {
+  const cells = [
+    (c: PublicCar) => c.prices.RISK_ZONES?.[STD]?.low,
+    (c: PublicCar) => c.prices.FULL?.[STD]?.low,
+    (c: PublicCar) => c.prices.FULL?.[PREMIUM]?.low,
+  ];
+  return (
+    <>
+    {/* Телефон: карточка на машину, цены видны без прокрутки */}
+    <ul className="mt-4 divide-y divide-white/8 md:hidden">
+      {cars.map((c) => (
+        <li key={c.code} className="py-4">
+          <Link href={`/calculator?car=${c.code}`} className="font-bold hover:underline">
+            {c.brand} {c.model}
+          </Link>
+          <div className="mt-0.5 text-xs text-white/50">{genLabel(c)}</div>
+          <dl className="mt-3 space-y-2">
+            {PRICES_PAGE.priceCols.map((col, i) => (
+              <div key={i} className="grid grid-cols-[1fr_auto] items-baseline gap-x-3">
+                <dt className="text-xs font-extrabold uppercase tracking-[0.08em] text-white/80">{col.title}</dt>
+                <dd className={`whitespace-nowrap text-sm font-bold tabular-nums ${i === 0 ? "accent" : ""}`}>
+                  <Price v={cells[i](c)} />
+                </dd>
+                {/* плёнка на всю ширину карточки — не переносится на узких экранах */}
+                <dd className="col-span-2 text-[11px] leading-4 text-white/45">{col.film}</dd>
+              </div>
+            ))}
+          </dl>
+        </li>
+      ))}
+    </ul>
+    <div className="mt-4 hidden md:block">
+      {/* table-fixed + одинаковые ширины: колонки ровные во всех таблицах марок */}
+      <table className="w-full table-fixed text-left text-sm">
+        <colgroup>
+          <col className="w-[26%]" />
+          <col className="w-[17%]" />
+          <col className="w-[19%]" />
+          <col className="w-[19%]" />
+          <col className="w-[19%]" />
+        </colgroup>
+        <thead>
           <tr>
-            <th className="py-2 pr-4 font-bold">{PRICES_PAGE.colModel}</th>
-            <th className="py-2 pr-4 font-bold">{PRICES_PAGE.colYears}</th>
-            <th className="py-2 pr-4 font-bold">{PRICES_PAGE.colRisk}</th>
-            <th className="py-2 pr-4 font-bold">{PRICES_PAGE.colFull}</th>
-            <th className="py-2 font-bold">{PRICES_PAGE.colPremium}</th>
+            <th className={TH}><SimpleHead title={PRICES_PAGE.colModel} /></th>
+            <th className={TH}><SimpleHead title={PRICES_PAGE.colYears} /></th>
+            {PRICES_PAGE.priceCols.map((col, i) => (
+              <th key={i} className={TH}>
+                <ColHead title={col.title} sub={col.film} />
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
           {cars.map((c) => (
             <tr key={c.code} className="border-t border-white/8">
-              <td className="py-2.5 pr-4 font-bold">
+              <td className={`${TD} font-bold`}>
                 <Link href={`/calculator?car=${c.code}`} className="hover:underline">
                   {c.brand} {c.model}
                 </Link>
               </td>
-              <td className="py-2.5 pr-4 text-white/60">{genLabel(c)}</td>
-              <td className="py-2.5 pr-4 font-bold">
-                <Price v={c.prices.RISK_ZONES?.[STD]?.low} />
-              </td>
-              <td className="py-2.5 pr-4">
-                <Price v={c.prices.FULL?.[STD]?.low} />
-              </td>
-              <td className="py-2.5">
-                <Price v={c.prices.FULL?.[PREMIUM]?.low} />
-              </td>
+              <td className={`${TD} text-white/60`}>{genLabel(c)}</td>
+              {cells.map((get, i) => (
+                <td key={i} className={`${TD} whitespace-nowrap font-bold tabular-nums ${i === 0 ? "accent" : ""}`}>
+                  <Price v={get(c)} />
+                </td>
+              ))}
             </tr>
           ))}
         </tbody>
       </table>
     </div>
+    </>
   );
 }
 
@@ -147,23 +202,53 @@ export default function PricesPage() {
         <div className="dark-card p-5 sm:p-6">
           <h2 className="text-xl font-extrabold">{PRICES_PAGE.partsTitle}</h2>
           <p className="mt-2 text-sm text-white/60">{PRICES_PAGE.partsLead}</p>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left text-sm">
-              <thead className="text-xs uppercase tracking-[0.1em] text-white/50">
+          <p className="mt-2 text-xs leading-5 text-white/45 md:hidden">
+            {PRICES_PAGE.partsCols.map((c) => `${c.title} — ${c.hint}`).join(" · ")}
+          </p>
+          <ul className="mt-4 divide-y divide-white/8 md:hidden">
+            {parts.map((p) => (
+              <li key={p.code} className="py-3">
+                <div className="text-sm font-bold">{PART_TEXTS[p.code] ?? p.code}</div>
+                <div className="mt-2 grid grid-cols-3 items-end gap-2">
+                  {[p.L, p.XL, p.XLp].map((v, i) => (
+                    <div key={i} className="min-w-0">
+                      <div className="text-[11px] leading-4 text-white/45">
+                        {PRICES_PAGE.partsCols[i].title}
+                      </div>
+                      <div className="whitespace-nowrap text-sm font-bold tabular-nums">от {formatRub(v)}</div>
+                    </div>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-4 hidden md:block">
+            <table className="w-full table-fixed text-left text-sm">
+              <colgroup>
+                <col className="w-[34%]" />
+                <col className="w-[22%]" />
+                <col className="w-[22%]" />
+                <col className="w-[22%]" />
+              </colgroup>
+              <thead>
                 <tr>
-                  <th className="py-2 pr-4 font-bold">{PRICES_PAGE.partsColPart}</th>
-                  <th className="py-2 pr-4 font-bold">{PRICES_PAGE.partsColL}</th>
-                  <th className="py-2 pr-4 font-bold">{PRICES_PAGE.partsColXL}</th>
-                  <th className="py-2 font-bold">{PRICES_PAGE.partsColXLp}</th>
+                  <th className={TH}><SimpleHead title={PRICES_PAGE.partsColPart} /></th>
+                  {PRICES_PAGE.partsCols.map((col) => (
+                    <th key={col.title} className={TH}>
+                      <ColHead title={col.title} sub={col.hint} />
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {parts.map((p) => (
                   <tr key={p.code} className="border-t border-white/8">
-                    <td className="py-2.5 pr-4 font-bold">{PART_TEXTS[p.code] ?? p.code}</td>
-                    <td className="py-2.5 pr-4">от {formatRub(p.L)}</td>
-                    <td className="py-2.5 pr-4">от {formatRub(p.XL)}</td>
-                    <td className="py-2.5">от {formatRub(p.XLp)}</td>
+                    <td className={`${TD} font-bold`}>{PART_TEXTS[p.code] ?? p.code}</td>
+                    {[p.L, p.XL, p.XLp].map((v, i) => (
+                      <td key={i} className={`${TD} whitespace-nowrap font-bold tabular-nums`}>
+                        от {formatRub(v)}
+                      </td>
+                    ))}
                   </tr>
                 ))}
               </tbody>
