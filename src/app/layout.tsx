@@ -10,7 +10,7 @@ const manrope = Manrope({
 
 export const metadata: Metadata = {
   title: "PPF PROFI — Защита автомобиля плёнкой",
-  description: "Выездной мастер в Москве. Оклейка PPF.",
+  description: "Оклейка авто защитной плёнкой PPF в Москве. Работаем на проверенных площадках.",
 };
 
 export default function RootLayout({

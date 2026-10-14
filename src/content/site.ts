@@ -13,13 +13,13 @@ export type ScenarioCode = "FULL" | "RISK_ZONES";
 export const THICKNESS_UNIT = "микрон";
 
 export const FILMS: Record<FilmCode, { name: string; thickness: number; short: string }> = {
-  PPF_STANDARD: { name: "Spectroll Standard", thickness: 170, short: "Подходит для большинства машин" },
+  PPF_STANDARD: { name: "Spectroll TPU-S", thickness: 180, short: "Подходит для большинства машин" },
   SPECTROLL_PREMIUM: { name: "Spectroll Premium", thickness: 210, short: "Слой толще, для езды по трассе" },
 };
 
 export const FILM_CODES = Object.keys(FILMS) as FilmCode[];
 
-/** «Spectroll Standard · 170 микрон»; неизвестный код возвращается как есть. */
+/** «Spectroll TPU-S · 180 микрон»; неизвестный код возвращается как есть. */
 export function filmLabel(code: string): string {
   const f = FILMS[code as FilmCode];
   return f ? `${f.name} · ${f.thickness} ${THICKNESS_UNIT}` : code;
@@ -165,12 +165,29 @@ export const FACTS = {
   /** Оклеено машин с 2022 года. null — не подтверждено, плитка скрыта. */
   carsDone: null as number | null,
   carsDoneSince: 2022,
-  warrantyMonths: 12,
+  /** Гарантия только на работу (монтаж). На материал гарантию не обещаем. */
+  warrantyMonths: 24,
+  /** Срок службы плёнки по данным производителя. Это не гарантия. */
+  filmLifeYears: 10,
 };
+
+/** Склонение «месяц»: 1 месяц, 2 месяца, 5 месяцев. */
+export function monthsWord(n: number): string {
+  const n10 = n % 10;
+  const n100 = n % 100;
+  if (n10 === 1 && n100 !== 11) return "месяц";
+  if (n10 >= 2 && n10 <= 4 && (n100 < 12 || n100 > 14)) return "месяца";
+  return "месяцев";
+}
+
+/** «24 месяца на работу» */
+export const WARRANTY_WORK = `${FACTS.warrantyMonths} ${monthsWord(FACTS.warrantyMonths)} на работу`;
+/** Формулировка про плёнку: только срок службы, не гарантия. */
+export const FILM_LIFE = `Срок службы плёнки Spectroll — до ${FACTS.filmLifeYears} лет по данным производителя`;
 
 // ---------- Fallback-значения (если расчёт недоступен) ----------
 
-/** Пример для /partners и heading главной: BMW X5 G05, полная оклейка, Spectroll Standard.
+/** Пример для /partners и heading главной: BMW X5 G05, полная оклейка, Spectroll TPU-S.
  *  Цена «от» для главной — прямая цена из src/server/pricing/config.ts (DIRECT_PRICES).
  *  fallbackLow/High/Partner — расчётные значения, используются только /partners, если расчёт недоступен. */
 export const PRICE_EXAMPLE = {
@@ -179,23 +196,19 @@ export const PRICE_EXAMPLE = {
   carFullName: "BMW X5 G05",
   scenario: "FULL" as ScenarioCode,
   film: "PPF_STANDARD" as FilmCode,
-  fallbackLow: 286_500,
-  fallbackHigh: 304_500,
+  fallbackLow: 350_000,
+  fallbackHigh: 350_000,
   /** Цена партнёру — только для /partners. */
   fallbackPartner: 243_500,
 };
-
-/** Спред партнёра в тыс. ₽ для тизера на главной (на /partners считается из расчёта). */
-export const PARTNER_SPREAD_K = { from: 125, to: 130 };
 
 // ---------- Главная ----------
 
 export const HOME = {
   eyebrow: "Оклейка защитной плёнкой",
-  h1Lead: "Оклейка авто защитной плёнкой PPF в Москве. 1000+ машин с 2022 года",
-  /** {price} — цена Standard FULL X5 G05. */
-  h1Price: "Гарантия 12 месяцев на работу и материал",
-  subtitle: `${FACTS.experienceYears} лет опыта, гарантия ${FACTS.warrantyMonths} месяцев на работу и материал, ${CONTACTS.city}. Посчитайте свою машину за минуту.`,
+  h1Lead: "Оклейка авто защитной плёнкой PPF в Москве — BMW, Mercedes, Porsche, Range Rover",
+  h1Price: `Гарантия ${WARRANTY_WORK}`,
+  subtitle: `${FACTS.experienceYears} лет опыта, гарантия ${WARRANTY_WORK}, плёнка Spectroll, ${CONTACTS.city}. Посчитайте свою машину за минуту.`,
   ctaCalc: "Рассчитать стоимость →",
   ctaTelegram: "Написать в Telegram",
   miniCalcTitle: "Калькулятор",
@@ -204,13 +217,17 @@ export const HOME = {
   miniCalcMore: "Подробный расчёт →",
 
   pricesEyebrow: "Цены",
-  pricesTitle: "Сколько стоит оклейка",
-  pricesFull: "Полная — от {price}",
+  pricesTitle: "Сколько стоит защита",
+  /** {price} — минимальная цена зон риска среди моделей на главной. */
+  pricesLead: "Начните с зон риска — от {price}. Капот, бампер, фары и зеркала первыми ловят сколы. Полную оклейку можно добавить позже.",
+  pricesFull: "Полная оклейка — от {price}",
   pricesRisk: "Зоны риска — от {price}",
-  pricesNote: "Цены для плёнки Spectroll Standard. Точную цену подтвердим после осмотра.",
+  pricesNote: "Цены «от» для плёнки Spectroll TPU-S. Spectroll Premium — в калькуляторе. Точную цену подтвердим после осмотра.",
+  /** Показывать ли на главной пример с допами. Выключен: большая итоговая сумма отпугивает, допы видны в калькуляторе. */
+  showExample: false,
   /** Пример расчёта: {car}, {items} — список допов, {total} — итог «от». */
   exampleTitle: "Пример расчёта",
-  exampleText: "{car}, полная оклейка, Spectroll Standard",
+  exampleText: "{car}, FULL · Spectroll TPU-S",
   exampleBase: "Полная оклейка — от {price}",
   exampleTotal: "Итого — от {price}",
 
@@ -233,9 +250,11 @@ export const HOME = {
   howEyebrow: "Как проходит",
   howTitle: "От расчёта до выдачи машины",
 
-  warrantyTitle: `${FACTS.warrantyMonths} месяцев на работу и материал`,
+  warrantyTitle: `Гарантия ${WARRANTY_WORK}`,
   /** Что покрывает гарантия. Пустой список — строка скрыта. */
-  warrantyCovers: [] as string[],
+  warrantyCovers: ["отслоение, пузыри и поднятые края по вине монтажа"] as string[],
+  /** Строка про плёнку под гарантией: срок службы, не гарантия. */
+  warrantyFilmLife: `${FILM_LIFE}.`,
   warrantyCoversLabel: "Покрывает:",
   warrantyNotCovered:
     "Не покрывает: механические повреждения плёнки — сколы, порезы, царапины. Плёнка принимает удар на себя, поэтому следы ударов дефектом не считаются.",
@@ -244,7 +263,7 @@ export const HOME = {
   faqTitle: "Частые вопросы",
 
   partnersEyebrow: "Партнёрам",
-  partnersText: "Автосалон, детейлинг или СТО? Зарабатывайте {from}–{to} тыс. ₽ с каждой машины.",
+  partnersText: "Автосалон, СТО, автоподбор или импорт? Зарабатывайте {spread} тыс. ₽ с каждой машины.",
   partnersButton: "Условия для партнёров →",
 
   finalTitle: "Узнайте цену для своей машины",
@@ -259,10 +278,10 @@ export const FACT_TILES: { value: string; label: string }[] = [
     value: `${scenarioDays("RISK_ZONES")} / ${scenarioDays("FULL")}`,
     label: "зоны риска / полная оклейка",
   },
-  { value: `${FACTS.warrantyMonths} мес`, label: "гарантия на работу и материал" },
+  { value: `${FACTS.warrantyMonths} мес`, label: "гарантия на работу" },
   {
     value: `${FILMS.PPF_STANDARD.thickness} / ${FILMS.SPECTROLL_PREMIUM.thickness} ${THICKNESS_UNIT}`,
-    label: "плёнка Spectroll",
+    label: `плёнка Spectroll, срок службы до ${FACTS.filmLifeYears} лет`,
   },
   ...(FACTS.carsDone
     ? [{ value: `${FACTS.carsDone}+ машин`, label: `оклеено с ${FACTS.carsDoneSince} года` }]
@@ -279,7 +298,7 @@ export const HOW_STEPS: { title: string; text: string }[] = [
   },
   {
     title: "Выдача",
-    text: `Принимаете работу. Гарантия ${FACTS.warrantyMonths} месяцев на работу и материал.`,
+    text: `Принимаете работу. Гарантия ${WARRANTY_WORK}.`,
   },
 ];
 
@@ -299,9 +318,9 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "Что входит в гарантию?",
-    a: `${FACTS.warrantyMonths} месяцев на работу и материал. Механические повреждения плёнки — сколы, порезы, царапины — гарантией не покрываются.`,
+    a: `${WARRANTY_WORK[0].toUpperCase()}${WARRANTY_WORK.slice(1)}: отслоение, пузыри, поднятые края по вине монтажа. ${FILM_LIFE}. Механические повреждения плёнки — сколы, порезы, царапины — гарантией не покрываются.`,
   },
-  { q: "Где вы работаете?", a: CONTACTS.city + "." },
+  { q: "Где вы работаете?", a: `${CONTACTS.city}. Работаем на проверенных площадках.` },
 ];
 
 // ---------- Работы (кейсы) ----------
@@ -353,7 +372,7 @@ export const FOOTER_LINKS: NavItem[] = [
 
 export const PARTNERS = {
   eyebrow: "PPF PROFI для бизнеса",
-  h1: "Зарабатывайте {from}–{to} тыс. ₽ с каждой машины на оклейке PPF",
+  h1: "Зарабатывайте {spread} тыс. ₽ с каждой машины на оклейке PPF",
   subtitle: "Вы называете клиенту цену, мы оклеиваем. Без участка и команды.",
   ctaCalc: "Рассчитать под ваш поток →",
   ctaJoin: "Стать партнёром →",
@@ -367,11 +386,11 @@ export const PARTNERS = {
   econClientPays: "Клиент платит вам",
   econSpread: "Ваш спред",
   econSpreadSuffix: "с машины",
-  econTenCars: "{n} в месяц — {from}–{to} ₽ спреда.",
+  econTenCars: "{n} в месяц — {total} ₽ спреда.",
   econTenCarsCount: 10,
-  econClientGets: `Что получает ваш клиент: плёнка Spectroll, гарантия ${FACTS.warrantyMonths} месяцев на работу и материал, зоны риска за ${scenarioDays("RISK_ZONES")}.`,
+  econClientGets: `Что получает ваш клиент: плёнка Spectroll, гарантия ${WARRANTY_WORK}, срок службы плёнки до ${FACTS.filmLifeYears} лет, зоны риска за ${scenarioDays("RISK_ZONES")}.`,
   econFootnote:
-    "Спред — разница между ценой, которую вы назвали клиенту, и ценой для партнёра. Диапазон розницы — рекомендация, цену клиенту назначаете вы. Цены на другие модели — в кабинете партнёра.",
+    "Спред — разница между ценой, которую вы назвали клиенту, и ценой для партнёра. Цена для клиента — рекомендация, цену назначаете вы. Цены на другие модели — в кабинете партнёра.",
 
   calcTitle: "Посчитайте под свой поток",
   calcPartner: "Цена для партнёра",
@@ -408,6 +427,18 @@ export const PARTNERS = {
       title: "Детейлинг-центры",
       text: "Передавайте PPF-заказы, которые не берёте. Сохраняете клиента, получаете доход.",
     },
+    {
+      title: "Автоподбор",
+      text: "Клиент только купил машину и хочет её защитить. Вы называете цену, мы оклеиваем, вы получаете спред.",
+    },
+    {
+      title: "Импортёры авто",
+      text: "Машины из Китая, Японии, Кореи и ОАЭ: защита до передачи клиенту.",
+    },
+    {
+      title: "Независимые сервисы",
+      text: "Сервисы BMW, Mercedes, Porsche, Land Rover без своего PPF.",
+    },
   ],
 
   finalTitle: "Станьте партнёром",
@@ -422,6 +453,8 @@ export const PARTNER_TYPES: { code: string; label: string }[] = [
   { code: "sto", label: "СТО" },
   { code: "body", label: "Кузовной" },
   { code: "carpicking", label: "Автоподбор" },
+  { code: "importer", label: "Импорт авто" },
+  { code: "service", label: "Независимый сервис" },
 ];
 
 export const PARTNER_FORM = {
@@ -444,12 +477,12 @@ export const PARTNER_FORM = {
 export const SEO = {
   home: {
     title: "PPF оклейка BMW, Mercedes, Porsche, LC300 в Москве | PPF PROFI",
-    /** {price} — цена «от» Standard FULL X5 G05. */
-    description: `Защитная плёнка Spectroll на премиум-авто. Полная оклейка X5 G05 от {price}, зоны риска за ${scenarioDays("RISK_ZONES")}, гарантия ${FACTS.warrantyMonths} месяцев. Расчёт онлайн.`,
+    /** {price} — цена «от» FULL X5 G05 на Spectroll TPU-S. */
+    description: `Защитная плёнка Spectroll на премиум-авто. Полная оклейка X5 G05 от {price}, зоны риска за ${scenarioDays("RISK_ZONES")}, гарантия ${WARRANTY_WORK}. Расчёт онлайн.`,
   },
   partners: {
-    title: "PPF партнёрам: спред {from}–{to} тыс. ₽ с машины | PPF PROFI",
+    title: "PPF партнёрам: спред {spread} тыс. ₽ с машины | PPF PROFI",
     description:
-      "Продавайте PPF своим клиентам без участка и команды. Пример: X5 G05, полная оклейка, ваш спред {from}–{to} тыс. ₽. Заявка за минуту.",
+      "Продавайте PPF своим клиентам без участка и команды. Пример: X5 G05, полная оклейка, ваш спред {spread} тыс. ₽. Заявка за минуту.",
   },
 };

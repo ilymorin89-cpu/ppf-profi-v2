@@ -4,7 +4,7 @@ import SiteHeader from "@/components/site/SiteHeader";
 import SiteFooter from "@/components/site/SiteFooter";
 import EconomyCalculator from "@/components/partners/EconomyCalculator";
 import PartnerLeadForm from "@/components/forms/PartnerLeadForm";
-import { getPartnerExample, spreadK } from "@/server/pricing/partner-example";
+import { getPartnerExample, spreadText } from "@/server/pricing/partner-example";
 import { carsLabel, fillTemplate } from "@/shared/format";
 import {
   FILMS,
@@ -25,7 +25,7 @@ import {
 export const revalidate = 3600;
 
 export function generateMetadata(): Metadata {
-  const k = spreadK(getPartnerExample());
+  const k = { spread: spreadText(getPartnerExample()) };
   const title = fillTemplate(SEO.partners.title, k);
   const description = fillTemplate(SEO.partners.description, k);
   return { title, description, openGraph: { title, description } };
@@ -34,9 +34,11 @@ export function generateMetadata(): Metadata {
 const fmt = (n: number) => n.toLocaleString("ru-RU");
 
 export default function PartnersPage() {
-  // Пример X5 G05 / FULL / Standard: единственное место с ценой партнёра на сайте.
+  // Пример X5 G05 / FULL / Spectroll TPU-S: единственное место с ценой партнёра на сайте.
   const ex = getPartnerExample();
-  const k = spreadK(ex);
+  const k = { spread: spreadText(ex) };
+  /** «350 000 ₽» при одной цене, «340 000–360 000 ₽» при диапазоне. */
+  const range = (a: number, b: number) => (a === b ? formatRub(a) : `${fmt(a)}–${formatRub(b)}`);
   const tenCars = PARTNERS.econTenCarsCount;
   const film = FILMS[PRICE_EXAMPLE.film];
 
@@ -87,13 +89,13 @@ export default function PartnersPage() {
                 {PARTNERS.econClientPays}
               </div>
               <div className="mt-2 text-2xl font-extrabold">
-                {fmt(ex.low)}–{formatRub(ex.high)}
+                {range(ex.low, ex.high)}
               </div>
             </div>
             <div className="rounded-xl border border-lime-400/25 bg-lime-400/[0.06] p-5">
               <div className="text-xs font-bold uppercase tracking-[0.14em] accent">{PARTNERS.econSpread}</div>
               <div className="mt-2 text-2xl font-extrabold accent">
-                {fmt(ex.low - ex.pp)}–{formatRub(ex.high - ex.pp)}
+                {range(ex.low - ex.pp, ex.high - ex.pp)}
               </div>
               <div className="mt-1 text-xs text-white/55">{PARTNERS.econSpreadSuffix}</div>
             </div>
@@ -102,8 +104,10 @@ export default function PartnersPage() {
           <p className="mt-5 text-base font-bold">
             {fillTemplate(PARTNERS.econTenCars, {
               n: carsLabel(tenCars),
-              from: fmt(tenCars * (ex.low - ex.pp)),
-              to: fmt(tenCars * (ex.high - ex.pp)),
+              total:
+                ex.low === ex.high
+                  ? fmt(tenCars * (ex.low - ex.pp))
+                  : `${fmt(tenCars * (ex.low - ex.pp))}–${fmt(tenCars * (ex.high - ex.pp))}`,
             })}
           </p>
           <p className="mt-3 text-sm leading-6 text-white/65">{PARTNERS.econClientGets}</p>
