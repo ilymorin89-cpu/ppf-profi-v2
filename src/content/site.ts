@@ -237,6 +237,7 @@ export const BRAND_PAGE = {
   pickerOther: "Другая модель",
   pickerButton: "Показать цену",
   allBrands: "Все марки →",
+  partsLink: "Цены на отдельные детали →",
   formTitle: "Узнайте цену для своей машины",
   faqTitle: "Частые вопросы",
   breadcrumbHome: "Главная",
@@ -258,6 +259,12 @@ export const PRICES_PAGE = {
   colFull: "FULL · TPU-S",
   colPremium: "FULL · Premium",
   otherBrands: "Другие марки",
+  partsTitle: "Оклейка отдельных деталей",
+  partsLead: "Цены «от» на плёнке Spectroll TPU-S по размеру кузова. Точную стоимость подтвердим после осмотра.",
+  partsColPart: "Деталь",
+  partsColL: "Средние (X3, GLC, Macan)",
+  partsColXL: "Крупные (X5, GLE, Cayenne)",
+  partsColXLp: "Полноразмерные (X7, GLS, Range Rover)",
   addonsTitle: "Дополнительные работы",
   addonsNote: "Цены допов одинаковые для всех моделей.",
   calcCta: "Посчитать свою машину →",
@@ -347,6 +354,30 @@ export const ADDON_TEXTS: Record<string, { label: string; desc?: string; unit?: 
     label: "Тонировка",
     desc: "В рамках требований к светопропусканию стёкол",
   },
+  MATTE: { label: "Матовая плёнка", desc: "Доплата к полной оклейке" },
+};
+
+/** Названия отдельных деталей (коды — PART_PRICES_XL в src/server/pricing/config.ts). */
+export const PART_TEXTS: Record<string, string> = {
+  HOOD_STRIPE: "Полоса на капот",
+  HOOD: "Капот",
+  TRUNK_LID: "Крышка багажника",
+  ROOF: "Крыша",
+  ROOF_STRIPE: "Полоса на крыше",
+  LOADING_ZONE: "Зона погрузки заднего бампера",
+  FRONT_BUMPER: "Передний бампер",
+  FRONT_FENDER: "Переднее крыло",
+  REAR_BUMPER: "Задний бампер",
+  REAR_FENDER: "Заднее крыло",
+  DOOR: "Дверь",
+  HANDLE_CUPS: "Под ручки дверей, 4 шт",
+  SILL_OUTER: "Порог снаружи, 1 шт",
+  SILLS_INNER_4: "Пороги внутри, 4 шт",
+  HEADLIGHTS: "Фары головного света, 2 шт",
+  MIRRORS: "Зеркала, 2 шт",
+  A_PILLARS: "Стойки передние, 2 шт",
+  FOG_LIGHTS: "ПТФ, 2 шт",
+  SPOILER: "Спойлер",
 };
 
 // ---------- Факты о мастере ----------

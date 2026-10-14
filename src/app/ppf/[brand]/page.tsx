@@ -175,6 +175,9 @@ export default async function BrandPage({ params }: Props) {
               })}
             </div>
             <p className="mt-4 text-xs text-white/50">{BRAND_PAGE.pricesNote}</p>
+            <Link href="/ceny#parts" className="mt-2 inline-block text-sm font-bold accent hover:underline">
+              {BRAND_PAGE.partsLink}
+            </Link>
           </>
         ) : (
           <div className="dark-card p-6 sm:p-10">

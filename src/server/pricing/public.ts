@@ -1,7 +1,7 @@
 import "server-only";
 import { quote } from "./quote";
 import { getCars } from "./catalog";
-import { ADDONS, DIRECT_PRICES, HOME_ADDON_EXAMPLE, fixedRetailPrice } from "./config";
+import { ADDONS, DIRECT_PRICES, HOME_ADDON_EXAMPLE, PART_PRICES_XL, fixedRetailPrice, partPrice } from "./config";
 import { addonsRange, parseAddons, type AddonSelection } from "@/shared/addons";
 import {
   FILM_CODES,
@@ -105,6 +105,16 @@ export function getExampleLow(): number {
 }
 
 /** Цены допов для калькулятора: только публичные цены, без экономики. */
+/** Прайс отдельных деталей по классам кузова (только розница). */
+export function getPublicPartPrices(): { code: string; L: number; XL: number; XLp: number }[] {
+  return PART_PRICES_XL.map((p) => ({
+    code: p.code,
+    L: partPrice(p.price, "L"),
+    XL: p.price,
+    XLp: partPrice(p.price, "XL+"),
+  }));
+}
+
 export function getPublicAddonPrices() {
   return ADDONS;
 }

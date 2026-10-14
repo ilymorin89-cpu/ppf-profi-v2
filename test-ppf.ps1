@@ -423,7 +423,9 @@ Check "X5 RISK TPU-S = 129000" ($r.Status -eq 200 -and $r.Json.low -eq 129000) "
 $r = PQ @{ PILLARS=6; SILLS_INNER=1 }
 Check "Full + 6 стоек + пороги = 363000 (сервер)" ($r.Status -eq 200 -and $r.Json.low -eq 363000) "low=$($r.Json.low)"
 $r = PQ @{ PILLARS=6; SILLS_INNER=1; SCREENS=1; PANORAMA=1; WINDSHIELD=1; TINT=1 }
-Check "все допы = от 435000" ($r.Status -eq 200 -and $r.Json.low -eq 435000) "low=$($r.Json.low)"
+Check "все допы без мата = от 435000" ($r.Status -eq 200 -and $r.Json.low -eq 435000) "low=$($r.Json.low)"
+$r = PQ @{ MATTE=1 }
+Check "матовая плёнка +35000 = 384000" ($r.Status -eq 200 -and $r.Json.low -eq 384000) "low=$($r.Json.low)"
 $r = PQ @{ PILLARS=6; SILLS_INNER=1 } @{ price=1; total=1; low=1; high=1 }
 Check "подделанная сумма в теле игнорируется" ($r.Status -eq 200 -and $r.Json.low -eq 363000) "low=$($r.Json.low)"
 $r = PQ @{ PILLARS=0 }
@@ -472,7 +474,7 @@ $h1 = [regex]::Match((Req "GET" "/" $anon).Body, '(?s)<h1.*?</h1>').Value
 Check "H1 главной: «цены от 94 000», без «Гарантия»" ((Norm $h1).Contains("94000") -and -not $h1.Contains("Гарантия"))
 $r = Req "GET" "/ceny" $anon
 $n = Norm $r.Body
-Check "/ceny -> 200, canonical, X5 349 000, допы, без цены партнёра" ($r.Status -eq 200 -and $r.Body.Contains('rel="canonical" href="https://ppfprofi.ru/ceny"') -and $n.Contains("349000") -and $r.Body.Contains("Броня лобового стекла") -and -not $n.Contains("243500"))
+Check "/ceny -> 200, canonical, X5 349 000, допы, без цены партнёра" ($r.Status -eq 200 -and $r.Body.Contains('rel="canonical" href="https://ppfprofi.ru/ceny"') -and $n.Contains("349000") -and $r.Body.Contains("Броня лобового стекла") -and $r.Body.Contains("Капот") -and $n.Contains("43000") -and -not $n.Contains("243500"))
 Check "/ppf/bmw есть вопросы-ответы" ((Req "GET" "/ppf/bmw" $anon).Body.Contains("Сколько стоит оклейка BMW плёнкой?"))
 Check "/ppf/unknown -> 404" ((Req "GET" "/ppf/unknown-brand" $anon).Status -eq 404)
 Check "/partners: noindex" ((Req "GET" "/partners" $anon).Body -match 'name="robots" content="noindex')

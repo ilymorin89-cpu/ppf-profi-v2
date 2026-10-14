@@ -103,7 +103,14 @@ export function fixedRetailPrice(
   return typeof v === "number" ? v : null;
 }
 
-export type AddonCode = "PILLARS" | "SILLS_INNER" | "SCREENS" | "PANORAMA" | "WINDSHIELD" | "TINT";
+export type AddonCode =
+  | "PILLARS"
+  | "SILLS_INNER"
+  | "SCREENS"
+  | "PANORAMA"
+  | "WINDSHIELD"
+  | "TINT"
+  | "MATTE";
 
 /**
  * Допы одинаковы для всех моделей, без коэффициента класса.
@@ -116,7 +123,44 @@ export const ADDONS: Record<AddonCode, { price: number; priceMax?: number; maxQt
   PANORAMA: { price: 20_000, maxQty: 1 },
   WINDSHIELD: { price: 30_000, maxQty: 1 },
   TINT: { price: 15_000, maxQty: 1 },
+  /** Доплата за матовую плёнку к полной оклейке (решение Ильи 14.10.2026). */
+  MATTE: { price: 35_000, maxQty: 1 },
 };
+
+// ---------- Отдельные детали ----------
+
+/**
+ * Цены на отдельные детали для класса XL (X5, GLE, Cayenne). Источник: Илья, 14.10.2026.
+ * Для L и XL+ цена пересчитывается пропорционально цене полной оклейки класса (CLASS_PRICES, TPU-S).
+ */
+export const PART_PRICES_XL: { code: string; price: number }[] = [
+  { code: "HOOD_STRIPE", price: 11_000 },
+  { code: "HOOD", price: 43_000 },
+  { code: "TRUNK_LID", price: 17_500 },
+  { code: "ROOF", price: 50_500 },
+  { code: "ROOF_STRIPE", price: 10_000 },
+  { code: "LOADING_ZONE", price: 5_500 },
+  { code: "FRONT_BUMPER", price: 33_000 },
+  { code: "FRONT_FENDER", price: 16_500 },
+  { code: "REAR_BUMPER", price: 45_500 },
+  { code: "REAR_FENDER", price: 47_000 },
+  { code: "DOOR", price: 14_500 },
+  { code: "HANDLE_CUPS", price: 5_500 },
+  { code: "SILL_OUTER", price: 16_000 },
+  { code: "SILLS_INNER_4", price: 12_500 },
+  { code: "HEADLIGHTS", price: 10_500 },
+  { code: "MIRRORS", price: 10_000 },
+  { code: "A_PILLARS", price: 14_000 },
+  { code: "FOG_LIGHTS", price: 8_000 },
+  { code: "SPOILER", price: 14_000 },
+];
+
+/** Цена детали для класса кузова: XL — как в прайсе, L и XL+ — пропорционально полной оклейке, шаг 500 ₽. */
+export function partPrice(xlPrice: number, cls: "L" | "XL" | "XL+"): number {
+  if (cls === "XL") return xlPrice;
+  const k = CLASS_PRICES[cls].FULL.PPF_STANDARD / CLASS_PRICES.XL.FULL.PPF_STANDARD;
+  return Math.round((xlPrice * k) / 500) * 500;
+}
 
 export const ADDON_CODES = Object.keys(ADDONS) as AddonCode[];
 

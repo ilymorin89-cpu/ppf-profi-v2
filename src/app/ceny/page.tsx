@@ -6,12 +6,18 @@ import JsonLd from "@/components/site/JsonLd";
 import {
   ADDON_TEXTS,
   BRANDS,
+  PART_TEXTS,
   BRAND_PAGE,
   PRICES_PAGE,
   formatRub,
 } from "@/content/site";
 import { fillTemplate } from "@/shared/format";
-import { getPublicAddonPrices, getPublicCatalog, type PublicCar } from "@/server/pricing/public";
+import {
+  getPublicAddonPrices,
+  getPublicCatalog,
+  getPublicPartPrices,
+  type PublicCar,
+} from "@/server/pricing/public";
 import { breadcrumbSchema, organizationSchema, serviceSchema } from "@/server/seo/schema";
 import { genLabel } from "@/server/seo/brands";
 
@@ -90,6 +96,7 @@ export default function PricesPage() {
   const known = new Set(BRANDS.map((b) => b.catalogBrand));
   const others = catalog.filter((c) => !known.has(c.brand));
   const addons = getPublicAddonPrices();
+  const parts = getPublicPartPrices();
 
   return (
     <div className="dark-grid min-h-screen text-white">
@@ -134,6 +141,35 @@ export default function PricesPage() {
             <Table cars={others} />
           </div>
         )}
+      </section>
+
+      <section id="parts" className="mx-auto max-w-7xl scroll-mt-28 px-4 pb-10 sm:px-6">
+        <div className="dark-card p-5 sm:p-6">
+          <h2 className="text-xl font-extrabold">{PRICES_PAGE.partsTitle}</h2>
+          <p className="mt-2 text-sm text-white/60">{PRICES_PAGE.partsLead}</p>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead className="text-xs uppercase tracking-[0.1em] text-white/50">
+                <tr>
+                  <th className="py-2 pr-4 font-bold">{PRICES_PAGE.partsColPart}</th>
+                  <th className="py-2 pr-4 font-bold">{PRICES_PAGE.partsColL}</th>
+                  <th className="py-2 pr-4 font-bold">{PRICES_PAGE.partsColXL}</th>
+                  <th className="py-2 font-bold">{PRICES_PAGE.partsColXLp}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {parts.map((p) => (
+                  <tr key={p.code} className="border-t border-white/8">
+                    <td className="py-2.5 pr-4 font-bold">{PART_TEXTS[p.code] ?? p.code}</td>
+                    <td className="py-2.5 pr-4">от {formatRub(p.L)}</td>
+                    <td className="py-2.5 pr-4">от {formatRub(p.XL)}</td>
+                    <td className="py-2.5">от {formatRub(p.XLp)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </section>
 
       <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6">
