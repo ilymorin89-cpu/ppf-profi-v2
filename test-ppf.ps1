@@ -476,6 +476,7 @@ $r = Req "GET" "/ceny" $anon
 $n = Norm $r.Body
 Check "/ceny -> 200, canonical, X5 349 000, допы, без цены партнёра" ($r.Status -eq 200 -and $r.Body.Contains('rel="canonical" href="https://ppfprofi.ru/ceny"') -and $n.Contains("349000") -and $r.Body.Contains("Броня лобового стекла") -and $r.Body.Contains("Капот") -and $n.Contains("43000") -and -not $n.Contains("243500"))
 Check "/ppf/bmw есть вопросы-ответы" ((Req "GET" "/ppf/bmw" $anon).Body.Contains("Сколько стоит оклейка BMW плёнкой?"))
+Check "/ppf/bmw и / : адрес площадки в «Где проходит оклейка?»" ((Req "GET" "/ppf/bmw" $anon).Body.Contains("шоссе Энтузиастов, 12, корп. 2") -and (Req "GET" "/" $anon).Body.Contains("шоссе Энтузиастов, 12, корп. 2"))
 Check "/ppf/unknown -> 404" ((Req "GET" "/ppf/unknown-brand" $anon).Status -eq 404)
 Check "/partners: noindex" ((Req "GET" "/partners" $anon).Body -match 'name="robots" content="noindex')
 Check "/admin: noindex" ((Req "GET" "/admin" $anon).Body -match 'name="robots" content="noindex')
