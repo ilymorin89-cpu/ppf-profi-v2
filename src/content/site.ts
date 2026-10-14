@@ -19,6 +19,12 @@ export const FILMS: Record<FilmCode, { name: string; thickness: number; short: s
 
 export const FILM_CODES = Object.keys(FILMS) as FilmCode[];
 
+/** «Spectroll TPU-S 180 микрон» — так плёнка подписывается в прайсах. */
+export function filmPriceLabel(code: FilmCode): string {
+  const f = FILMS[code];
+  return `${f.name} ${f.thickness} ${THICKNESS_UNIT}`;
+}
+
 /** «Spectroll TPU-S · 180 микрон»; неизвестный код возвращается как есть. */
 export function filmLabel(code: string): string {
   const f = FILMS[code as FilmCode];
@@ -219,9 +225,9 @@ export const BRAND_PAGE = {
   seoDescription:
     "Защитная плёнка Spectroll на {brand} в Москве. Стоимость считаю индивидуально, гарантия {warranty}. Напишите модель в Telegram.",
   modelsTitle: "Цены на модели",
-  riskTpu: "Зоны риска · Spectroll TPU-S — от {price}",
-  fullTpu: "FULL · Spectroll TPU-S — от {price}",
-  fullPremium: "FULL · Spectroll Premium — от {price}",
+  riskTpu: `Зоны риска · ${filmPriceLabel("PPF_STANDARD")} — от {price}`,
+  fullTpu: `FULL · ${filmPriceLabel("PPF_STANDARD")} — от {price}`,
+  fullPremium: `FULL · ${filmPriceLabel("SPECTROLL_PREMIUM")} — от {price}`,
   calcLink: "Подробный расчёт →",
   noModelsTitle: "Стоимость — индивидуально",
   noModelsText:
@@ -265,12 +271,12 @@ export const PRICES_PAGE = {
   lead: "Цены «от» на плёнке Spectroll по маркам, моделям и поколениям кузова. Точную стоимость подтвердим после осмотра.",
   colModel: "Модель",
   colYears: "Поколение",
-  colRisk: "Зоны риска · TPU-S",
-  colFull: "FULL · TPU-S",
-  colPremium: "FULL · Premium",
+  colRisk: `Зоны риска · ${filmPriceLabel("PPF_STANDARD")}`,
+  colFull: `FULL · ${filmPriceLabel("PPF_STANDARD")}`,
+  colPremium: `FULL · ${filmPriceLabel("SPECTROLL_PREMIUM")}`,
   otherBrands: "Другие марки",
   partsTitle: "Оклейка отдельных деталей",
-  partsLead: "Цены «от» на плёнке Spectroll TPU-S по размеру кузова. Точную стоимость подтвердим после осмотра.",
+  partsLead: "Цены «от» на плёнке Spectroll TPU-S 180 микрон по размеру кузова. Точную стоимость подтвердим после осмотра.",
   partsColPart: "Деталь",
   partsColL: "Средние (X3, GLC, Macan)",
   partsColXL: "Крупные (X5, GLE, Cayenne)",
@@ -453,9 +459,9 @@ export const HOME = {
   pricesTitle: "Сколько стоит защита",
   /** {price} — минимальная цена зон риска среди моделей на главной. */
   pricesLead: "Начните с зон риска — от {price}. Капот, бампер, фары и зеркала первыми ловят сколы. Полную оклейку можно добавить позже.",
-  pricesFull: "Полная оклейка — от {price}",
-  pricesRisk: "Зоны риска — от {price}",
-  pricesNote: "Цены «от» для плёнки Spectroll TPU-S. Spectroll Premium — в калькуляторе. Точную цену подтвердим после осмотра.",
+  pricesFull: `FULL · ${filmPriceLabel("PPF_STANDARD")} — от {price}`,
+  pricesRisk: `Зоны риска · ${filmPriceLabel("PPF_STANDARD")} — от {price}`,
+  pricesNote: "Цены «от» для плёнки Spectroll TPU-S 180 микрон. Spectroll Premium 210 микрон — в калькуляторе. Точную цену подтвердим после осмотра.",
   /** Показывать ли на главной пример с допами. Выключен: большая итоговая сумма отпугивает, допы видны в калькуляторе. */
   showExample: false,
   /** Пример расчёта: {car}, {items} — список допов, {total} — итог «от». */
