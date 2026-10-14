@@ -75,14 +75,15 @@ export default function HeroCalculator({ cars, texts }: Props) {
 
       {car && (car.full || car.risk) && (
         <div className="mt-5 space-y-2 rounded-xl border border-white/10 bg-black/40 p-4 text-sm">
-          {car.full && (
+          {/* Сначала зоны риска: вход в услугу с меньшей суммы. */}
+          {car.risk && (
             <div className="font-extrabold">
-              {fillTemplate(texts.full, { price: formatRub(car.full.low) })}
+              {fillTemplate(texts.risk, { price: formatRub(car.risk.low) })}
             </div>
           )}
-          {car.risk && (
+          {car.full && (
             <div className="font-bold text-white/75">
-              {fillTemplate(texts.risk, { price: formatRub(car.risk.low) })}
+              {fillTemplate(texts.full, { price: formatRub(car.full.low) })}
             </div>
           )}
           <p className="pt-1 text-xs leading-5 text-white/50">{texts.note}</p>

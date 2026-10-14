@@ -13,6 +13,7 @@ import {
   getPublicCatalog,
 } from "@/server/pricing/public";
 import { fillTemplate } from "@/shared/format";
+import { getPartnerExample, spreadText } from "@/server/pricing/partner-example";
 import {
   ADDON_TEXTS,
   CALCULATOR,
@@ -23,7 +24,6 @@ import {
   FORM_TEXTS,
   HOME,
   HOW_STEPS,
-  PARTNER_SPREAD_K,
   PRICE_EXAMPLE,
   SCENARIOS,
   SCENARIO_CODES,
@@ -62,8 +62,11 @@ export default function HomePage() {
   // Сначала шесть основных моделей — мини-калькулятор открывается на X5 G05.
   const orderedCars = [...topCars, ...miniCars.filter((c) => !topCars.includes(c))];
   const formCars = orderedCars.map((c) => ({ code: c.code, label: `${c.brand} ${c.model}` }));
-  // Пример расчёта: X5 G05 Full Standard + допы, все числа из src/server/pricing/config.ts.
+  // Пример расчёта: X5 G05 FULL · Spectroll TPU-S + допы, все числа из src/server/pricing/config.ts.
   const example = getHomeExample();
+  // Минимальная цена зон риска среди моделей главной — «вход» в услугу.
+  const riskLows = topCars.map((c) => c.risk?.low).filter((v): v is number => typeof v === "number");
+  const minRisk = riskLows.length > 0 ? Math.min(...riskLows) : null;
   const addonPrices = getPublicAddonPrices() as Record<string, { price: number }>;
 
   return (
@@ -143,6 +146,11 @@ export default function HomePage() {
           <h2 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">
             {HOME.pricesTitle}
           </h2>
+          {minRisk !== null && (
+            <p className="mt-4 max-w-2xl text-base leading-7 text-white/70">
+              {fillTemplate(HOME.pricesLead, { price: formatRub(minRisk) })}
+            </p>
+          )}
           <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {topCars.map((c) => (
               <Link
@@ -153,14 +161,15 @@ export default function HomePage() {
                 <div className="text-lg font-extrabold">
                   {c.brand} {c.model}
                 </div>
-                {c.full && (
+                {/* Сначала зоны риска: вход в услугу с меньшей суммы. */}
+                {c.risk && (
                   <div className="mt-3 text-sm font-bold">
-                    {fillTemplate(HOME.pricesFull, { price: formatRub(c.full.low) })}
+                    {fillTemplate(HOME.pricesRisk, { price: formatRub(c.risk.low) })}
                   </div>
                 )}
-                {c.risk && (
+                {c.full && (
                   <div className="mt-1 text-sm text-white/65">
-                    {fillTemplate(HOME.pricesRisk, { price: formatRub(c.risk.low) })}
+                    {fillTemplate(HOME.pricesFull, { price: formatRub(c.full.low) })}
                   </div>
                 )}
               </Link>
@@ -168,7 +177,7 @@ export default function HomePage() {
           </div>
           <p className="mt-4 text-xs text-white/50">{HOME.pricesNote}</p>
 
-          {example && (
+          {HOME.showExample && example && (
             <div className="dark-card mt-8 max-w-xl p-5 sm:p-6">
               <div className="text-sm font-extrabold uppercase tracking-[0.14em] accent">
                 {HOME.exampleTitle}
@@ -262,6 +271,9 @@ export default function HomePage() {
               {HOME.warrantyCoversLabel} {HOME.warrantyCovers.join(", ")}.
             </p>
           )}
+          {HOME.warrantyFilmLife && (
+            <p className="mt-4 text-sm leading-6 text-white/70">{HOME.warrantyFilmLife}</p>
+          )}
           <p className="mt-4 max-w-3xl text-sm leading-6 text-white/60">{HOME.warrantyNotCovered}</p>
         </div>
       </section>
@@ -291,7 +303,7 @@ export default function HomePage() {
           <div>
             <div className="eyebrow">{HOME.partnersEyebrow}</div>
             <p className="mt-3 max-w-2xl text-xl font-extrabold leading-snug sm:text-2xl">
-              {fillTemplate(HOME.partnersText, PARTNER_SPREAD_K)}
+              {fillTemplate(HOME.partnersText, { spread: spreadText(getPartnerExample()) })}
             </p>
           </div>
           <Link href="/partners" className="btn-accent shrink-0 justify-center">

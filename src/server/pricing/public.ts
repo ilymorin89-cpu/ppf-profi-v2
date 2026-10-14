@@ -56,7 +56,7 @@ export function getPublicTotal(
   return { base, addons: a, total: { low: base.low + a.low, high: base.high + a.high } };
 }
 
-/** Пример расчёта на главной: X5 G05 Full Standard + допы из HOME_ADDON_EXAMPLE. */
+/** Пример расчёта на главной: X5 G05 FULL · Spectroll TPU-S + допы из HOME_ADDON_EXAMPLE. */
 export function getHomeExample() {
   const r = getPublicTotal(
     PRICE_EXAMPLE.carCode,
@@ -87,7 +87,7 @@ export function carName(carCode: string): string {
   return c ? `${c.brand} ${c.model}` : carCode;
 }
 
-/** Цена «от» для H1 и метаданных главной: Standard FULL X5 G05; fallback — прямая цена из config.ts. */
+/** Цена «от» для H1 и метаданных главной: FULL X5 G05 на Spectroll TPU-S; fallback — прямая цена из config.ts. */
 export function getExampleLow(): number {
   const p = getPublicPrice(PRICE_EXAMPLE.carCode, PRICE_EXAMPLE.scenario, PRICE_EXAMPLE.film);
   if (p) return p.low;
