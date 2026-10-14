@@ -415,19 +415,19 @@ function PQ($addons, $extra = @{}) {
     return Req "POST" "/api/public-quote" $anon $b $pqXff
 }
 $r = PQ @{}
-Check "X5 FULL TPU-S = 350000" ($r.Status -eq 200 -and $r.Json.low -eq 350000) "low=$($r.Json.low)"
+Check "X5 FULL TPU-S = 349000" ($r.Status -eq 200 -and $r.Json.low -eq 349000) "low=$($r.Json.low)"
 $r = PQ @{} @{ filmCode="SPECTROLL_PREMIUM" }
-Check "X5 FULL Premium = 410000" ($r.Status -eq 200 -and $r.Json.low -eq 410000) "low=$($r.Json.low)"
+Check "X5 FULL Premium = 409000" ($r.Status -eq 200 -and $r.Json.low -eq 409000) "low=$($r.Json.low)"
 $r = PQ @{} @{ scenario="RISK_ZONES" }
-Check "X5 RISK TPU-S = 130000" ($r.Status -eq 200 -and $r.Json.low -eq 130000) "low=$($r.Json.low)"
+Check "X5 RISK TPU-S = 129000" ($r.Status -eq 200 -and $r.Json.low -eq 129000) "low=$($r.Json.low)"
 $r = PQ @{ PILLARS=6; SILLS_INNER=1 }
-Check "Full + 6 стоек + пороги = 364000 (сервер)" ($r.Status -eq 200 -and $r.Json.low -eq 364000) "low=$($r.Json.low)"
+Check "Full + 6 стоек + пороги = 363000 (сервер)" ($r.Status -eq 200 -and $r.Json.low -eq 363000) "low=$($r.Json.low)"
 $r = PQ @{ PILLARS=6; SILLS_INNER=1; SCREENS=1; PANORAMA=1; WINDSHIELD=1; TINT=1 }
-Check "все допы = от 436000" ($r.Status -eq 200 -and $r.Json.low -eq 436000) "low=$($r.Json.low)"
+Check "все допы = от 435000" ($r.Status -eq 200 -and $r.Json.low -eq 435000) "low=$($r.Json.low)"
 $r = PQ @{ PILLARS=6; SILLS_INNER=1 } @{ price=1; total=1; low=1; high=1 }
-Check "подделанная сумма в теле игнорируется" ($r.Status -eq 200 -and $r.Json.low -eq 364000) "low=$($r.Json.low)"
+Check "подделанная сумма в теле игнорируется" ($r.Status -eq 200 -and $r.Json.low -eq 363000) "low=$($r.Json.low)"
 $r = PQ @{ PILLARS=0 }
-Check "стойки 0 -> 200, 350000" ($r.Status -eq 200 -and $r.Json.low -eq 350000) "status=$($r.Status) low=$($r.Json.low)"
+Check "стойки 0 -> 200, 349000" ($r.Status -eq 200 -and $r.Json.low -eq 349000) "status=$($r.Status) low=$($r.Json.low)"
 Check "стойки 6 -> 200" ((PQ @{ PILLARS=6 }).Status -eq 200)
 Check "стойки 7 -> 400" ((PQ @{ PILLARS=7 }).Status -eq 400)
 Check "стойки -1 -> 400" ((PQ @{ PILLARS=-1 }).Status -eq 400)
@@ -444,11 +444,11 @@ foreach ($p in @("/", "/calculator")) {
     Check "$p нет запрещённых слов" (-not $m.Success) "найдено: $($m.Value)"
 }
 $h = Norm (Req "GET" "/" $anon).Body
-Check "/ есть 350 000 и вход «от 95 000» (зоны риска)" ($h.Contains("350000") -and $h.Contains("95000"))
+Check "/ есть 349 000 и вход «от 94 000» (зоны риска)" ($h.Contains("349000") -and $h.Contains("94000"))
 Check "/ есть «24 месяца на работу» и «до 10 лет по данным производителя»" ($h.Contains("24месяцанаработу") -and $h.Contains("до10летподаннымпроизводителя"))
 Check "/ есть плёнки Spectroll TPU-S и Premium" ($h.Contains("SpectrollTPU-S") -and $h.Contains("SpectrollPremium"))
 $pb = Norm (Req "GET" "/partners" $anon).Body
-Check "/partners спред 106,5 тыс. и цена партнёра 243 500" ($pb.Contains("106,5") -and $pb.Contains("243500"))
+Check "/partners спред 105,5 тыс. и цена партнёра 243 500" ($pb.Contains("105,5") -and $pb.Contains("243500"))
 $c = (Req "GET" "/calculator" $anon).Body
 Check "/calculator есть допы (стойки, крыша «если есть», тонировка)" ($c.Contains("Стойки") -and $c.Contains("если есть") -and $c.Contains("Тонировка"))
 

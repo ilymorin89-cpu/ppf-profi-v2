@@ -30,37 +30,38 @@ export const FILMS: Record<FilmCode, { label: string; pricePerMeter: number }> =
 // Единственное место, где задаются прямые цены и цены допов.
 // PPF_STANDARD = Spectroll TPU-S 180 микрон, SPECTROLL_PREMIUM = Spectroll Premium 210 микрон.
 
-/** Прямая цена для клиента «от». Заменяет расчётный диапазон только для этой комбинации. */
+/** Прямая цена для клиента «от». Заменяет расчётный диапазон только для этой комбинации.
+ *  Цены вида 349 000 вместо 350 000 — решение Ильи 14.10.2026 (воспринимаются ниже). */
 export const DIRECT_PRICES: {
   carCode: string;
   scenario: "FULL" | "RISK_ZONES";
   filmCode: FilmCode;
   price: number;
 }[] = [
-  { carCode: "BMW_X5_G05",         scenario: "FULL",       filmCode: "PPF_STANDARD",      price: 350000 },
-  { carCode: "BMW_X5_G05",         scenario: "FULL",       filmCode: "SPECTROLL_PREMIUM", price: 410000 },
-  { carCode: "BMW_X5_G05",         scenario: "RISK_ZONES", filmCode: "PPF_STANDARD",      price: 130000 },
-  { carCode: "BMW_X5_G05",         scenario: "RISK_ZONES", filmCode: "SPECTROLL_PREMIUM", price: 150000 },
-  { carCode: "BMW_X7_G07",         scenario: "FULL",       filmCode: "PPF_STANDARD",      price: 430000 },
-  { carCode: "BMW_X7_G07",         scenario: "FULL",       filmCode: "SPECTROLL_PREMIUM", price: 500000 },
-  { carCode: "BMW_X7_G07",         scenario: "RISK_ZONES", filmCode: "PPF_STANDARD",      price: 130000 },
-  { carCode: "BMW_X7_G07",         scenario: "RISK_ZONES", filmCode: "SPECTROLL_PREMIUM", price: 150000 },
-  { carCode: "MB_GLE_V167",        scenario: "FULL",       filmCode: "PPF_STANDARD",      price: 350000 },
-  { carCode: "MB_GLE_V167",        scenario: "FULL",       filmCode: "SPECTROLL_PREMIUM", price: 410000 },
-  { carCode: "MB_GLE_V167",        scenario: "RISK_ZONES", filmCode: "PPF_STANDARD",      price: 95000 },
-  { carCode: "MB_GLE_V167",        scenario: "RISK_ZONES", filmCode: "SPECTROLL_PREMIUM", price: 110000 },
-  { carCode: "PORSCHE_CAYENNE_E3", scenario: "FULL",       filmCode: "PPF_STANDARD",      price: 350000 },
-  { carCode: "PORSCHE_CAYENNE_E3", scenario: "FULL",       filmCode: "SPECTROLL_PREMIUM", price: 410000 },
-  { carCode: "PORSCHE_CAYENNE_E3", scenario: "RISK_ZONES", filmCode: "PPF_STANDARD",      price: 95000 },
-  { carCode: "PORSCHE_CAYENNE_E3", scenario: "RISK_ZONES", filmCode: "SPECTROLL_PREMIUM", price: 110000 },
-  { carCode: "TOYOTA_LC300",       scenario: "FULL",       filmCode: "PPF_STANDARD",      price: 430000 },
-  { carCode: "TOYOTA_LC300",       scenario: "FULL",       filmCode: "SPECTROLL_PREMIUM", price: 500000 },
-  { carCode: "TOYOTA_LC300",       scenario: "RISK_ZONES", filmCode: "PPF_STANDARD",      price: 125000 },
-  { carCode: "TOYOTA_LC300",       scenario: "RISK_ZONES", filmCode: "SPECTROLL_PREMIUM", price: 145000 },
-  { carCode: "GEELY_MONJARO",      scenario: "FULL",       filmCode: "PPF_STANDARD",      price: 310000 },
-  { carCode: "GEELY_MONJARO",      scenario: "FULL",       filmCode: "SPECTROLL_PREMIUM", price: 360000 },
-  { carCode: "GEELY_MONJARO",      scenario: "RISK_ZONES", filmCode: "PPF_STANDARD",      price: 95000 },
-  { carCode: "GEELY_MONJARO",      scenario: "RISK_ZONES", filmCode: "SPECTROLL_PREMIUM", price: 110000 },
+  { carCode: "BMW_X5_G05",         scenario: "FULL",       filmCode: "PPF_STANDARD",      price: 349000 },
+  { carCode: "BMW_X5_G05",         scenario: "FULL",       filmCode: "SPECTROLL_PREMIUM", price: 409000 },
+  { carCode: "BMW_X5_G05",         scenario: "RISK_ZONES", filmCode: "PPF_STANDARD",      price: 129000 },
+  { carCode: "BMW_X5_G05",         scenario: "RISK_ZONES", filmCode: "SPECTROLL_PREMIUM", price: 149000 },
+  { carCode: "BMW_X7_G07",         scenario: "FULL",       filmCode: "PPF_STANDARD",      price: 429000 },
+  { carCode: "BMW_X7_G07",         scenario: "FULL",       filmCode: "SPECTROLL_PREMIUM", price: 499000 },
+  { carCode: "BMW_X7_G07",         scenario: "RISK_ZONES", filmCode: "PPF_STANDARD",      price: 129000 },
+  { carCode: "BMW_X7_G07",         scenario: "RISK_ZONES", filmCode: "SPECTROLL_PREMIUM", price: 149000 },
+  { carCode: "MB_GLE_V167",        scenario: "FULL",       filmCode: "PPF_STANDARD",      price: 349000 },
+  { carCode: "MB_GLE_V167",        scenario: "FULL",       filmCode: "SPECTROLL_PREMIUM", price: 409000 },
+  { carCode: "MB_GLE_V167",        scenario: "RISK_ZONES", filmCode: "PPF_STANDARD",      price: 94000 },
+  { carCode: "MB_GLE_V167",        scenario: "RISK_ZONES", filmCode: "SPECTROLL_PREMIUM", price: 109000 },
+  { carCode: "PORSCHE_CAYENNE_E3", scenario: "FULL",       filmCode: "PPF_STANDARD",      price: 349000 },
+  { carCode: "PORSCHE_CAYENNE_E3", scenario: "FULL",       filmCode: "SPECTROLL_PREMIUM", price: 409000 },
+  { carCode: "PORSCHE_CAYENNE_E3", scenario: "RISK_ZONES", filmCode: "PPF_STANDARD",      price: 94000 },
+  { carCode: "PORSCHE_CAYENNE_E3", scenario: "RISK_ZONES", filmCode: "SPECTROLL_PREMIUM", price: 109000 },
+  { carCode: "TOYOTA_LC300",       scenario: "FULL",       filmCode: "PPF_STANDARD",      price: 429000 },
+  { carCode: "TOYOTA_LC300",       scenario: "FULL",       filmCode: "SPECTROLL_PREMIUM", price: 499000 },
+  { carCode: "TOYOTA_LC300",       scenario: "RISK_ZONES", filmCode: "PPF_STANDARD",      price: 124000 },
+  { carCode: "TOYOTA_LC300",       scenario: "RISK_ZONES", filmCode: "SPECTROLL_PREMIUM", price: 144000 },
+  { carCode: "GEELY_MONJARO",      scenario: "FULL",       filmCode: "PPF_STANDARD",      price: 309000 },
+  { carCode: "GEELY_MONJARO",      scenario: "FULL",       filmCode: "SPECTROLL_PREMIUM", price: 359000 },
+  { carCode: "GEELY_MONJARO",      scenario: "RISK_ZONES", filmCode: "PPF_STANDARD",      price: 94000 },
+  { carCode: "GEELY_MONJARO",      scenario: "RISK_ZONES", filmCode: "SPECTROLL_PREMIUM", price: 109000 },
 ];
 
 export type AddonCode = "PILLARS" | "SILLS_INNER" | "SCREENS" | "PANORAMA" | "WINDSHIELD" | "TINT";
