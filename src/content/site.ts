@@ -75,6 +75,135 @@ export const TOP_MODELS: string[] = [
   "GEELY_MONJARO",
 ];
 
+// ---------- Сайт ----------
+
+/** Адрес сайта: canonical, sitemap, robots, разметка JSON-LD. */
+export const SITE = {
+  url: "https://ppfprofi.ru",
+  name: "PPF PROFI",
+};
+
+// ---------- Марки (страницы /ppf/[slug]) ----------
+
+export type BrandPage = {
+  /** Часть адреса: /ppf/bmw */
+  slug: string;
+  /** Название на сайте */
+  name: string;
+  /** Как марка записана в data/pricing-cars.csv (колонка brand). null — моделей с ценой нет. */
+  catalogBrand: string | null;
+  /** Короткий вводный абзац, свой для каждой марки. */
+  intro: string;
+};
+
+/** Марки профиля. Порядок = порядок на /ppf и в выборе «марка → модель». */
+export const BRANDS: BrandPage[] = [
+  {
+    slug: "bmw",
+    name: "BMW",
+    catalogBrand: "BMW",
+    intro: "Клеим X5 G05 и X7 G07: цены ниже. Для других моделей BMW посчитаю стоимость после осмотра — напишите модель и год в Telegram.",
+  },
+  {
+    slug: "mercedes",
+    name: "Mercedes-Benz",
+    catalogBrand: "Mercedes-Benz",
+    intro: "Цены на GLE V167 — ниже. Для GLS, G-класса, S-класса и других моделей Mercedes-Benz посчитаю стоимость после осмотра.",
+  },
+  {
+    slug: "porsche",
+    name: "Porsche",
+    catalogBrand: "Porsche",
+    intro: "Цены на Cayenne E3 — ниже. Для Macan, Panamera и 911 посчитаю стоимость после осмотра.",
+  },
+  {
+    slug: "land-rover",
+    name: "Land Rover",
+    catalogBrand: null,
+    intro: "Range Rover, Range Rover Sport, Velar и Defender: стоимость зависит от кузова и комплектации, поэтому считаю индивидуально.",
+  },
+  {
+    slug: "lynk-co",
+    name: "Lynk & Co",
+    catalogBrand: null,
+    intro: "Lynk & Co 01, 08, 09 и другие модели: стоимость считаю индивидуально по модели и составу работ.",
+  },
+  {
+    slug: "toyota",
+    name: "Toyota",
+    catalogBrand: "Toyota",
+    intro: "Цены на Land Cruiser 300 — ниже. Для Land Cruiser Prado, Camry и других моделей Toyota посчитаю стоимость после осмотра.",
+  },
+  {
+    slug: "lexus",
+    name: "Lexus",
+    catalogBrand: null,
+    intro: "Lexus LX, GX, RX и другие модели: стоимость считаю индивидуально по кузову и составу работ.",
+  },
+  {
+    slug: "geely",
+    name: "Geely",
+    catalogBrand: "Geely",
+    intro: "Цены на Monjaro и Atlas — ниже. Для других моделей Geely посчитаю стоимость после осмотра.",
+  },
+  {
+    slug: "lixiang",
+    name: "LiXiang",
+    catalogBrand: null,
+    intro: "LiXiang L7, L8, L9 и другие модели: стоимость считаю индивидуально по кузову и составу работ.",
+  },
+  {
+    slug: "zeekr",
+    name: "Zeekr",
+    catalogBrand: null,
+    intro: "Zeekr 001, 7X, 9X и другие модели: стоимость считаю индивидуально по кузову и составу работ.",
+  },
+];
+
+export function getBrand(slug: string): BrandPage | undefined {
+  return BRANDS.find((b) => b.slug === slug);
+}
+
+export const BRAND_PAGE = {
+  listEyebrow: "Марки",
+  listTitle: "Оклейка защитной плёнкой по маркам",
+  listText: "Выберите марку и модель: покажу цену или посчитаю индивидуально.",
+  listSeoTitle: "Оклейка авто плёнкой PPF по маркам в Москве | PPF PROFI",
+  listSeoDescription:
+    "Оклейка BMW, Mercedes-Benz, Porsche, Land Rover, Toyota, Lexus, Geely, LiXiang, Zeekr защитной плёнкой Spectroll в Москве. Цены «от» и расчёт онлайн.",
+  /** {brand} */
+  h1: "Оклейка {brand} защитной плёнкой PPF в Москве",
+  /** {brand}, {price} */
+  seoTitleWithPrice: "Оклейка {brand} плёнкой PPF в Москве — от {price} | PPF PROFI",
+  seoTitle: "Оклейка {brand} плёнкой PPF в Москве | PPF PROFI",
+  /** {brand}, {models} */
+  seoDescriptionWithModels:
+    "Защитная плёнка Spectroll на {brand}: {models}. Цены «от», гарантия {warranty}. Работаем на проверенных площадках в Москве.",
+  seoDescription:
+    "Защитная плёнка Spectroll на {brand} в Москве. Стоимость считаю индивидуально, гарантия {warranty}. Напишите модель в Telegram.",
+  modelsTitle: "Цены на модели",
+  riskTpu: "Зоны риска · Spectroll TPU-S — от {price}",
+  fullTpu: "FULL · Spectroll TPU-S — от {price}",
+  fullPremium: "FULL · Spectroll Premium — от {price}",
+  calcLink: "Подробный расчёт →",
+  noModelsTitle: "Стоимость — индивидуально",
+  noModelsText:
+    "Для этой марки готовых цен на сайте пока нет. Напишите модель и год — посчитаю стоимость и сроки.",
+  ctaTelegram: "Написать в Telegram",
+  ctaCalc: "Открыть калькулятор",
+  ctaPhone: "Позвонить",
+  pricesNote: "Цены «от». Точную стоимость подтвердим после осмотра.",
+  pickerTitle: "Подбор по автомобилю",
+  pickerBrand: "Марка",
+  pickerModel: "Модель",
+  pickerOther: "Другая модель",
+  pickerButton: "Показать цену",
+  allBrands: "Все марки →",
+  formTitle: "Узнайте цену для своей машины",
+  breadcrumbHome: "Главная",
+  breadcrumbList: "Марки",
+};
+
 // ---------- Контакты ----------
 
 const TG_USERNAME = (process.env.NEXT_PUBLIC_TG_USERNAME || "").trim().replace(/^@/, "");
@@ -356,6 +485,7 @@ export const NAV: NavItem[] = [
   { label: "Калькулятор", href: "/#calculator", anchor: "calculator" },
   { label: "Цены", href: "/#prices", anchor: "prices" },
   ...(CASES.length > 0 ? [{ label: "Работы", href: "/#works", anchor: "works" }] : []),
+  { label: "Марки", href: "/ppf" },
   { label: "Гарантия", href: "/#warranty", anchor: "warranty" },
   { label: "Мастерам", href: "/master" },
   { label: "Партнёрам", href: "/partners" },
@@ -363,6 +493,7 @@ export const NAV: NavItem[] = [
 
 export const FOOTER_LINKS: NavItem[] = [
   { label: "Калькулятор", href: "/calculator" },
+  { label: "Марки", href: "/ppf" },
   { label: "Партнёрам", href: "/partners" },
   { label: "Мастерам", href: "/master" },
   { label: "Политика конфиденциальности", href: "/privacy" },

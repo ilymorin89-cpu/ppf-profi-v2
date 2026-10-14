@@ -452,6 +452,25 @@ Check "/partners спред 105,5 тыс. и цена партнёра 243 500" 
 $c = (Req "GET" "/calculator" $anon).Body
 Check "/calculator есть допы (стойки, крыша «если есть», тонировка)" ($c.Contains("Стойки") -and $c.Contains("если есть") -and $c.Contains("Тонировка"))
 
+Section "21. SEO: robots, sitemap, марки, noindex"
+$r = Req "GET" "/robots.txt" $anon
+Check "robots.txt -> 200, закрыты /admin /master /b2b /api/" ($r.Status -eq 200 -and $r.Body.Contains("Disallow: /admin") -and $r.Body.Contains("Disallow: /master") -and $r.Body.Contains("Disallow: /b2b") -and $r.Body.Contains("Disallow: /api/"))
+Check "robots.txt: ссылка на sitemap ppfprofi.ru" ($r.Body.Contains("https://ppfprofi.ru/sitemap.xml"))
+$r = Req "GET" "/sitemap.xml" $anon
+Check "sitemap.xml -> 200, есть /ppf/bmw, нет /partners" ($r.Status -eq 200 -and $r.Body.Contains("https://ppfprofi.ru/ppf/bmw") -and -not $r.Body.Contains("/partners"))
+$r = Req "GET" "/ppf" $anon
+Check "/ppf -> 200" ($r.Status -eq 200)
+$r = Req "GET" "/ppf/bmw" $anon
+$n = Norm $r.Body
+Check "/ppf/bmw -> 200, canonical, цена зон риска 129 000" ($r.Status -eq 200 -and $r.Body.Contains('rel="canonical" href="https://ppfprofi.ru/ppf/bmw"') -and $n.Contains("129000"))
+Check "/ppf/bmw есть JSON-LD Service и нет цены партнёра" ($r.Body.Contains('"@type":"Service"') -and -not $n.Contains("243500"))
+$r = Req "GET" "/ppf/lexus" $anon
+Check "/ppf/lexus -> 200, «индивидуально»" ($r.Status -eq 200 -and $r.Body.Contains("индивидуально"))
+Check "/ppf/unknown -> 404" ((Req "GET" "/ppf/unknown-brand" $anon).Status -eq 404)
+Check "/partners: noindex" ((Req "GET" "/partners" $anon).Body -match 'name="robots" content="noindex')
+Check "/admin: noindex" ((Req "GET" "/admin" $anon).Body -match 'name="robots" content="noindex')
+Check "/ canonical на ppfprofi.ru" ((Req "GET" "/" $anon).Body.Contains('rel="canonical" href="https://ppfprofi.ru"'))
+
 Write-Host ""
 Write-Host "==========================================================" -ForegroundColor White
 Write-Host "  РЕЗУЛЬТАТЫ" -ForegroundColor White

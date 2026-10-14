@@ -14,8 +14,11 @@ import {
 } from "@/server/pricing/public";
 import { fillTemplate } from "@/shared/format";
 import { getPartnerExample, spreadText } from "@/server/pricing/partner-example";
+import JsonLd from "@/components/site/JsonLd";
+import { allBrandCars, organizationSchema, serviceSchema } from "@/server/seo/schema";
 import {
   ADDON_TEXTS,
+  BRAND_PAGE,
   CALCULATOR,
   CASES,
   FACT_TILES,
@@ -41,7 +44,12 @@ export const revalidate = 3600;
 export function generateMetadata(): Metadata {
   const title = SEO.home.title;
   const description = fillTemplate(SEO.home.description, { price: formatRub(getExampleLow()) });
-  return { title, description, openGraph: { title, description } };
+  return {
+    title,
+    description,
+    alternates: { canonical: "/" },
+    openGraph: { title, description, url: "/" },
+  };
 }
 
 const STD = "PPF_STANDARD" as const;
@@ -71,6 +79,7 @@ export default function HomePage() {
 
   return (
     <div className="dark-grid min-h-screen text-white">
+      <JsonLd data={[organizationSchema(), serviceSchema("Оклейка авто защитной плёнкой PPF в Москве", allBrandCars())]} />
       <SiteHeader onHome />
 
       {/* HERO + мини-калькулятор */}
@@ -176,6 +185,9 @@ export default function HomePage() {
             ))}
           </div>
           <p className="mt-4 text-xs text-white/50">{HOME.pricesNote}</p>
+          <Link href="/ppf" className="mt-3 inline-block text-sm font-bold accent hover:underline">
+            {BRAND_PAGE.allBrands}
+          </Link>
 
           {HOME.showExample && example && (
             <div className="dark-card mt-8 max-w-xl p-5 sm:p-6">
