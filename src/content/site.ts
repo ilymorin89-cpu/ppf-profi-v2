@@ -602,7 +602,7 @@ export const NAV: NavItem[] = [
   ...(CASES.length > 0 ? [{ label: "Работы", href: "/#works", anchor: "works" }] : []),
   { label: "Марки", href: "/ppf" },
   { label: "Гарантия", href: "/#warranty", anchor: "warranty" },
-  { label: "Мастерам", href: "/master" },
+  { label: "Вход для мастеров", href: "/master" },
   { label: "Партнёрам", href: "/partners" },
 ];
 
@@ -611,7 +611,7 @@ export const FOOTER_LINKS: NavItem[] = [
   { label: "Марки", href: "/ppf" },
   { label: "Цены", href: "/ceny" },
   { label: "Партнёрам", href: "/partners" },
-  { label: "Мастерам", href: "/master" },
+  { label: "Вход для мастеров", href: "/master" },
   { label: "Политика конфиденциальности", href: "/privacy" },
 ];
 
