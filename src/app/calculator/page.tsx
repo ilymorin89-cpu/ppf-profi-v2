@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import SiteHeader from "@/components/site/SiteHeader";
 import SiteFooter from "@/components/site/SiteFooter";
 import { Suspense } from "react";
@@ -17,6 +18,13 @@ import {
 } from "@/content/site";
 
 export const revalidate = 3600;
+
+export const metadata: Metadata = {
+  title: "Калькулятор оклейки авто плёнкой PPF — цены в Москве | PPF PROFI",
+  description:
+    "Посчитайте оклейку защитной плёнкой Spectroll: зоны риска или полная оклейка, допы, цена «от» за минуту. Москва.",
+  alternates: { canonical: "/calculator" },
+};
 
 export default function CalculatorPage() {
   // Только low/high: getPublicCatalog не отдаёт цену партнёра и себестоимость.

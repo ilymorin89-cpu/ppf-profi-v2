@@ -64,7 +64,53 @@ export const DIRECT_PRICES: {
   { carCode: "GEELY_MONJARO",      scenario: "RISK_ZONES", filmCode: "SPECTROLL_PREMIUM", price: 109000 },
 ];
 
-export type AddonCode = "PILLARS" | "SILLS_INNER" | "SCREENS" | "PANORAMA" | "WINDSHIELD" | "TINT";
+/**
+ * Цена «от» по классу кузова для премиальных моделей без своей строки в DIRECT_PRICES.
+ * Опорные точки — прямые цены Ильи: L = Monjaro, XL = GLE/Cayenne, XL+ = X7/LC300.
+ * Подтверждено Ильёй 14.10.2026.
+ */
+export const CLASS_PRICES: Record<
+  "L" | "XL" | "XL+",
+  Record<"FULL" | "RISK_ZONES", Record<FilmCode, number>>
+> = {
+  L: {
+    FULL: { PPF_STANDARD: 309000, SPECTROLL_PREMIUM: 359000 },
+    RISK_ZONES: { PPF_STANDARD: 94000, SPECTROLL_PREMIUM: 109000 },
+  },
+  XL: {
+    FULL: { PPF_STANDARD: 349000, SPECTROLL_PREMIUM: 409000 },
+    RISK_ZONES: { PPF_STANDARD: 94000, SPECTROLL_PREMIUM: 109000 },
+  },
+  "XL+": {
+    FULL: { PPF_STANDARD: 429000, SPECTROLL_PREMIUM: 499000 },
+    RISK_ZONES: { PPF_STANDARD: 124000, SPECTROLL_PREMIUM: 144000 },
+  },
+};
+
+/** Розничная цена «от»: прямая цена модели → цена класса (только tier=premium) → null (тогда формула). */
+export function fixedRetailPrice(
+  car: { code: string; class: string; tier: string },
+  scenario: string,
+  filmCode: string
+): number | null {
+  const direct = DIRECT_PRICES.find(
+    (d) => d.carCode === car.code && d.scenario === scenario && d.filmCode === filmCode
+  );
+  if (direct) return direct.price;
+  if (car.tier !== "premium") return null;
+  const byClass = CLASS_PRICES[car.class as keyof typeof CLASS_PRICES];
+  const v = byClass?.[scenario as "FULL" | "RISK_ZONES"]?.[filmCode as FilmCode];
+  return typeof v === "number" ? v : null;
+}
+
+export type AddonCode =
+  | "PILLARS"
+  | "SILLS_INNER"
+  | "SCREENS"
+  | "PANORAMA"
+  | "WINDSHIELD"
+  | "TINT"
+  | "MATTE";
 
 /**
  * Допы одинаковы для всех моделей, без коэффициента класса.
@@ -77,7 +123,44 @@ export const ADDONS: Record<AddonCode, { price: number; priceMax?: number; maxQt
   PANORAMA: { price: 20_000, maxQty: 1 },
   WINDSHIELD: { price: 30_000, maxQty: 1 },
   TINT: { price: 15_000, maxQty: 1 },
+  /** Доплата за матовую плёнку к полной оклейке (решение Ильи 14.10.2026). */
+  MATTE: { price: 35_000, maxQty: 1 },
 };
+
+// ---------- Отдельные детали ----------
+
+/**
+ * Цены на отдельные детали для класса XL (X5, GLE, Cayenne). Источник: Илья, 14.10.2026.
+ * Для L и XL+ цена пересчитывается пропорционально цене полной оклейки класса (CLASS_PRICES, TPU-S).
+ */
+export const PART_PRICES_XL: { code: string; price: number }[] = [
+  { code: "HOOD_STRIPE", price: 11_000 },
+  { code: "HOOD", price: 43_000 },
+  { code: "TRUNK_LID", price: 17_500 },
+  { code: "ROOF", price: 50_500 },
+  { code: "ROOF_STRIPE", price: 10_000 },
+  { code: "LOADING_ZONE", price: 5_500 },
+  { code: "FRONT_BUMPER", price: 33_000 },
+  { code: "FRONT_FENDER", price: 16_500 },
+  { code: "REAR_BUMPER", price: 45_500 },
+  { code: "REAR_FENDER", price: 47_000 },
+  { code: "DOOR", price: 14_500 },
+  { code: "HANDLE_CUPS", price: 5_500 },
+  { code: "SILL_OUTER", price: 16_000 },
+  { code: "SILLS_INNER_4", price: 12_500 },
+  { code: "HEADLIGHTS", price: 10_500 },
+  { code: "MIRRORS", price: 10_000 },
+  { code: "A_PILLARS", price: 14_000 },
+  { code: "FOG_LIGHTS", price: 8_000 },
+  { code: "SPOILER", price: 14_000 },
+];
+
+/** Цена детали для класса кузова: XL — как в прайсе, L и XL+ — пропорционально полной оклейке, шаг 500 ₽. */
+export function partPrice(xlPrice: number, cls: "L" | "XL" | "XL+"): number {
+  if (cls === "XL") return xlPrice;
+  const k = CLASS_PRICES[cls].FULL.PPF_STANDARD / CLASS_PRICES.XL.FULL.PPF_STANDARD;
+  return Math.round((xlPrice * k) / 500) * 500;
+}
 
 export const ADDON_CODES = Object.keys(ADDONS) as AddonCode[];
 

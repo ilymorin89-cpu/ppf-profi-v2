@@ -1,13 +1,73 @@
-code;brand;model;class;film_m_full;film_m_front;film_m_risk;days_full;days_front;days_risk;verified
-GEELY_MONJARO;Geely;Monjaro;L;15;;5;4;;1;yes
-BMW_X5_G05;BMW;X5 G05;XL;18;;7;5;;2;yes
-BMW_X7_G07;BMW;X7 G07;XL+;22;;7;7;;2;yes
-MB_GLE_V167;Mercedes-Benz;GLE V167;XL;18;;5;5;;1;yes
-PORSCHE_CAYENNE_E3;Porsche;Cayenne E3;XL;18;;5;5;;1;yes
-TOYOTA_LC300;Toyota;Land Cruiser 300;XL+;22;;5;7;;2;yes
-HAVAL_JOLION;Haval;Jolion;L;15;;5;4;;1;yes
-BELGEE_X50;Belgee;X50;L;18;;5;4;;1;yes
-BELGEE_X70;Belgee;X70;XL;18;;5;4;;1;yes
-CHERY_TIGGO_4_PRO;Chery;Tiggo 4 Pro;L;15;;5;4;;1;yes
-GEELY_ATLAS;Geely;Atlas;XL;15;;5;4;;1;yes
-HYUNDAI_CRETA;Hyundai;Creta;L;15;;5;4;;1;yes
+code;brand;model;class;film_m_full;film_m_front;film_m_risk;days_full;days_front;days_risk;verified;base;gen;years;tier;source
+GEELY_MONJARO;Geely;Monjaro;L;15;;5;4;;1;yes;Monjaro;KX11;2021–н.в.;premium;ilya
+BMW_X5_G05;BMW;X5 G05;XL;18;;7;5;;2;yes;X5;G05;2018–н.в.;premium;ilya
+BMW_X7_G07;BMW;X7 G07;XL+;22;;7;7;;2;yes;X7;G07;2018–н.в.;premium;ilya
+MB_GLE_V167;Mercedes-Benz;GLE V167;XL;18;;5;5;;1;yes;GLE;V167;2019–н.в.;premium;ilya
+PORSCHE_CAYENNE_E3;Porsche;Cayenne E3;XL;18;;5;5;;1;yes;Cayenne;E3;2017–н.в.;premium;ilya
+TOYOTA_LC300;Toyota;Land Cruiser 300;XL+;22;;5;7;;2;yes;Land Cruiser;300;2021–н.в.;premium;ilya
+HAVAL_JOLION;Haval;Jolion;L;15;;5;4;;1;yes;Jolion;1 поколение;2020–н.в.;;ilya
+BELGEE_X50;Belgee;X50;L;18;;5;4;;1;yes;X50;1 поколение;2023–н.в.;;ilya
+BELGEE_X70;Belgee;X70;XL;18;;5;4;;1;yes;X70;1 поколение;2023–н.в.;;ilya
+CHERY_TIGGO_4_PRO;Chery;Tiggo 4 Pro;L;15;;5;4;;1;yes;Tiggo 4 Pro;1 поколение;2020–н.в.;;ilya
+GEELY_ATLAS;Geely;Atlas;XL;15;;5;4;;1;yes;Atlas;2 поколение;2023–н.в.;;ilya
+HYUNDAI_CRETA;Hyundai;Creta;L;15;;5;4;;1;yes;Creta;2 поколение;2021–н.в.;;ilya
+BMW_X3_G01;BMW;X3 G01;L;15;;5;4;;1;yes;X3;G01;2017–2024;premium;class-default
+BMW_X3_G45;BMW;X3 G45;L;15;;5;4;;1;yes;X3;G45;2024–н.в.;premium;class-default
+BMW_X4_G02;BMW;X4 G02;L;15;;5;4;;1;yes;X4;G02;2018–н.в.;premium;class-default
+BMW_X5_F15;BMW;X5 F15;XL;18;;5;5;;1;yes;X5;F15;2013–2018;premium;class-default
+BMW_X6_G06;BMW;X6 G06;XL;18;;5;5;;1;yes;X6;G06;2019–н.в.;premium;class-default
+BMW_XM_G09;BMW;XM G09;XL;18;;5;5;;1;yes;XM;G09;2022–н.в.;premium;class-default
+BMW_5_G30;BMW;5 серия G30;L;15;;5;4;;1;yes;5 серия;G30;2017–2023;premium;class-default
+BMW_5_G60;BMW;5 серия G60;L;15;;5;4;;1;yes;5 серия;G60;2023–н.в.;premium;class-default
+BMW_7_G70;BMW;7 серия G70;XL;18;;5;5;;1;yes;7 серия;G70;2022–н.в.;premium;class-default
+MB_GLE_C167;Mercedes-Benz;GLE Coupe C167;XL;18;;5;5;;1;yes;GLE Coupe;C167;2019–н.в.;premium;class-default
+MB_GLS_X167;Mercedes-Benz;GLS X167;XL+;22;;7;7;;2;yes;GLS;X167;2019–н.в.;premium;class-default
+MB_G_W463;Mercedes-Benz;G-класс W463;XL;18;;5;5;;1;yes;G-класс;W463;2018–н.в.;premium;class-default
+MB_GLC_X253;Mercedes-Benz;GLC X253;L;15;;5;4;;1;yes;GLC;X253;2015–2022;premium;class-default
+MB_GLC_X254;Mercedes-Benz;GLC X254;L;15;;5;4;;1;yes;GLC;X254;2022–н.в.;premium;class-default
+MB_E_W214;Mercedes-Benz;E-класс W214;L;15;;5;4;;1;yes;E-класс;W214;2023–н.в.;premium;class-default
+MB_S_W223;Mercedes-Benz;S-класс W223;XL;18;;5;5;;1;yes;S-класс;W223;2020–н.в.;premium;class-default
+PORSCHE_CAYENNE_COUPE_E3;Porsche;Cayenne Coupe E3;XL;18;;5;5;;1;yes;Cayenne Coupe;E3;2019–н.в.;premium;class-default
+PORSCHE_MACAN_95B;Porsche;Macan 95B;L;15;;5;4;;1;yes;Macan;95B;2014–2024;premium;class-default
+PORSCHE_MACAN_EV;Porsche;Macan Electric;L;15;;5;4;;1;yes;Macan Electric;2 поколение;2024–н.в.;premium;class-default
+PORSCHE_PANAMERA_971;Porsche;Panamera 971;XL;18;;5;5;;1;yes;Panamera;971;2016–2023;premium;class-default
+PORSCHE_PANAMERA_976;Porsche;Panamera 976;XL;18;;5;5;;1;yes;Panamera;976;2023–н.в.;premium;class-default
+PORSCHE_TAYCAN;Porsche;Taycan J1;L;15;;5;4;;1;yes;Taycan;J1;2019–н.в.;premium;class-default
+PORSCHE_911_992;Porsche;911 992;L;15;;5;4;;1;yes;911;992;2019–н.в.;premium;class-default
+LR_RR_L405;Land Rover;Range Rover L405;XL+;22;;7;7;;2;yes;Range Rover;L405;2012–2021;premium;class-default
+LR_RR_L460;Land Rover;Range Rover L460;XL+;22;;7;7;;2;yes;Range Rover;L460;2021–н.в.;premium;class-default
+LR_RRS_L494;Land Rover;Range Rover Sport L494;XL;18;;5;5;;1;yes;Range Rover Sport;L494;2013–2022;premium;class-default
+LR_RRS_L461;Land Rover;Range Rover Sport L461;XL;18;;5;5;;1;yes;Range Rover Sport;L461;2022–н.в.;premium;class-default
+LR_VELAR_L560;Land Rover;Range Rover Velar L560;L;15;;5;4;;1;yes;Range Rover Velar;L560;2017–н.в.;premium;class-default
+LR_DEFENDER_L663;Land Rover;Defender L663;XL;18;;5;5;;1;yes;Defender;L663;2020–н.в.;premium;class-default
+LR_DISCOVERY_L462;Land Rover;Discovery L462;XL;18;;5;5;;1;yes;Discovery;L462;2017–н.в.;premium;class-default
+LYNK_01;Lynk & Co;01;L;15;;5;4;;1;yes;01;1 поколение;2017–н.в.;;class-default
+LYNK_05;Lynk & Co;05;L;15;;5;4;;1;yes;05;1 поколение;2019–н.в.;;class-default
+LYNK_08;Lynk & Co;08;XL;18;;5;5;;1;yes;08;1 поколение;2023–н.в.;;class-default
+LYNK_09;Lynk & Co;09;XL;18;;5;5;;1;yes;09;1 поколение;2021–н.в.;;class-default
+LYNK_900;Lynk & Co;900;XL+;22;;7;7;;2;yes;900;1 поколение;2025–н.в.;;class-default
+TOYOTA_LC_PRADO_150;Toyota;Land Cruiser Prado 150;XL;18;;5;5;;1;yes;Land Cruiser Prado;150;2009–2023;premium;class-default
+TOYOTA_LC_PRADO_250;Toyota;Land Cruiser Prado 250;XL;18;;5;5;;1;yes;Land Cruiser Prado;250;2023–н.в.;premium;class-default
+TOYOTA_HIGHLANDER_XU70;Toyota;Highlander XU70;XL;18;;5;5;;1;yes;Highlander;XU70;2019–н.в.;;class-default
+TOYOTA_CAMRY_XV70;Toyota;Camry XV70;L;15;;5;4;;1;yes;Camry;XV70;2017–2024;;class-default
+TOYOTA_RAV4_XA50;Toyota;RAV4 XA50;L;15;;5;4;;1;yes;RAV4;XA50;2018–н.в.;;class-default
+LEXUS_LX_J310;Lexus;LX 600 (J310);XL+;22;;7;7;;2;yes;LX;600 (J310);2021–н.в.;premium;class-default
+LEXUS_GX_J250;Lexus;GX 550 (J250);XL;18;;5;5;;1;yes;GX;550 (J250);2023–н.в.;premium;class-default
+LEXUS_RX_AL30;Lexus;RX AL30;XL;18;;5;5;;1;yes;RX;AL30;2022–н.в.;premium;class-default
+LEXUS_NX_AZ20;Lexus;NX AZ20;L;15;;5;4;;1;yes;NX;AZ20;2021–н.в.;premium;class-default
+LEXUS_ES_XZ10;Lexus;ES XZ10;L;15;;5;4;;1;yes;ES;XZ10;2018–н.в.;premium;class-default
+LEXUS_LM;Lexus;LM;XL+;22;;7;7;;2;yes;LM;2 поколение;2023–н.в.;premium;class-default
+GEELY_COOLRAY;Geely;Coolray SX11;L;15;;5;4;;1;yes;Coolray;SX11;2019–н.в.;;class-default
+GEELY_TUGELLA;Geely;Tugella FY11;L;15;;5;4;;1;yes;Tugella;FY11;2019–н.в.;;class-default
+GEELY_OKAVANGO;Geely;Okavango;L;15;;5;4;;1;yes;Okavango;1 поколение;2020–н.в.;;class-default
+GEELY_PREFACE;Geely;Preface;L;15;;5;4;;1;yes;Preface;1 поколение;2020–н.в.;;class-default
+LIXIANG_L6;LiXiang;L6;XL;18;;5;5;;1;yes;L6;1 поколение;2024–н.в.;premium;class-default
+LIXIANG_L7;LiXiang;L7;XL;18;;5;5;;1;yes;L7;1 поколение;2023–н.в.;premium;class-default
+LIXIANG_L8;LiXiang;L8;XL+;22;;7;7;;2;yes;L8;1 поколение;2022–н.в.;premium;class-default
+LIXIANG_L9;LiXiang;L9;XL+;22;;7;7;;2;yes;L9;1 поколение;2022–н.в.;premium;class-default
+LIXIANG_MEGA;LiXiang;Mega;XL+;22;;7;7;;2;yes;Mega;1 поколение;2024–н.в.;premium;class-default
+ZEEKR_001;Zeekr;001;XL;18;;5;5;;1;yes;001;1 поколение;2021–н.в.;premium;class-default
+ZEEKR_7X;Zeekr;7X;L;15;;5;4;;1;yes;7X;1 поколение;2024–н.в.;premium;class-default
+ZEEKR_009;Zeekr;009;XL+;22;;7;7;;2;yes;009;1 поколение;2022–н.в.;premium;class-default
+ZEEKR_9X;Zeekr;9X;XL+;22;;7;7;;2;yes;9X;1 поколение;2025–н.в.;premium;class-default
+ZEEKR_X;Zeekr;X;L;15;;5;4;;1;yes;X;1 поколение;2023–н.в.;;class-default

@@ -423,7 +423,9 @@ Check "X5 RISK TPU-S = 129000" ($r.Status -eq 200 -and $r.Json.low -eq 129000) "
 $r = PQ @{ PILLARS=6; SILLS_INNER=1 }
 Check "Full + 6 стоек + пороги = 363000 (сервер)" ($r.Status -eq 200 -and $r.Json.low -eq 363000) "low=$($r.Json.low)"
 $r = PQ @{ PILLARS=6; SILLS_INNER=1; SCREENS=1; PANORAMA=1; WINDSHIELD=1; TINT=1 }
-Check "все допы = от 435000" ($r.Status -eq 200 -and $r.Json.low -eq 435000) "low=$($r.Json.low)"
+Check "все допы без мата = от 435000" ($r.Status -eq 200 -and $r.Json.low -eq 435000) "low=$($r.Json.low)"
+$r = PQ @{ MATTE=1 }
+Check "матовая плёнка +35000 = 384000" ($r.Status -eq 200 -and $r.Json.low -eq 384000) "low=$($r.Json.low)"
 $r = PQ @{ PILLARS=6; SILLS_INNER=1 } @{ price=1; total=1; low=1; high=1 }
 Check "подделанная сумма в теле игнорируется" ($r.Status -eq 200 -and $r.Json.low -eq 363000) "low=$($r.Json.low)"
 $r = PQ @{ PILLARS=0 }
@@ -451,6 +453,34 @@ $pb = Norm (Req "GET" "/partners" $anon).Body
 Check "/partners спред 105,5 тыс. и цена партнёра 243 500" ($pb.Contains("105,5") -and $pb.Contains("243500"))
 $c = (Req "GET" "/calculator" $anon).Body
 Check "/calculator есть допы (стойки, крыша «если есть», тонировка)" ($c.Contains("Стойки") -and $c.Contains("если есть") -and $c.Contains("Тонировка"))
+
+Section "21. SEO: robots, sitemap, марки, noindex"
+$r = Req "GET" "/robots.txt" $anon
+Check "robots.txt -> 200, закрыты /admin /master /b2b /api/" ($r.Status -eq 200 -and $r.Body.Contains("Disallow: /admin") -and $r.Body.Contains("Disallow: /master") -and $r.Body.Contains("Disallow: /b2b") -and $r.Body.Contains("Disallow: /api/"))
+Check "robots.txt: ссылка на sitemap ppfprofi.ru" ($r.Body.Contains("https://ppfprofi.ru/sitemap.xml"))
+$r = Req "GET" "/sitemap.xml" $anon
+Check "sitemap.xml -> 200, есть /ppf/bmw, нет /partners" ($r.Status -eq 200 -and $r.Body.Contains("https://ppfprofi.ru/ppf/bmw") -and -not $r.Body.Contains("/partners"))
+$r = Req "GET" "/ppf" $anon
+Check "/ppf -> 200" ($r.Status -eq 200)
+$r = Req "GET" "/ppf/bmw" $anon
+$n = Norm $r.Body
+Check "/ppf/bmw -> 200, canonical, цена зон риска 129 000" ($r.Status -eq 200 -and $r.Body.Contains('rel="canonical" href="https://ppfprofi.ru/ppf/bmw"') -and $n.Contains("129000"))
+Check "/ppf/bmw есть JSON-LD Service и нет цены партнёра" ($r.Body.Contains('"@type":"Service"') -and -not $n.Contains("243500"))
+$r = Req "GET" "/ppf/lexus" $anon
+Check "/ppf/lexus -> 200, есть LX 600 и цена" ($r.Status -eq 200 -and $r.Body.Contains("LX 600") -and (Norm $r.Body).Contains("124000"))
+$r = PQ @{} @{ carCode="LR_RR_L460" }
+Check "Range Rover L460 FULL TPU-S = 429000 (цена класса XL+)" ($r.Status -eq 200 -and $r.Json.low -eq 429000) "low=$($r.Json.low)"
+$h1 = [regex]::Match((Req "GET" "/" $anon).Body, '(?s)<h1.*?</h1>').Value
+Check "H1 главной: «цены от 94 000», без «Гарантия»" ((Norm $h1).Contains("94000") -and -not $h1.Contains("Гарантия"))
+$r = Req "GET" "/ceny" $anon
+$n = Norm $r.Body
+Check "/ceny -> 200, canonical, X5 349 000, допы, без цены партнёра" ($r.Status -eq 200 -and $r.Body.Contains('rel="canonical" href="https://ppfprofi.ru/ceny"') -and $n.Contains("349000") -and $r.Body.Contains("Броня лобового стекла") -and $r.Body.Contains("Капот") -and $n.Contains("43000") -and -not $n.Contains("243500"))
+Check "/ppf/bmw есть вопросы-ответы" ((Req "GET" "/ppf/bmw" $anon).Body.Contains("Сколько стоит оклейка BMW плёнкой?"))
+Check "/ppf/bmw и / : адрес площадки в «Где проходит оклейка?»" ((Req "GET" "/ppf/bmw" $anon).Body.Contains("шоссе Энтузиастов, 12, корп. 2") -and (Req "GET" "/" $anon).Body.Contains("шоссе Энтузиастов, 12, корп. 2"))
+Check "/ppf/unknown -> 404" ((Req "GET" "/ppf/unknown-brand" $anon).Status -eq 404)
+Check "/partners: noindex" ((Req "GET" "/partners" $anon).Body -match 'name="robots" content="noindex')
+Check "/admin: noindex" ((Req "GET" "/admin" $anon).Body -match 'name="robots" content="noindex')
+Check "/ canonical на ppfprofi.ru" ((Req "GET" "/" $anon).Body.Contains('rel="canonical" href="https://ppfprofi.ru"'))
 
 Write-Host ""
 Write-Host "==========================================================" -ForegroundColor White

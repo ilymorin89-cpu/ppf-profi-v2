@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
 import UtmCapture from "@/components/forms/UtmCapture";
+import { SITE } from "@/content/site";
 
 const manrope = Manrope({
   subsets: ["latin", "cyrillic"],
@@ -9,6 +10,8 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE.url),
+  openGraph: { siteName: SITE.name, locale: "ru_RU", type: "website" },
   title: "PPF PROFI — Защита автомобиля плёнкой",
   description: "Оклейка авто защитной плёнкой PPF в Москве. Работаем на проверенных площадках.",
 };

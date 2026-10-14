@@ -1,5 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { CONTACTS } from "@/content/site";
+
+export const metadata: Metadata = {
+  title: "Политика конфиденциальности | PPF PROFI",
+  alternates: { canonical: "/privacy" },
+};
 
 export default function PrivacyPage() {
   return (

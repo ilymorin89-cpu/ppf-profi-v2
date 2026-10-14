@@ -14,8 +14,11 @@ import {
 } from "@/server/pricing/public";
 import { fillTemplate } from "@/shared/format";
 import { getPartnerExample, spreadText } from "@/server/pricing/partner-example";
+import JsonLd from "@/components/site/JsonLd";
+import { allBrandCars, organizationSchema, serviceSchema } from "@/server/seo/schema";
 import {
   ADDON_TEXTS,
+  BRAND_PAGE,
   CALCULATOR,
   CASES,
   FACT_TILES,
@@ -41,7 +44,12 @@ export const revalidate = 3600;
 export function generateMetadata(): Metadata {
   const title = SEO.home.title;
   const description = fillTemplate(SEO.home.description, { price: formatRub(getExampleLow()) });
-  return { title, description, openGraph: { title, description } };
+  return {
+    title,
+    description,
+    alternates: { canonical: "/" },
+    openGraph: { title, description, url: "/" },
+  };
 }
 
 const STD = "PPF_STANDARD" as const;
@@ -71,6 +79,7 @@ export default function HomePage() {
 
   return (
     <div className="dark-grid min-h-screen text-white">
+      <JsonLd data={[organizationSchema(), serviceSchema("Оклейка авто защитной плёнкой PPF в Москве", allBrandCars())]} />
       <SiteHeader onHome />
 
       {/* HERO + мини-калькулятор */}
@@ -81,7 +90,7 @@ export default function HomePage() {
             <h1 className="mt-5 text-3xl font-extrabold leading-[1.08] tracking-[-0.035em] sm:text-5xl">
               {HOME.h1Lead}{" "}
               <span className="accent">
-                {fillTemplate(HOME.h1Price, { price: formatRub(getExampleLow()) })}
+                {fillTemplate(HOME.h1Price, { price: formatRub(minRisk ?? getExampleLow()) })}
               </span>
             </h1>
             <p className="mt-6 max-w-xl text-base leading-7 text-white/70 sm:text-lg sm:leading-8">
@@ -176,6 +185,14 @@ export default function HomePage() {
             ))}
           </div>
           <p className="mt-4 text-xs text-white/50">{HOME.pricesNote}</p>
+          <div className="mt-3 flex flex-wrap gap-5">
+            <Link href="/ceny" className="text-sm font-bold accent hover:underline">
+              Все цены →
+            </Link>
+            <Link href="/ppf" className="text-sm font-bold accent hover:underline">
+              {BRAND_PAGE.allBrands}
+            </Link>
+          </div>
 
           {HOME.showExample && example && (
             <div className="dark-card mt-8 max-w-xl p-5 sm:p-6">

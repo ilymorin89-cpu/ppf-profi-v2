@@ -75,6 +75,214 @@ export const TOP_MODELS: string[] = [
   "GEELY_MONJARO",
 ];
 
+// ---------- Сайт ----------
+
+/** Адрес сайта: canonical, sitemap, robots, разметка JSON-LD. */
+export const SITE = {
+  url: "https://ppfprofi.ru",
+  name: "PPF PROFI",
+};
+
+// ---------- Марки (страницы /ppf/[slug]) ----------
+
+export type BrandPage = {
+  /** Часть адреса: /ppf/bmw */
+  slug: string;
+  /** Название на сайте */
+  name: string;
+  /** Как марка записана в data/pricing-cars.csv (колонка brand). null — моделей в каталоге нет. */
+  catalogBrand: string | null;
+  /** Короткий вводный абзац, свой для каждой марки. */
+  intro: string;
+};
+
+/** Марки профиля. Порядок = порядок на /ppf и в выборе «марка → модель». */
+export const BRANDS: BrandPage[] = [
+  {
+    slug: "bmw",
+    name: "BMW",
+    catalogBrand: "BMW",
+    intro: "X3, X4, X5, X6, X7, XM, 5 и 7 серии — цены ниже по поколениям кузова. Для других моделей BMW посчитаю стоимость после осмотра.",
+  },
+  {
+    slug: "mercedes",
+    name: "Mercedes-Benz",
+    catalogBrand: "Mercedes-Benz",
+    intro: "GLE, GLE Coupe, GLS, G-класс, GLC, E- и S-класс — цены ниже по поколениям кузова. Для других моделей Mercedes-Benz посчитаю стоимость после осмотра.",
+  },
+  {
+    slug: "porsche",
+    name: "Porsche",
+    catalogBrand: "Porsche",
+    intro: "Cayenne, Cayenne Coupe, Macan, Panamera, Taycan и 911 — цены ниже по поколениям кузова.",
+  },
+  {
+    slug: "land-rover",
+    name: "Land Rover",
+    catalogBrand: "Land Rover",
+    intro: "Range Rover, Range Rover Sport, Velar, Defender и Discovery — цены ниже по поколениям кузова.",
+  },
+  {
+    slug: "lynk-co",
+    name: "Lynk & Co",
+    catalogBrand: "Lynk & Co",
+    intro: "Lynk & Co 01, 05, 08, 09 и 900 — цены ниже. Точную стоимость подтвердим после осмотра.",
+  },
+  {
+    slug: "toyota",
+    name: "Toyota",
+    catalogBrand: "Toyota",
+    intro: "Land Cruiser 300, Land Cruiser Prado, Highlander, Camry и RAV4 — цены ниже по поколениям кузова.",
+  },
+  {
+    slug: "lexus",
+    name: "Lexus",
+    catalogBrand: "Lexus",
+    intro: "LX, GX, RX, NX, ES и LM — цены ниже по поколениям кузова.",
+  },
+  {
+    slug: "geely",
+    name: "Geely",
+    catalogBrand: "Geely",
+    intro: "Monjaro, Atlas, Coolray, Tugella, Okavango и Preface — цены ниже.",
+  },
+  {
+    slug: "lixiang",
+    name: "LiXiang",
+    catalogBrand: "LiXiang",
+    intro: "LiXiang L6, L7, L8, L9 и Mega — цены ниже. Точную стоимость подтвердим после осмотра.",
+  },
+  {
+    slug: "zeekr",
+    name: "Zeekr",
+    catalogBrand: "Zeekr",
+    intro: "Zeekr 001, 7X, 009, 9X и X — цены ниже. Точную стоимость подтвердим после осмотра.",
+  },
+];
+
+/**
+ * Вопросы-ответы для страницы марки. Только подтверждённые факты: цены из каталога, сроки, плёнки, гарантия.
+ * minRisk / minFull — минимальные цены «от» по моделям марки (null — нет цен).
+ */
+export function brandFaq(
+  brandName: string,
+  minRisk: number | null,
+  minFull: number | null
+): { q: string; a: string }[] {
+  const items: { q: string; a: string }[] = [];
+  if (minRisk !== null && minFull !== null) {
+    items.push({
+      q: `Сколько стоит оклейка ${brandName} плёнкой?`,
+      a: `Зоны риска — от ${formatRub(minRisk)}, полная оклейка — от ${formatRub(minFull)} на плёнке ${filmLabel("PPF_STANDARD")}. Точную цену подтвердим после осмотра.`,
+    });
+  }
+  items.push(
+    {
+      q: `Сколько времени занимает оклейка ${brandName}?`,
+      a: `Зоны риска — ${scenarioDays("RISK_ZONES")}, полная оклейка — ${scenarioDays("FULL")}.`,
+    },
+    {
+      q: "Какую плёнку выбрать?",
+      a: `${filmLabel("PPF_STANDARD")} подходит для большинства машин. ${filmLabel("SPECTROLL_PREMIUM")} — слой толще, дольше сохраняет вид при езде по трассе.`,
+    },
+    {
+      q: "Какая гарантия?",
+      a: `Гарантия ${WARRANTY_WORK}: отслоение, пузыри, поднятые края по вине монтажа. ${FILM_LIFE}. Сколы, порезы и царапины на плёнке гарантией не покрываются.`,
+    },
+    {
+      q: "Где проходит оклейка?",
+      a: WORKPLACE.answer,
+    }
+  );
+  return items;
+}
+
+export function getBrand(slug: string): BrandPage | undefined {
+  return BRANDS.find((b) => b.slug === slug);
+}
+
+export const BRAND_PAGE = {
+  listEyebrow: "Марки",
+  listTitle: "Оклейка защитной плёнкой по маркам",
+  listText: "Выберите марку и модель: покажу цену или посчитаю индивидуально.",
+  listSeoTitle: "Оклейка авто плёнкой PPF по маркам в Москве | PPF PROFI",
+  listSeoDescription:
+    "Оклейка BMW, Mercedes-Benz, Porsche, Land Rover, Toyota, Lexus, Geely, LiXiang, Zeekr защитной плёнкой Spectroll в Москве. Цены «от» и расчёт онлайн.",
+  /** {brand} */
+  h1: "Оклейка {brand} защитной плёнкой PPF в Москве",
+  /** {brand}, {price} */
+  seoTitleWithPrice: "Оклейка {brand} плёнкой PPF в Москве — от {price} | PPF PROFI",
+  seoTitle: "Оклейка {brand} плёнкой PPF в Москве | PPF PROFI",
+  /** {brand}, {models} */
+  seoDescriptionWithModels:
+    "Защитная плёнка Spectroll на {brand}: {models}. Цены «от», гарантия {warranty}. Работаем на проверенных площадках в Москве.",
+  seoDescription:
+    "Защитная плёнка Spectroll на {brand} в Москве. Стоимость считаю индивидуально, гарантия {warranty}. Напишите модель в Telegram.",
+  modelsTitle: "Цены на модели",
+  riskTpu: "Зоны риска · Spectroll TPU-S — от {price}",
+  fullTpu: "FULL · Spectroll TPU-S — от {price}",
+  fullPremium: "FULL · Spectroll Premium — от {price}",
+  calcLink: "Подробный расчёт →",
+  noModelsTitle: "Стоимость — индивидуально",
+  noModelsText:
+    "Для этой марки готовых цен на сайте пока нет. Напишите модель и год — посчитаю стоимость и сроки.",
+  ctaTelegram: "Написать в Telegram",
+  ctaCalc: "Открыть калькулятор",
+  ctaPhone: "Позвонить",
+  pricesNote: "Цены «от». Точную стоимость подтвердим после осмотра.",
+  pickerTitle: "Подбор по автомобилю",
+  pickerBrand: "Марка",
+  pickerModel: "Модель",
+  pickerGen: "Поколение / кузов",
+  pickerOther: "Другая модель",
+  pickerButton: "Показать цену",
+  allBrands: "Все марки →",
+  partsLink: "Цены на отдельные детали →",
+  formTitle: "Узнайте цену для своей машины",
+  faqTitle: "Частые вопросы",
+  breadcrumbHome: "Главная",
+  breadcrumbList: "Марки",
+};
+
+// ---------- Площадка ----------
+
+/** Основная площадка, где проходит оклейка (площадка-партнёр). */
+export const WORKPLACE = {
+  address: "Москва, шоссе Энтузиастов, 12, корп. 2 (ТЦ «Город»)",
+  /** Ответ на вопрос «Где проходит оклейка?» */
+  answer:
+    "Москва, шоссе Энтузиастов, 12, корп. 2 (ТЦ «Город»). Три поста под оклейку, мойка, детейлинг. В том же ТЦ работают соседние сервисы: шиномонтаж, замена масла, слесарные работы.",
+};
+
+// ---------- /ceny ----------
+
+export const PRICES_PAGE = {
+  seoTitle: "Цены на оклейку авто плёнкой PPF в Москве — от {price} | PPF PROFI",
+  seoDescription:
+    "Цены на оклейку защитной плёнкой Spectroll по маркам и моделям: зоны риска, полная оклейка, допы. BMW, Mercedes-Benz, Porsche, Land Rover, Lexus, Toyota и другие.",
+  eyebrow: "Цены",
+  h1: "Цены на оклейку авто защитной плёнкой PPF в Москве",
+  lead: "Цены «от» на плёнке Spectroll по маркам, моделям и поколениям кузова. Точную стоимость подтвердим после осмотра.",
+  colModel: "Модель",
+  colYears: "Поколение",
+  colRisk: "Зоны риска · TPU-S",
+  colFull: "FULL · TPU-S",
+  colPremium: "FULL · Premium",
+  otherBrands: "Другие марки",
+  partsTitle: "Оклейка отдельных деталей",
+  partsLead: "Цены «от» на плёнке Spectroll TPU-S по размеру кузова. Точную стоимость подтвердим после осмотра.",
+  partsColPart: "Деталь",
+  partsColL: "Средние (X3, GLC, Macan)",
+  partsColXL: "Крупные (X5, GLE, Cayenne)",
+  partsColXLp: "Полноразмерные (X7, GLS, Range Rover)",
+  addonsTitle: "Дополнительные работы",
+  addonsNote: "Цены допов одинаковые для всех моделей.",
+  calcCta: "Посчитать свою машину →",
+  brandLink: "Страница марки →",
+  /** Строка «от {price}» для допов с диапазоном: {from}–{to} */
+  addonRange: "{from}–{to}",
+};
+
 // ---------- Контакты ----------
 
 const TG_USERNAME = (process.env.NEXT_PUBLIC_TG_USERNAME || "").trim().replace(/^@/, "");
@@ -156,6 +364,30 @@ export const ADDON_TEXTS: Record<string, { label: string; desc?: string; unit?: 
     label: "Тонировка",
     desc: "В рамках требований к светопропусканию стёкол",
   },
+  MATTE: { label: "Матовая плёнка", desc: "Доплата к полной оклейке" },
+};
+
+/** Названия отдельных деталей (коды — PART_PRICES_XL в src/server/pricing/config.ts). */
+export const PART_TEXTS: Record<string, string> = {
+  HOOD_STRIPE: "Полоса на капот",
+  HOOD: "Капот",
+  TRUNK_LID: "Крышка багажника",
+  ROOF: "Крыша",
+  ROOF_STRIPE: "Полоса на крыше",
+  LOADING_ZONE: "Зона погрузки заднего бампера",
+  FRONT_BUMPER: "Передний бампер",
+  FRONT_FENDER: "Переднее крыло",
+  REAR_BUMPER: "Задний бампер",
+  REAR_FENDER: "Заднее крыло",
+  DOOR: "Дверь",
+  HANDLE_CUPS: "Под ручки дверей, 4 шт",
+  SILL_OUTER: "Порог снаружи, 1 шт",
+  SILLS_INNER_4: "Пороги внутри, 4 шт",
+  HEADLIGHTS: "Фары головного света, 2 шт",
+  MIRRORS: "Зеркала, 2 шт",
+  A_PILLARS: "Стойки передние, 2 шт",
+  FOG_LIGHTS: "ПТФ, 2 шт",
+  SPOILER: "Спойлер",
 };
 
 // ---------- Факты о мастере ----------
@@ -207,7 +439,8 @@ export const PRICE_EXAMPLE = {
 export const HOME = {
   eyebrow: "Оклейка защитной плёнкой",
   h1Lead: "Оклейка авто защитной плёнкой PPF в Москве — BMW, Mercedes, Porsche, Range Rover",
-  h1Price: `Гарантия ${WARRANTY_WORK}`,
+  /** {price} — минимальная цена «от» (зоны риска) среди моделей главной. */
+  h1Price: "Плёнка Spectroll, цены от {price}",
   subtitle: `${FACTS.experienceYears} лет опыта, гарантия ${WARRANTY_WORK}, плёнка Spectroll, ${CONTACTS.city}. Посчитайте свою машину за минуту.`,
   ctaCalc: "Рассчитать стоимость →",
   ctaTelegram: "Написать в Telegram",
@@ -320,7 +553,7 @@ export const FAQ: { q: string; a: string }[] = [
     q: "Что входит в гарантию?",
     a: `${WARRANTY_WORK[0].toUpperCase()}${WARRANTY_WORK.slice(1)}: отслоение, пузыри, поднятые края по вине монтажа. ${FILM_LIFE}. Механические повреждения плёнки — сколы, порезы, царапины — гарантией не покрываются.`,
   },
-  { q: "Где вы работаете?", a: `${CONTACTS.city}. Работаем на проверенных площадках.` },
+  { q: "Где проходит оклейка?", a: WORKPLACE.answer },
 ];
 
 // ---------- Работы (кейсы) ----------
@@ -354,8 +587,9 @@ export type NavItem = { label: string; href: string; anchor?: string };
 /** Пункты шапки. anchor — id блока на главной; «Работы» скрыт, если CASES пуст. */
 export const NAV: NavItem[] = [
   { label: "Калькулятор", href: "/#calculator", anchor: "calculator" },
-  { label: "Цены", href: "/#prices", anchor: "prices" },
+  { label: "Цены", href: "/ceny" },
   ...(CASES.length > 0 ? [{ label: "Работы", href: "/#works", anchor: "works" }] : []),
+  { label: "Марки", href: "/ppf" },
   { label: "Гарантия", href: "/#warranty", anchor: "warranty" },
   { label: "Мастерам", href: "/master" },
   { label: "Партнёрам", href: "/partners" },
@@ -363,6 +597,8 @@ export const NAV: NavItem[] = [
 
 export const FOOTER_LINKS: NavItem[] = [
   { label: "Калькулятор", href: "/calculator" },
+  { label: "Марки", href: "/ppf" },
+  { label: "Цены", href: "/ceny" },
   { label: "Партнёрам", href: "/partners" },
   { label: "Мастерам", href: "/master" },
   { label: "Политика конфиденциальности", href: "/privacy" },
