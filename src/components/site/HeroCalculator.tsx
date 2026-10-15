@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useId } from "react";
 import { fillTemplate, formatRub } from "@/shared/format";
 
 type Price = { low: number; high: number } | null;
@@ -26,6 +26,7 @@ const selectClass =
 
 /** Мини-калькулятор в hero: марка → модель → цены «от» (только low, без года). */
 export default function HeroCalculator({ cars, texts }: Props) {
+  const uid = useId();
   const brands = Array.from(new Set(cars.map((c) => c.brand)));
   const [brand, setBrand] = useState(cars[0]?.brand ?? "");
   const [code, setCode] = useState(cars[0]?.code ?? "");
@@ -37,10 +38,10 @@ export default function HeroCalculator({ cars, texts }: Props) {
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <div>
-          <label className="text-xs font-bold uppercase tracking-[0.14em] text-white/55">
+          <label htmlFor={`${uid}-1`} className="text-xs font-bold uppercase tracking-[0.14em] text-white/55">
             {texts.brand}
           </label>
-          <select
+          <select id={`${uid}-1`}
             value={brand}
             onChange={(e) => {
               const b = e.target.value;
@@ -58,10 +59,10 @@ export default function HeroCalculator({ cars, texts }: Props) {
           </select>
         </div>
         <div>
-          <label className="text-xs font-bold uppercase tracking-[0.14em] text-white/55">
+          <label htmlFor={`${uid}-2`} className="text-xs font-bold uppercase tracking-[0.14em] text-white/55">
             {texts.model}
           </label>
-          <select value={code} onChange={(e) => setCode(e.target.value)} className={selectClass}>
+          <select id={`${uid}-2`} value={code} onChange={(e) => setCode(e.target.value)} className={selectClass}>
             {cars
               .filter((c) => c.brand === brand)
               .map((c) => (

@@ -45,9 +45,10 @@ export default function SiteHeader({ onHome = false }: { onHome?: boolean }) {
       </div>
 
       {/* Мобильное меню: пункты переносятся, горизонтального скролла нет */}
-      <nav className="flex flex-wrap gap-x-5 gap-y-1 border-t border-white/5 px-4 py-2 text-xs font-semibold text-white/60 sm:px-6 xl:hidden">
+      {/* py-1.5 у ссылок: зона нажатия ≥ 24 px (замечание PageSpeed про размер целей) */}
+      <nav className="flex flex-wrap gap-x-4 border-t border-white/5 px-4 py-1 text-xs font-semibold text-white/60 sm:px-6 xl:hidden">
         {items.map((item) => (
-          <a key={item.label} href={item.href} className="hover:text-white">
+          <a key={item.label} href={item.href} className="inline-block py-1.5 hover:text-white">
             {item.label}
           </a>
         ))}
