@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import LeadForm from "@/components/forms/LeadForm";
+import CarVisual from "@/components/calculator/CarVisual";
 import type { FormContent } from "@/components/forms/FormParts";
 import { buildTelegramUrl, fillTemplate, formatRub } from "@/shared/format";
 import { addonsRange, type AddonPrice, type AddonSelection } from "@/shared/addons";
@@ -200,6 +201,8 @@ export default function Calculator({
               </h1>
               <p className="mt-3 text-white/60">Выберите марку и поколение кузова.</p>
 
+              {carObj && <CarVisual code={carObj.code} label={carObj.label} className="mb-5 aspect-[16/9]" priority />}
+
               <div className="mt-8 grid gap-2">
                 {topCars.map((c) => (
                   <button key={c.code} onClick={() => setCar(c.code)} className={cardClass(car === c.code)}>
@@ -362,6 +365,7 @@ export default function Calculator({
               </h1>
 
               <div className="dark-card mt-8 p-6 sm:p-8">
+                {carObj && <CarVisual code={carObj.code} label={carObj.label} className="mb-6 aspect-[16/9]" />}
                 <div className="text-sm font-extrabold uppercase tracking-[0.14em] accent">
                   {carObj?.label}
                 </div>
