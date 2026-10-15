@@ -1,0 +1,1235 @@
+{
+  "schemaVersion": 1,
+  "generatedFrom": "data/pricing-cars.csv",
+  "imageStatusLegend": {
+    "pending": "Image not sourced or verified",
+    "review": "Candidate found; generation and license require review",
+    "verified": "Exact generation and commercial-use rights verified"
+  },
+  "cars": [
+    {
+      "code": "GEELY_MONJARO",
+      "brand": "Geely",
+      "model": "Monjaro",
+      "generation": "KX11",
+      "years": "2021–н.в.",
+      "mainImage": "/images/cars/geely_monjaro-main.webp",
+      "gallery": [
+        "/images/cars/geely_monjaro-rear.webp",
+        "/images/cars/geely_monjaro-side.webp",
+        "/images/cars/geely_monjaro-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "BMW_X5_G05",
+      "brand": "BMW",
+      "model": "X5 G05",
+      "generation": "G05",
+      "years": "2018–н.в.",
+      "mainImage": "/images/cars/bmw_x5_g05-main.webp",
+      "gallery": [
+        "/images/cars/bmw_x5_g05-rear.webp",
+        "/images/cars/bmw_x5_g05-side.webp",
+        "/images/cars/bmw_x5_g05-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "BMW_X7_G07",
+      "brand": "BMW",
+      "model": "X7 G07",
+      "generation": "G07",
+      "years": "2018–н.в.",
+      "mainImage": "/images/cars/bmw_x7_g07-main.webp",
+      "gallery": [
+        "/images/cars/bmw_x7_g07-rear.webp",
+        "/images/cars/bmw_x7_g07-side.webp",
+        "/images/cars/bmw_x7_g07-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "MB_GLE_V167",
+      "brand": "Mercedes-Benz",
+      "model": "GLE V167",
+      "generation": "V167",
+      "years": "2019–н.в.",
+      "mainImage": "/images/cars/mb_gle_v167-main.webp",
+      "gallery": [
+        "/images/cars/mb_gle_v167-rear.webp",
+        "/images/cars/mb_gle_v167-side.webp",
+        "/images/cars/mb_gle_v167-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "PORSCHE_CAYENNE_E3",
+      "brand": "Porsche",
+      "model": "Cayenne E3",
+      "generation": "E3",
+      "years": "2017–н.в.",
+      "mainImage": "/images/cars/porsche_cayenne_e3-main.webp",
+      "gallery": [
+        "/images/cars/porsche_cayenne_e3-rear.webp",
+        "/images/cars/porsche_cayenne_e3-side.webp",
+        "/images/cars/porsche_cayenne_e3-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "TOYOTA_LC300",
+      "brand": "Toyota",
+      "model": "Land Cruiser 300",
+      "generation": "300",
+      "years": "2021–н.в.",
+      "mainImage": "/images/cars/toyota_lc300-main.webp",
+      "gallery": [
+        "/images/cars/toyota_lc300-rear.webp",
+        "/images/cars/toyota_lc300-side.webp",
+        "/images/cars/toyota_lc300-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "HAVAL_JOLION",
+      "brand": "Haval",
+      "model": "Jolion",
+      "generation": "1 поколение",
+      "years": "2020–н.в.",
+      "mainImage": "/images/cars/haval_jolion-main.webp",
+      "gallery": [
+        "/images/cars/haval_jolion-rear.webp",
+        "/images/cars/haval_jolion-side.webp",
+        "/images/cars/haval_jolion-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "BELGEE_X50",
+      "brand": "Belgee",
+      "model": "X50",
+      "generation": "1 поколение",
+      "years": "2023–н.в.",
+      "mainImage": "/images/cars/belgee_x50-main.webp",
+      "gallery": [
+        "/images/cars/belgee_x50-rear.webp",
+        "/images/cars/belgee_x50-side.webp",
+        "/images/cars/belgee_x50-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "BELGEE_X70",
+      "brand": "Belgee",
+      "model": "X70",
+      "generation": "1 поколение",
+      "years": "2023–н.в.",
+      "mainImage": "/images/cars/belgee_x70-main.webp",
+      "gallery": [
+        "/images/cars/belgee_x70-rear.webp",
+        "/images/cars/belgee_x70-side.webp",
+        "/images/cars/belgee_x70-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "CHERY_TIGGO_4_PRO",
+      "brand": "Chery",
+      "model": "Tiggo 4 Pro",
+      "generation": "1 поколение",
+      "years": "2020–н.в.",
+      "mainImage": "/images/cars/chery_tiggo_4_pro-main.webp",
+      "gallery": [
+        "/images/cars/chery_tiggo_4_pro-rear.webp",
+        "/images/cars/chery_tiggo_4_pro-side.webp",
+        "/images/cars/chery_tiggo_4_pro-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "GEELY_ATLAS",
+      "brand": "Geely",
+      "model": "Atlas",
+      "generation": "2 поколение",
+      "years": "2023–н.в.",
+      "mainImage": "/images/cars/geely_atlas-main.webp",
+      "gallery": [
+        "/images/cars/geely_atlas-rear.webp",
+        "/images/cars/geely_atlas-side.webp",
+        "/images/cars/geely_atlas-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "HYUNDAI_CRETA",
+      "brand": "Hyundai",
+      "model": "Creta",
+      "generation": "2 поколение",
+      "years": "2021–н.в.",
+      "mainImage": "/images/cars/hyundai_creta-main.webp",
+      "gallery": [
+        "/images/cars/hyundai_creta-rear.webp",
+        "/images/cars/hyundai_creta-side.webp",
+        "/images/cars/hyundai_creta-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "BMW_X3_G01",
+      "brand": "BMW",
+      "model": "X3 G01",
+      "generation": "G01",
+      "years": "2017–2024",
+      "mainImage": "/images/cars/bmw_x3_g01-main.webp",
+      "gallery": [
+        "/images/cars/bmw_x3_g01-rear.webp",
+        "/images/cars/bmw_x3_g01-side.webp",
+        "/images/cars/bmw_x3_g01-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "BMW_X3_G45",
+      "brand": "BMW",
+      "model": "X3 G45",
+      "generation": "G45",
+      "years": "2024–н.в.",
+      "mainImage": "/images/cars/bmw_x3_g45-main.webp",
+      "gallery": [
+        "/images/cars/bmw_x3_g45-rear.webp",
+        "/images/cars/bmw_x3_g45-side.webp",
+        "/images/cars/bmw_x3_g45-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "BMW_X4_G02",
+      "brand": "BMW",
+      "model": "X4 G02",
+      "generation": "G02",
+      "years": "2018–н.в.",
+      "mainImage": "/images/cars/bmw_x4_g02-main.webp",
+      "gallery": [
+        "/images/cars/bmw_x4_g02-rear.webp",
+        "/images/cars/bmw_x4_g02-side.webp",
+        "/images/cars/bmw_x4_g02-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "BMW_X5_F15",
+      "brand": "BMW",
+      "model": "X5 F15",
+      "generation": "F15",
+      "years": "2013–2018",
+      "mainImage": "/images/cars/bmw_x5_f15-main.webp",
+      "gallery": [
+        "/images/cars/bmw_x5_f15-rear.webp",
+        "/images/cars/bmw_x5_f15-side.webp",
+        "/images/cars/bmw_x5_f15-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "BMW_X6_G06",
+      "brand": "BMW",
+      "model": "X6 G06",
+      "generation": "G06",
+      "years": "2019–н.в.",
+      "mainImage": "/images/cars/bmw_x6_g06-main.webp",
+      "gallery": [
+        "/images/cars/bmw_x6_g06-rear.webp",
+        "/images/cars/bmw_x6_g06-side.webp",
+        "/images/cars/bmw_x6_g06-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "BMW_XM_G09",
+      "brand": "BMW",
+      "model": "XM G09",
+      "generation": "G09",
+      "years": "2022–н.в.",
+      "mainImage": "/images/cars/bmw_xm_g09-main.webp",
+      "gallery": [
+        "/images/cars/bmw_xm_g09-rear.webp",
+        "/images/cars/bmw_xm_g09-side.webp",
+        "/images/cars/bmw_xm_g09-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "BMW_5_G30",
+      "brand": "BMW",
+      "model": "5 серия G30",
+      "generation": "G30",
+      "years": "2017–2023",
+      "mainImage": "/images/cars/bmw_5_g30-main.webp",
+      "gallery": [
+        "/images/cars/bmw_5_g30-rear.webp",
+        "/images/cars/bmw_5_g30-side.webp",
+        "/images/cars/bmw_5_g30-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "BMW_5_G60",
+      "brand": "BMW",
+      "model": "5 серия G60",
+      "generation": "G60",
+      "years": "2023–н.в.",
+      "mainImage": "/images/cars/bmw_5_g60-main.webp",
+      "gallery": [
+        "/images/cars/bmw_5_g60-rear.webp",
+        "/images/cars/bmw_5_g60-side.webp",
+        "/images/cars/bmw_5_g60-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "BMW_7_G70",
+      "brand": "BMW",
+      "model": "7 серия G70",
+      "generation": "G70",
+      "years": "2022–н.в.",
+      "mainImage": "/images/cars/bmw_7_g70-main.webp",
+      "gallery": [
+        "/images/cars/bmw_7_g70-rear.webp",
+        "/images/cars/bmw_7_g70-side.webp",
+        "/images/cars/bmw_7_g70-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "MB_GLE_C167",
+      "brand": "Mercedes-Benz",
+      "model": "GLE Coupe C167",
+      "generation": "C167",
+      "years": "2019–н.в.",
+      "mainImage": "/images/cars/mb_gle_c167-main.webp",
+      "gallery": [
+        "/images/cars/mb_gle_c167-rear.webp",
+        "/images/cars/mb_gle_c167-side.webp",
+        "/images/cars/mb_gle_c167-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "MB_GLS_X167",
+      "brand": "Mercedes-Benz",
+      "model": "GLS X167",
+      "generation": "X167",
+      "years": "2019–н.в.",
+      "mainImage": "/images/cars/mb_gls_x167-main.webp",
+      "gallery": [
+        "/images/cars/mb_gls_x167-rear.webp",
+        "/images/cars/mb_gls_x167-side.webp",
+        "/images/cars/mb_gls_x167-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "MB_G_W463",
+      "brand": "Mercedes-Benz",
+      "model": "G-класс W463",
+      "generation": "W463",
+      "years": "2018–н.в.",
+      "mainImage": "/images/cars/mb_g_w463-main.webp",
+      "gallery": [
+        "/images/cars/mb_g_w463-rear.webp",
+        "/images/cars/mb_g_w463-side.webp",
+        "/images/cars/mb_g_w463-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "MB_GLC_X253",
+      "brand": "Mercedes-Benz",
+      "model": "GLC X253",
+      "generation": "X253",
+      "years": "2015–2022",
+      "mainImage": "/images/cars/mb_glc_x253-main.webp",
+      "gallery": [
+        "/images/cars/mb_glc_x253-rear.webp",
+        "/images/cars/mb_glc_x253-side.webp",
+        "/images/cars/mb_glc_x253-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "MB_GLC_X254",
+      "brand": "Mercedes-Benz",
+      "model": "GLC X254",
+      "generation": "X254",
+      "years": "2022–н.в.",
+      "mainImage": "/images/cars/mb_glc_x254-main.webp",
+      "gallery": [
+        "/images/cars/mb_glc_x254-rear.webp",
+        "/images/cars/mb_glc_x254-side.webp",
+        "/images/cars/mb_glc_x254-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "MB_E_W214",
+      "brand": "Mercedes-Benz",
+      "model": "E-класс W214",
+      "generation": "W214",
+      "years": "2023–н.в.",
+      "mainImage": "/images/cars/mb_e_w214-main.webp",
+      "gallery": [
+        "/images/cars/mb_e_w214-rear.webp",
+        "/images/cars/mb_e_w214-side.webp",
+        "/images/cars/mb_e_w214-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "MB_S_W223",
+      "brand": "Mercedes-Benz",
+      "model": "S-класс W223",
+      "generation": "W223",
+      "years": "2020–н.в.",
+      "mainImage": "/images/cars/mb_s_w223-main.webp",
+      "gallery": [
+        "/images/cars/mb_s_w223-rear.webp",
+        "/images/cars/mb_s_w223-side.webp",
+        "/images/cars/mb_s_w223-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "PORSCHE_CAYENNE_COUPE_E3",
+      "brand": "Porsche",
+      "model": "Cayenne Coupe E3",
+      "generation": "E3",
+      "years": "2019–н.в.",
+      "mainImage": "/images/cars/porsche_cayenne_coupe_e3-main.webp",
+      "gallery": [
+        "/images/cars/porsche_cayenne_coupe_e3-rear.webp",
+        "/images/cars/porsche_cayenne_coupe_e3-side.webp",
+        "/images/cars/porsche_cayenne_coupe_e3-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "PORSCHE_MACAN_95B",
+      "brand": "Porsche",
+      "model": "Macan 95B",
+      "generation": "95B",
+      "years": "2014–2024",
+      "mainImage": "/images/cars/porsche_macan_95b-main.webp",
+      "gallery": [
+        "/images/cars/porsche_macan_95b-rear.webp",
+        "/images/cars/porsche_macan_95b-side.webp",
+        "/images/cars/porsche_macan_95b-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "PORSCHE_MACAN_EV",
+      "brand": "Porsche",
+      "model": "Macan Electric",
+      "generation": "2 поколение",
+      "years": "2024–н.в.",
+      "mainImage": "/images/cars/porsche_macan_ev-main.webp",
+      "gallery": [
+        "/images/cars/porsche_macan_ev-rear.webp",
+        "/images/cars/porsche_macan_ev-side.webp",
+        "/images/cars/porsche_macan_ev-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "PORSCHE_PANAMERA_971",
+      "brand": "Porsche",
+      "model": "Panamera 971",
+      "generation": "971",
+      "years": "2016–2023",
+      "mainImage": "/images/cars/porsche_panamera_971-main.webp",
+      "gallery": [
+        "/images/cars/porsche_panamera_971-rear.webp",
+        "/images/cars/porsche_panamera_971-side.webp",
+        "/images/cars/porsche_panamera_971-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "PORSCHE_PANAMERA_976",
+      "brand": "Porsche",
+      "model": "Panamera 976",
+      "generation": "976",
+      "years": "2023–н.в.",
+      "mainImage": "/images/cars/porsche_panamera_976-main.webp",
+      "gallery": [
+        "/images/cars/porsche_panamera_976-rear.webp",
+        "/images/cars/porsche_panamera_976-side.webp",
+        "/images/cars/porsche_panamera_976-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "PORSCHE_TAYCAN",
+      "brand": "Porsche",
+      "model": "Taycan J1",
+      "generation": "J1",
+      "years": "2019–н.в.",
+      "mainImage": "/images/cars/porsche_taycan-main.webp",
+      "gallery": [
+        "/images/cars/porsche_taycan-rear.webp",
+        "/images/cars/porsche_taycan-side.webp",
+        "/images/cars/porsche_taycan-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "PORSCHE_911_992",
+      "brand": "Porsche",
+      "model": "911 992",
+      "generation": "992",
+      "years": "2019–н.в.",
+      "mainImage": "/images/cars/porsche_911_992-main.webp",
+      "gallery": [
+        "/images/cars/porsche_911_992-rear.webp",
+        "/images/cars/porsche_911_992-side.webp",
+        "/images/cars/porsche_911_992-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "LR_RR_L405",
+      "brand": "Land Rover",
+      "model": "Range Rover L405",
+      "generation": "L405",
+      "years": "2012–2021",
+      "mainImage": "/images/cars/lr_rr_l405-main.webp",
+      "gallery": [
+        "/images/cars/lr_rr_l405-rear.webp",
+        "/images/cars/lr_rr_l405-side.webp",
+        "/images/cars/lr_rr_l405-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "LR_RR_L460",
+      "brand": "Land Rover",
+      "model": "Range Rover L460",
+      "generation": "L460",
+      "years": "2021–н.в.",
+      "mainImage": "/images/cars/lr_rr_l460-main.webp",
+      "gallery": [
+        "/images/cars/lr_rr_l460-rear.webp",
+        "/images/cars/lr_rr_l460-side.webp",
+        "/images/cars/lr_rr_l460-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "LR_RRS_L494",
+      "brand": "Land Rover",
+      "model": "Range Rover Sport L494",
+      "generation": "L494",
+      "years": "2013–2022",
+      "mainImage": "/images/cars/lr_rrs_l494-main.webp",
+      "gallery": [
+        "/images/cars/lr_rrs_l494-rear.webp",
+        "/images/cars/lr_rrs_l494-side.webp",
+        "/images/cars/lr_rrs_l494-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "LR_RRS_L461",
+      "brand": "Land Rover",
+      "model": "Range Rover Sport L461",
+      "generation": "L461",
+      "years": "2022–н.в.",
+      "mainImage": "/images/cars/lr_rrs_l461-main.webp",
+      "gallery": [
+        "/images/cars/lr_rrs_l461-rear.webp",
+        "/images/cars/lr_rrs_l461-side.webp",
+        "/images/cars/lr_rrs_l461-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "LR_VELAR_L560",
+      "brand": "Land Rover",
+      "model": "Range Rover Velar L560",
+      "generation": "L560",
+      "years": "2017–н.в.",
+      "mainImage": "/images/cars/lr_velar_l560-main.webp",
+      "gallery": [
+        "/images/cars/lr_velar_l560-rear.webp",
+        "/images/cars/lr_velar_l560-side.webp",
+        "/images/cars/lr_velar_l560-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "LR_DEFENDER_L663",
+      "brand": "Land Rover",
+      "model": "Defender L663",
+      "generation": "L663",
+      "years": "2020–н.в.",
+      "mainImage": "/images/cars/lr_defender_l663-main.webp",
+      "gallery": [
+        "/images/cars/lr_defender_l663-rear.webp",
+        "/images/cars/lr_defender_l663-side.webp",
+        "/images/cars/lr_defender_l663-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "LR_DISCOVERY_L462",
+      "brand": "Land Rover",
+      "model": "Discovery L462",
+      "generation": "L462",
+      "years": "2017–н.в.",
+      "mainImage": "/images/cars/lr_discovery_l462-main.webp",
+      "gallery": [
+        "/images/cars/lr_discovery_l462-rear.webp",
+        "/images/cars/lr_discovery_l462-side.webp",
+        "/images/cars/lr_discovery_l462-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "LYNK_01",
+      "brand": "Lynk & Co",
+      "model": "01",
+      "generation": "1 поколение",
+      "years": "2017–н.в.",
+      "mainImage": "/images/cars/lynk_01-main.webp",
+      "gallery": [
+        "/images/cars/lynk_01-rear.webp",
+        "/images/cars/lynk_01-side.webp",
+        "/images/cars/lynk_01-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "LYNK_05",
+      "brand": "Lynk & Co",
+      "model": "05",
+      "generation": "1 поколение",
+      "years": "2019–н.в.",
+      "mainImage": "/images/cars/lynk_05-main.webp",
+      "gallery": [
+        "/images/cars/lynk_05-rear.webp",
+        "/images/cars/lynk_05-side.webp",
+        "/images/cars/lynk_05-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "LYNK_08",
+      "brand": "Lynk & Co",
+      "model": "08",
+      "generation": "1 поколение",
+      "years": "2023–н.в.",
+      "mainImage": "/images/cars/lynk_08-main.webp",
+      "gallery": [
+        "/images/cars/lynk_08-rear.webp",
+        "/images/cars/lynk_08-side.webp",
+        "/images/cars/lynk_08-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "LYNK_09",
+      "brand": "Lynk & Co",
+      "model": "09",
+      "generation": "1 поколение",
+      "years": "2021–н.в.",
+      "mainImage": "/images/cars/lynk_09-main.webp",
+      "gallery": [
+        "/images/cars/lynk_09-rear.webp",
+        "/images/cars/lynk_09-side.webp",
+        "/images/cars/lynk_09-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "LYNK_900",
+      "brand": "Lynk & Co",
+      "model": "900",
+      "generation": "1 поколение",
+      "years": "2025–н.в.",
+      "mainImage": "/images/cars/lynk_900-main.webp",
+      "gallery": [
+        "/images/cars/lynk_900-rear.webp",
+        "/images/cars/lynk_900-side.webp",
+        "/images/cars/lynk_900-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "TOYOTA_LC_PRADO_150",
+      "brand": "Toyota",
+      "model": "Land Cruiser Prado 150",
+      "generation": "150",
+      "years": "2009–2023",
+      "mainImage": "/images/cars/toyota_lc_prado_150-main.webp",
+      "gallery": [
+        "/images/cars/toyota_lc_prado_150-rear.webp",
+        "/images/cars/toyota_lc_prado_150-side.webp",
+        "/images/cars/toyota_lc_prado_150-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "TOYOTA_LC_PRADO_250",
+      "brand": "Toyota",
+      "model": "Land Cruiser Prado 250",
+      "generation": "250",
+      "years": "2023–н.в.",
+      "mainImage": "/images/cars/toyota_lc_prado_250-main.webp",
+      "gallery": [
+        "/images/cars/toyota_lc_prado_250-rear.webp",
+        "/images/cars/toyota_lc_prado_250-side.webp",
+        "/images/cars/toyota_lc_prado_250-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "TOYOTA_HIGHLANDER_XU70",
+      "brand": "Toyota",
+      "model": "Highlander XU70",
+      "generation": "XU70",
+      "years": "2019–н.в.",
+      "mainImage": "/images/cars/toyota_highlander_xu70-main.webp",
+      "gallery": [
+        "/images/cars/toyota_highlander_xu70-rear.webp",
+        "/images/cars/toyota_highlander_xu70-side.webp",
+        "/images/cars/toyota_highlander_xu70-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "TOYOTA_CAMRY_XV70",
+      "brand": "Toyota",
+      "model": "Camry XV70",
+      "generation": "XV70",
+      "years": "2017–2024",
+      "mainImage": "/images/cars/toyota_camry_xv70-main.webp",
+      "gallery": [
+        "/images/cars/toyota_camry_xv70-rear.webp",
+        "/images/cars/toyota_camry_xv70-side.webp",
+        "/images/cars/toyota_camry_xv70-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "TOYOTA_RAV4_XA50",
+      "brand": "Toyota",
+      "model": "RAV4 XA50",
+      "generation": "XA50",
+      "years": "2018–н.в.",
+      "mainImage": "/images/cars/toyota_rav4_xa50-main.webp",
+      "gallery": [
+        "/images/cars/toyota_rav4_xa50-rear.webp",
+        "/images/cars/toyota_rav4_xa50-side.webp",
+        "/images/cars/toyota_rav4_xa50-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "LEXUS_LX_J310",
+      "brand": "Lexus",
+      "model": "LX 600 (J310)",
+      "generation": "600 (J310)",
+      "years": "2021–н.в.",
+      "mainImage": "/images/cars/lexus_lx_j310-main.webp",
+      "gallery": [
+        "/images/cars/lexus_lx_j310-rear.webp",
+        "/images/cars/lexus_lx_j310-side.webp",
+        "/images/cars/lexus_lx_j310-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "LEXUS_GX_J250",
+      "brand": "Lexus",
+      "model": "GX 550 (J250)",
+      "generation": "550 (J250)",
+      "years": "2023–н.в.",
+      "mainImage": "/images/cars/lexus_gx_j250-main.webp",
+      "gallery": [
+        "/images/cars/lexus_gx_j250-rear.webp",
+        "/images/cars/lexus_gx_j250-side.webp",
+        "/images/cars/lexus_gx_j250-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "LEXUS_RX_AL30",
+      "brand": "Lexus",
+      "model": "RX AL30",
+      "generation": "AL30",
+      "years": "2022–н.в.",
+      "mainImage": "/images/cars/lexus_rx_al30-main.webp",
+      "gallery": [
+        "/images/cars/lexus_rx_al30-rear.webp",
+        "/images/cars/lexus_rx_al30-side.webp",
+        "/images/cars/lexus_rx_al30-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "LEXUS_NX_AZ20",
+      "brand": "Lexus",
+      "model": "NX AZ20",
+      "generation": "AZ20",
+      "years": "2021–н.в.",
+      "mainImage": "/images/cars/lexus_nx_az20-main.webp",
+      "gallery": [
+        "/images/cars/lexus_nx_az20-rear.webp",
+        "/images/cars/lexus_nx_az20-side.webp",
+        "/images/cars/lexus_nx_az20-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "LEXUS_ES_XZ10",
+      "brand": "Lexus",
+      "model": "ES XZ10",
+      "generation": "XZ10",
+      "years": "2018–н.в.",
+      "mainImage": "/images/cars/lexus_es_xz10-main.webp",
+      "gallery": [
+        "/images/cars/lexus_es_xz10-rear.webp",
+        "/images/cars/lexus_es_xz10-side.webp",
+        "/images/cars/lexus_es_xz10-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "LEXUS_LM",
+      "brand": "Lexus",
+      "model": "LM",
+      "generation": "2 поколение",
+      "years": "2023–н.в.",
+      "mainImage": "/images/cars/lexus_lm-main.webp",
+      "gallery": [
+        "/images/cars/lexus_lm-rear.webp",
+        "/images/cars/lexus_lm-side.webp",
+        "/images/cars/lexus_lm-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "GEELY_COOLRAY",
+      "brand": "Geely",
+      "model": "Coolray SX11",
+      "generation": "SX11",
+      "years": "2019–н.в.",
+      "mainImage": "/images/cars/geely_coolray-main.webp",
+      "gallery": [
+        "/images/cars/geely_coolray-rear.webp",
+        "/images/cars/geely_coolray-side.webp",
+        "/images/cars/geely_coolray-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "GEELY_TUGELLA",
+      "brand": "Geely",
+      "model": "Tugella FY11",
+      "generation": "FY11",
+      "years": "2019–н.в.",
+      "mainImage": "/images/cars/geely_tugella-main.webp",
+      "gallery": [
+        "/images/cars/geely_tugella-rear.webp",
+        "/images/cars/geely_tugella-side.webp",
+        "/images/cars/geely_tugella-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "GEELY_OKAVANGO",
+      "brand": "Geely",
+      "model": "Okavango",
+      "generation": "1 поколение",
+      "years": "2020–н.в.",
+      "mainImage": "/images/cars/geely_okavango-main.webp",
+      "gallery": [
+        "/images/cars/geely_okavango-rear.webp",
+        "/images/cars/geely_okavango-side.webp",
+        "/images/cars/geely_okavango-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "GEELY_PREFACE",
+      "brand": "Geely",
+      "model": "Preface",
+      "generation": "1 поколение",
+      "years": "2020–н.в.",
+      "mainImage": "/images/cars/geely_preface-main.webp",
+      "gallery": [
+        "/images/cars/geely_preface-rear.webp",
+        "/images/cars/geely_preface-side.webp",
+        "/images/cars/geely_preface-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "LIXIANG_L6",
+      "brand": "LiXiang",
+      "model": "L6",
+      "generation": "1 поколение",
+      "years": "2024–н.в.",
+      "mainImage": "/images/cars/lixiang_l6-main.webp",
+      "gallery": [
+        "/images/cars/lixiang_l6-rear.webp",
+        "/images/cars/lixiang_l6-side.webp",
+        "/images/cars/lixiang_l6-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "LIXIANG_L7",
+      "brand": "LiXiang",
+      "model": "L7",
+      "generation": "1 поколение",
+      "years": "2023–н.в.",
+      "mainImage": "/images/cars/lixiang_l7-main.webp",
+      "gallery": [
+        "/images/cars/lixiang_l7-rear.webp",
+        "/images/cars/lixiang_l7-side.webp",
+        "/images/cars/lixiang_l7-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "LIXIANG_L8",
+      "brand": "LiXiang",
+      "model": "L8",
+      "generation": "1 поколение",
+      "years": "2022–н.в.",
+      "mainImage": "/images/cars/lixiang_l8-main.webp",
+      "gallery": [
+        "/images/cars/lixiang_l8-rear.webp",
+        "/images/cars/lixiang_l8-side.webp",
+        "/images/cars/lixiang_l8-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "LIXIANG_L9",
+      "brand": "LiXiang",
+      "model": "L9",
+      "generation": "1 поколение",
+      "years": "2022–н.в.",
+      "mainImage": "/images/cars/lixiang_l9-main.webp",
+      "gallery": [
+        "/images/cars/lixiang_l9-rear.webp",
+        "/images/cars/lixiang_l9-side.webp",
+        "/images/cars/lixiang_l9-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "LIXIANG_MEGA",
+      "brand": "LiXiang",
+      "model": "Mega",
+      "generation": "1 поколение",
+      "years": "2024–н.в.",
+      "mainImage": "/images/cars/lixiang_mega-main.webp",
+      "gallery": [
+        "/images/cars/lixiang_mega-rear.webp",
+        "/images/cars/lixiang_mega-side.webp",
+        "/images/cars/lixiang_mega-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "ZEEKR_001",
+      "brand": "Zeekr",
+      "model": "001",
+      "generation": "1 поколение",
+      "years": "2021–н.в.",
+      "mainImage": "/images/cars/zeekr_001-main.webp",
+      "gallery": [
+        "/images/cars/zeekr_001-rear.webp",
+        "/images/cars/zeekr_001-side.webp",
+        "/images/cars/zeekr_001-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "ZEEKR_7X",
+      "brand": "Zeekr",
+      "model": "7X",
+      "generation": "1 поколение",
+      "years": "2024–н.в.",
+      "mainImage": "/images/cars/zeekr_7x-main.webp",
+      "gallery": [
+        "/images/cars/zeekr_7x-rear.webp",
+        "/images/cars/zeekr_7x-side.webp",
+        "/images/cars/zeekr_7x-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "ZEEKR_009",
+      "brand": "Zeekr",
+      "model": "009",
+      "generation": "1 поколение",
+      "years": "2022–н.в.",
+      "mainImage": "/images/cars/zeekr_009-main.webp",
+      "gallery": [
+        "/images/cars/zeekr_009-rear.webp",
+        "/images/cars/zeekr_009-side.webp",
+        "/images/cars/zeekr_009-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "ZEEKR_9X",
+      "brand": "Zeekr",
+      "model": "9X",
+      "generation": "1 поколение",
+      "years": "2025–н.в.",
+      "mainImage": "/images/cars/zeekr_9x-main.webp",
+      "gallery": [
+        "/images/cars/zeekr_9x-rear.webp",
+        "/images/cars/zeekr_9x-side.webp",
+        "/images/cars/zeekr_9x-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    },
+    {
+      "code": "ZEEKR_X",
+      "brand": "Zeekr",
+      "model": "X",
+      "generation": "1 поколение",
+      "years": "2023–н.в.",
+      "mainImage": "/images/cars/zeekr_x-main.webp",
+      "gallery": [
+        "/images/cars/zeekr_x-rear.webp",
+        "/images/cars/zeekr_x-side.webp",
+        "/images/cars/zeekr_x-detail.webp"
+      ],
+      "status": "pending",
+      "sourceUrl": "",
+      "license": "unverified",
+      "notes": ""
+    }
+  ]
+}
