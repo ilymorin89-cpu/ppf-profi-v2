@@ -116,7 +116,7 @@ export type AddonCode =
  * Допы одинаковы для всех моделей, без коэффициента класса.
  * price — цена за штуку (или «от»), priceMax — верх диапазона, maxQty — максимум в калькуляторе.
  */
-export const ADDONS: Record<AddonCode, { price: number; priceMax?: number; maxQty: number }> = {
+export const ADDONS: Record<AddonCode, { price: number; priceMax?: number; maxQty: number; onlyScenario?: string }> = {
   PILLARS: { price: 2_000, maxQty: 6 },
   SILLS_INNER: { price: 2_000, maxQty: 1 },
   SCREENS: { price: 7_000, priceMax: 9_000, maxQty: 1 },
@@ -124,7 +124,7 @@ export const ADDONS: Record<AddonCode, { price: number; priceMax?: number; maxQt
   WINDSHIELD: { price: 30_000, maxQty: 1 },
   TINT: { price: 15_000, maxQty: 1 },
   /** Доплата за матовую плёнку к полной оклейке (решение Ильи 14.10.2026). */
-  MATTE: { price: 35_000, maxQty: 1 },
+  MATTE: { price: 35_000, maxQty: 1, onlyScenario: "FULL" },
 };
 
 // ---------- Отдельные детали ----------

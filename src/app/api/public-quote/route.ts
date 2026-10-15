@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     if (!carCode) {
       return NextResponse.json({ error: "Не указан автомобиль" }, { status: 400 });
     }
-    const addons = parsePublicAddons(body.addons);
+    const addons = parsePublicAddons(body.addons, scenario);
     if (!addons) {
       return NextResponse.json({ error: "Некорректные допы" }, { status: 400 });
     }
