@@ -38,11 +38,11 @@
         "/images/cars/bmw_x5_g05-detail.webp"
       ],
       "status": "review",
-      "sourceUrl": "https://commons.wikimedia.org/wiki/File:BMW_X5_(G05)_China.jpg",
-      "license": "CC BY-SA 4.0 — attribution and share-alike obligations; legal/product suitability not yet approved",
-      "notes": "Candidate source found; verify body generation, trim, crop suitability and commercial use obligations before downloading. Do not use as final asset until reviewed.",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:BMW_G05_IMG_0919.jpg",
+      "license": "CC BY-SA 4.0",
+      "notes": "Candidate depicts BMW X5 G05. Verify image composition and licensing/attribution suitability before download. Not approved as final asset.",
       "searchUrl": "https://commons.wikimedia.org/w/index.php?search=BMW%20X5%20G05&title=Special:MediaSearch&type=image",
-      "candidateAuthor": "Dinkun Chen",
+      "candidateAuthor": "Alexander Migl",
       "candidateTitle": "BMW X5 (G05) China",
       "candidateLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
     },
@@ -292,11 +292,12 @@
         "/images/cars/bmw_x5_f15-side.webp",
         "/images/cars/bmw_x5_f15-detail.webp"
       ],
-      "status": "pending",
-      "sourceUrl": "",
-      "license": "unverified",
-      "notes": "",
-      "searchUrl": "https://commons.wikimedia.org/w/index.php?search=BMW%20X5%20F15%20F15%202013%E2%80%932018%20car%20photo&title=Special:MediaSearch&type=image"
+      "status": "review",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:BMW_X5_F15.jpg",
+      "license": "CC BY-SA 4.0",
+      "notes": "Candidate depicts BMW X5 F15 / third generation. Verify framing and licensing/attribution suitability before download. Not approved as final asset.",
+      "searchUrl": "https://commons.wikimedia.org/w/index.php?search=BMW%20X5%20F15%20F15%202013%E2%80%932018%20car%20photo&title=Special:MediaSearch&type=image",
+      "candidateAuthor": "Dicky0615"
     },
     {
       "code": "BMW_X6_G06",
