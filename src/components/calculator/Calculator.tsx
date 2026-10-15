@@ -33,6 +33,7 @@ export type CalcAddon = AddonPrice & { code: string; label: string; desc?: strin
 
 export type CalculatorTexts = {
   h1: string;
+  h1Mid: string;
   h1Accent: string;
   lead: string;
   trust: string[];
@@ -305,8 +306,9 @@ export default function Calculator({ cars, defaultCar, scenarios, films, addons,
       <section className="grid items-center gap-6 lg:grid-cols-[minmax(0,6fr)_minmax(0,7fr)]">
         <div className="space-y-5">
           <h1 className="text-3xl font-extrabold leading-[1.05] tracking-[-0.03em] sm:text-5xl lg:text-[44px]">
-            {texts.h1} <br className="hidden lg:block" />
-            <span className="accent">{texts.h1Accent}</span>
+            {texts.h1}
+            <br />
+            {texts.h1Mid} <span className="accent">{texts.h1Accent}</span>
           </h1>
           <p className="max-w-xl text-white/60">{texts.lead}</p>
           <div className="lg:hidden">{photo}</div>
@@ -371,7 +373,7 @@ export default function Calculator({ cars, defaultCar, scenarios, films, addons,
                 )}
                 <span className="flex flex-1 flex-col p-4 pt-3">
                   <span className="text-xs leading-5 text-white/50">
-                    {x.scenario.desc}. Срок {x.scenario.days}.
+                    {x.scenario.desc}
                   </span>
                   <span
                     className={`mt-auto whitespace-nowrap pt-3 text-xl font-extrabold tabular-nums ${active ? "accent" : ""}`}

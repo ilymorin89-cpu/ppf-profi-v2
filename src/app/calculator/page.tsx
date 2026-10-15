@@ -16,6 +16,7 @@ import {
   FORM_TEXTS,
   SCENARIOS,
   SCENARIO_CODES,
+  type ScenarioCode,
   TELEGRAM,
   TOP_MODELS,
   FILM_LIFE,
@@ -31,6 +32,12 @@ export const metadata: Metadata = {
   description:
     "Выберите марку, модель и поколение — сразу увидите цены на зоны риска и полную оклейку плёнкой Spectroll, допы и итог. Москва.",
   alternates: { canonical: "/calculator" },
+};
+
+/** Описание пакетов в калькуляторе (как в макете агента). На главной — SCENARIOS.desc. */
+const CALC_SCENARIO_DESC: Record<ScenarioCode, string> = {
+  FULL: "Полная защита кузова плёнкой Spectroll",
+  RISK_ZONES: "Бампер, капот, крылья, зеркала, зона погрузки и другие элементы",
 };
 
 /** Есть ли файл в public/ (иллюстрации машин, схемы пакетов, картинки допов). */
@@ -75,7 +82,7 @@ export default function CalculatorPage() {
           scenarios={SCENARIO_CODES.map((code) => ({
             code,
             label: SCENARIOS[code].label,
-            desc: SCENARIOS[code].desc,
+            desc: CALC_SCENARIO_DESC[code],
             days: scenarioDays(code),
             image: hasPublic(`packages/${code}.webp`) ? `/packages/${code}.webp` : undefined,
           }))}
