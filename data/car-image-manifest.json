@@ -37,11 +37,14 @@
         "/images/cars/bmw_x5_g05-side.webp",
         "/images/cars/bmw_x5_g05-detail.webp"
       ],
-      "status": "pending",
-      "sourceUrl": "",
-      "license": "unverified",
-      "notes": "",
-      "searchUrl": "https://commons.wikimedia.org/w/index.php?search=BMW%20X5%20G05%20G05%202018%E2%80%93%D0%BD.%D0%B2.%20car%20photo&title=Special:MediaSearch&type=image"
+      "status": "review",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:BMW_X5_(G05)_China.jpg",
+      "license": "CC BY-SA 4.0 — attribution and share-alike obligations; legal/product suitability not yet approved",
+      "notes": "Candidate source found; verify body generation, trim, crop suitability and commercial use obligations before downloading. Do not use as final asset until reviewed.",
+      "searchUrl": "https://commons.wikimedia.org/w/index.php?search=BMW%20X5%20G05&title=Special:MediaSearch&type=image",
+      "candidateAuthor": "Dinkun Chen",
+      "candidateTitle": "BMW X5 (G05) China",
+      "candidateLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
     },
     {
       "code": "BMW_X7_G07",
