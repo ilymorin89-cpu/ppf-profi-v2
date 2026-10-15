@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { existsSync } from "node:fs";
+import path from "node:path";
 import SiteHeader from "@/components/site/SiteHeader";
 import SiteFooter from "@/components/site/SiteFooter";
 import { Suspense } from "react";
@@ -16,6 +18,8 @@ import {
   SCENARIO_CODES,
   TELEGRAM,
   TOP_MODELS,
+  FILM_LIFE,
+  WARRANTY_WORK,
   filmPriceLabel,
   scenarioDays,
 } from "@/content/site";
@@ -28,6 +32,11 @@ export const metadata: Metadata = {
     "Выберите марку, модель и поколение — сразу увидите цены на зоны риска и полную оклейку плёнкой Spectroll, допы и итог. Москва.",
   alternates: { canonical: "/calculator" },
 };
+
+/** Есть ли файл в public/ (иллюстрации машин, схемы пакетов, картинки допов). */
+function hasPublic(rel: string): boolean {
+  return existsSync(path.join(process.cwd(), "public", rel));
+}
 
 export default function CalculatorPage() {
   // Только low/high: getPublicCatalog не отдаёт цену партнёра и себестоимость.
@@ -47,6 +56,7 @@ export default function CalculatorPage() {
       base: c.base || c.model,
       gen: genLabel(c),
       label: `${c.brand} ${c.model}`,
+      hasImage: hasPublic(`cars/${c.code}.webp`),
       prices: c.prices,
     }));
 
@@ -67,6 +77,7 @@ export default function CalculatorPage() {
             label: SCENARIOS[code].label,
             desc: SCENARIOS[code].desc,
             days: scenarioDays(code),
+            image: hasPublic(`packages/${code}.webp`) ? `/packages/${code}.webp` : undefined,
           }))}
           films={FILM_CODES.map((code) => ({
             code,
@@ -80,8 +91,12 @@ export default function CalculatorPage() {
             label: ADDON_TEXTS[code]?.label ?? code,
             desc: ADDON_TEXTS[code]?.desc,
             unit: ADDON_TEXTS[code]?.unit,
+            image: hasPublic(`addons/${code}.webp`) ? `/addons/${code}.webp` : undefined,
           }))}
-          texts={CALCULATOR}
+          texts={{
+            ...CALCULATOR,
+            trust: ["Оригинальные плёнки Spectroll", WARRANTY_WORK, FILM_LIFE],
+          }}
           form={{ texts: FORM_TEXTS, telegram: TELEGRAM }}
         />
       </Suspense>
