@@ -4,8 +4,10 @@ import SiteFooter from "@/components/site/SiteFooter";
 import { Suspense } from "react";
 import Calculator, { type CalcCar } from "@/components/calculator/Calculator";
 import { getPublicAddonPrices, getPublicCatalog } from "@/server/pricing/public";
+import { genLabel } from "@/server/seo/brands";
 import {
   ADDON_TEXTS,
+  BRANDS,
   CALCULATOR,
   FILMS,
   FILM_CODES,
@@ -14,7 +16,8 @@ import {
   SCENARIO_CODES,
   TELEGRAM,
   TOP_MODELS,
-  filmLabel,
+  filmPriceLabel,
+  scenarioDays,
 } from "@/content/site";
 
 export const revalidate = 3600;
@@ -22,21 +25,30 @@ export const revalidate = 3600;
 export const metadata: Metadata = {
   title: "Калькулятор оклейки авто плёнкой PPF — цены в Москве | PPF PROFI",
   description:
-    "Посчитайте оклейку защитной плёнкой Spectroll: зоны риска или полная оклейка, допы, цена «от» за минуту. Москва.",
+    "Выберите марку, модель и поколение — сразу увидите цены на зоны риска и полную оклейку плёнкой Spectroll, допы и итог. Москва.",
   alternates: { canonical: "/calculator" },
 };
 
 export default function CalculatorPage() {
   // Только low/high: getPublicCatalog не отдаёт цену партнёра и себестоимость.
-  const catalog: CalcCar[] = getPublicCatalog().map((c) => ({
-    code: c.code,
-    label: `${c.brand} ${c.model}`,
-    prices: c.prices,
-  }));
-  const topCars = TOP_MODELS.map((code) => catalog.find((c) => c.code === code)).filter(
-    (c): c is CalcCar => Boolean(c)
-  );
-  const otherCars = catalog.filter((c) => !TOP_MODELS.includes(c.code));
+  const catalog = getPublicCatalog();
+  // Порядок марок: как на сайте (BRANDS), затем остальные по алфавиту.
+  const order = BRANDS.map((b) => b.catalogBrand);
+  const rank = (brand: string) => {
+    const i = order.indexOf(brand);
+    return i === -1 ? order.length : i;
+  };
+  const cars: CalcCar[] = catalog
+    .map((c, i) => ({ c, i }))
+    .sort((a, b) => rank(a.c.brand) - rank(b.c.brand) || a.c.brand.localeCompare(b.c.brand) || a.i - b.i)
+    .map(({ c }) => ({
+      code: c.code,
+      brand: c.brand,
+      base: c.base || c.model,
+      gen: genLabel(c),
+      label: `${c.brand} ${c.model}`,
+      prices: c.prices,
+    }));
 
   return (
     <div className="dark-grid min-h-screen text-white">
@@ -48,16 +60,17 @@ export default function CalculatorPage() {
         }
       >
         <Calculator
-          topCars={topCars}
-          otherCars={otherCars}
+          cars={cars}
+          defaultCar={TOP_MODELS[0]}
           scenarios={SCENARIO_CODES.map((code) => ({
             code,
             label: SCENARIOS[code].label,
             desc: SCENARIOS[code].desc,
+            days: scenarioDays(code),
           }))}
           films={FILM_CODES.map((code) => ({
             code,
-            label: filmLabel(code),
+            label: filmPriceLabel(code),
             name: FILMS[code].name,
             desc: FILMS[code].short,
           }))}

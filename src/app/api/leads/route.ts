@@ -155,7 +155,7 @@ export async function POST(request: Request) {
       const clientName = str(body.clientName, 160);
       if (clientName.length < 2) fields.clientName = "Укажите имя";
       if (clientPhone.replace(/\D/g, "").length < 10) fields.clientPhone = "Проверьте номер телефона";
-      const parsedAddons = parsePublicAddons(body.addons);
+      const parsedAddons = parsePublicAddons(body.addons, scenario);
       if (!parsedAddons) fields.addons = "Проверьте дополнительные опции";
       else addons = parsedAddons;
       // Белый список: модель из каталога, состав и плёнка из допустимых кодов.
