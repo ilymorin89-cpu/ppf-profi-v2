@@ -1,30 +1,51 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element -- статичные картинки из public/, оптимизатор не нужен */
+
 import Link from "next/link";
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import LeadForm from "@/components/forms/LeadForm";
 import type { FormContent } from "@/components/forms/FormParts";
 import { buildTelegramUrl, fillTemplate, formatRub } from "@/shared/format";
-import { addonsRange, type AddonPrice, type AddonSelection } from "@/shared/addons";
+import { addonsRange, forScenario, type AddonPrice, type AddonSelection } from "@/shared/addons";
 
 type Price = { low: number; high: number } | null;
 
 export type CalcCar = {
   code: string;
+  brand: string;
+  /** Модель без поколения («X5») и подпись поколения («G05 · 2018–н.в.»). */
+  base: string;
+  gen: string;
   label: string;
+  /** Иллюстрация есть в public/cars/{code}.webp. */
+  hasImage: boolean;
   /** prices[scenario][film] — только диапазон для клиента. */
   prices: Record<string, Record<string, Price>>;
 };
 
-export type CalcOption = { code: string; label: string; desc: string };
+export type CalcOption = { code: string; label: string; desc: string; days: string; image?: string };
+export type CalcFilm = { code: string; label: string; name: string; desc: string };
 
 /** Доп из config.ts: одинаковая цена для всех моделей. */
-export type CalcAddon = AddonPrice & { code: string; label: string; desc?: string; unit?: string };
+export type CalcAddon = AddonPrice & { code: string; label: string; desc?: string; unit?: string; image?: string };
 
 export type CalculatorTexts = {
-  showAll: string;
-  hideAll: string;
+  h1: string;
+  h1Accent: string;
+  lead: string;
+  trust: string[];
+  step1: string;
+  step2: string;
+  step3: string;
+  illustration: string;
+  brandsCount: string;
+  pricesHint: string;
+  summaryTitle: string;
+  bookButton: string;
+  newCalc: string;
+  toHome: string;
   priceNote: string;
   noModelTitle: string;
   noModelText: string;
@@ -41,60 +62,89 @@ export type CalculatorTexts = {
 };
 
 type Props = {
-  topCars: CalcCar[];
-  otherCars: CalcCar[];
+  /** Машины в порядке показа: марки сайта первыми, внутри — как в каталоге. */
+  cars: CalcCar[];
+  defaultCar?: string;
   scenarios: CalcOption[];
-  films: (CalcOption & { name: string })[];
+  films: CalcFilm[];
   addons: CalcAddon[];
   texts: CalculatorTexts;
   form: FormContent;
 };
 
+/** Вариант защиты = состав работ × плёнка (Зоны риска · TPU-S 180 и т. д.). */
+type Variant = { key: string; scenario: CalcOption; film: CalcFilm };
+
+const stepTitle = "text-lg font-extrabold tracking-tight sm:text-xl";
+
 const cardClass = (active: boolean) =>
-  `rounded-2xl border px-5 py-4 text-left transition ${
+  `rounded-2xl border text-left transition ${
     active
-      ? "border-lime-400 bg-lime-400/10 ring-1 ring-lime-400"
-      : "border-white/8 bg-white/[0.03] hover:border-white/20"
+      ? "border-lime-400 bg-lime-400/[0.07] ring-1 ring-lime-400"
+      : "border-white/10 bg-white/[0.03] hover:border-white/25"
   }`;
 
 /** «от 7 000 ₽» для допа с диапазоном, «2 000 ₽» — без. */
 const addonPriceLabel = (a: CalcAddon) =>
   a.priceMax && a.priceMax > a.price ? `от ${formatRub(a.price)}` : formatRub(a.price);
 
-export default function Calculator({
-  topCars,
-  otherCars,
-  scenarios,
-  films,
-  addons,
-  texts,
-  form,
-}: Props) {
-  const allCars = [...topCars, ...otherCars];
-  const searchParams = useSearchParams();
-  const carFromUrl = searchParams.get("car");
-  const initialCar = allCars.find((c) => c.code === carFromUrl);
+const unique = <T,>(xs: T[]) => Array.from(new Set(xs));
+const carImg = (code: string, sq = false) => `/cars/${code}${sq ? "-sq" : ""}.webp`;
 
-  const [step, setStep] = useState(initialCar ? 2 : 1);
-  const [car, setCar] = useState(initialCar?.code ?? allCars[0]?.code ?? "");
-  const [showAll, setShowAll] = useState(
-    Boolean(initialCar && otherCars.some((c) => c.code === initialCar.code))
+/** Заглушка, пока нет иллюстрации: силуэт без марки. */
+function CarPlaceholder({ label, className = "" }: { label: string; className?: string }) {
+  return (
+    <div className={`grid place-items-center bg-gradient-to-b from-white/[0.06] to-transparent ${className}`}>
+      <svg viewBox="0 0 120 64" aria-label={label} role="img" className="w-1/2 max-w-48 text-white/25" fill="none">
+        <path
+          d="M12 42 18 27Q20 22 27 21L40 12H78L91 23 101 27Q107 29 108 36L109 44H101A9 9 0 0 1 83 44H38A9 9 0 0 1 20 44H12Z"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinejoin="round"
+        />
+        <circle cx="29" cy="44" r="6" stroke="currentColor" strokeWidth="2.5" />
+        <circle cx="92" cy="44" r="6" stroke="currentColor" strokeWidth="2.5" />
+      </svg>
+    </div>
   );
-  const [pkg, setPkg] = useState(scenarios[0]?.code ?? "");
-  const [film, setFilm] = useState(films[0]?.code ?? "");
-  const [sent, setSent] = useState(false);
-  const [selected, setSelected] = useState<AddonSelection>({});
+}
 
-  const carObj = allCars.find((c) => c.code === car);
-  const pkgObj = scenarios.find((p) => p.code === pkg);
-  const filmObj = films.find((f) => f.code === film);
-  const price: Price = carObj?.prices[pkg]?.[film] ?? null;
+export default function Calculator({ cars, defaultCar, scenarios, films, addons, texts, form }: Props) {
+  const uid = useId();
+  const searchParams = useSearchParams();
+  const fromUrl = cars.find((c) => c.code === searchParams.get("car"));
+  const start = fromUrl ?? cars.find((c) => c.code === defaultCar) ?? cars[0];
+
+  const [car, setCar] = useState(start?.code ?? "");
+  const variants: Variant[] = scenarios
+    .slice()
+    // Зоны риска первыми: с них проще начать.
+    .sort((a, b) => (a.code === "RISK_ZONES" ? -1 : b.code === "RISK_ZONES" ? 1 : 0))
+    .flatMap((s) => films.map((f) => ({ key: `${s.code}:${f.code}`, scenario: s, film: f })));
+  const [variant, setVariant] = useState(variants[0]?.key ?? "");
+  const [selected, setSelected] = useState<AddonSelection>({});
+  const [sent, setSent] = useState(false);
+  const formRef = useRef<HTMLDivElement>(null);
+
+  const carObj = cars.find((c) => c.code === car);
+  const brands = unique(cars.map((c) => c.brand));
+  const brand = carObj?.brand ?? brands[0];
+  const brandCars = cars.filter((c) => c.brand === brand);
+
+  const v = variants.find((x) => x.key === variant) ?? variants[0];
+  const scenario = v?.scenario.code ?? "";
+  const film = v?.film.code ?? "";
+  const priceOf = (x: Variant): Price => carObj?.prices[x.scenario.code]?.[x.film.code] ?? null;
+  const price = v ? priceOf(v) : null;
 
   // Итог на клиенте только для показа; при отправке заявки сервер считает заново.
-  const addonPrices = Object.fromEntries(addons.map((a) => [a.code, a]));
-  const extra = addonsRange(selected, addonPrices);
+  const addonPrices: Record<string, AddonPrice> = Object.fromEntries(addons.map((a) => [a.code, a]));
+  const visibleAddons = addons.filter((a) => !a.onlyScenario || a.onlyScenario === scenario);
+  const effective = forScenario(selected, addonPrices, scenario);
+  const extra = addonsRange(effective, addonPrices);
   const total: Price = price ? { low: price.low + extra.low, high: price.high + extra.high } : null;
-  const chosen = addons.filter((a) => (selected[a.code] ?? 0) > 0);
+  const chosen = visibleAddons.filter((a) => (effective[a.code] ?? 0) > 0);
+
   const setQty = (code: string, qty: number) =>
     setSelected((s) => {
       const next = { ...s };
@@ -103,351 +153,375 @@ export default function Calculator({
       return next;
     });
 
-  const reset = () => {
-    setStep(1);
-    setSent(false);
+  /** Смена машины: ссылка с ?car= остаётся актуальной, чтобы расчётом можно было поделиться. */
+  function pickCar(code: string) {
+    setCar(code);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("car", code);
+      window.history.replaceState(null, "", url);
+    } catch {
+      /* адресная строка недоступна — не страшно */
+    }
+  }
+  const pickBrand = (b: string) => {
+    const first = cars.find((c) => c.brand === b);
+    if (first) pickCar(first.code);
   };
 
-  const noModel = (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-      <div className="font-extrabold">{texts.noModelTitle}</div>
-      <p className="mt-1 text-sm text-white/60">{texts.noModelText}</p>
-      <a
-        href={buildTelegramUrl(form.telegram)}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="btn-ghost mt-4 inline-flex text-sm"
-      >
-        {form.texts.telegramButton}
-      </a>
-    </div>
-  );
+  const book = () => {
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    formRef.current?.querySelector<HTMLInputElement>("input:not([type=hidden])")?.focus({ preventScroll: true });
+  };
 
   const tgText =
-    carObj && pkgObj && filmObj && total
+    carObj && v && total
       ? fillTemplate(texts.telegramTemplate, {
           model: carObj.label,
           scenario:
-            pkgObj.label.toLowerCase() +
+            v.scenario.label.toLowerCase() +
             chosen
-              .map((a) => `, ${a.label.toLowerCase()}${a.maxQty > 1 ? ` × ${selected[a.code]}` : ""}`)
+              .map((a) => `, ${a.label.toLowerCase()}${a.maxQty > 1 ? ` × ${effective[a.code]}` : ""}`)
               .join(""),
-          film: filmObj.name,
+          film: v.film.name,
           price: `от ${formatRub(total.low)}`,
         })
       : undefined;
 
-  return (
-    <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
-      {sent ? (
-        <div className="reveal text-center">
-          <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-lime-400/15 ring-1 ring-lime-400/40">
-            <span className="text-4xl accent">✓</span>
-          </div>
-          <h1 className="mt-8 text-3xl font-extrabold tracking-tight sm:text-4xl">
-            {texts.successTitle}
-          </h1>
-          <p className="mt-4 text-white/60">{texts.successText}</p>
-          <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:justify-center">
-            <button onClick={reset} className="btn-accent justify-center">
-              Новый расчёт
-            </button>
-            <Link href="/" className="btn-ghost justify-center">
-              На главную
-            </Link>
-          </div>
+  if (sent) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-16 text-center sm:px-6">
+        <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-lime-400/15 ring-1 ring-lime-400/40">
+          <span className="text-4xl accent">✓</span>
         </div>
-      ) : (
-        <>
-          <div className="mb-10 flex items-center gap-2">
-            {["Авто", "Состав", "Результат"].map((label, i) => {
-              const n = i + 1;
-              const done = n < step;
-              const active = n === step;
+        <h1 className="mt-8 text-3xl font-extrabold tracking-tight sm:text-4xl">{texts.successTitle}</h1>
+        <p className="mt-4 text-white/60">{texts.successText}</p>
+        <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <button onClick={() => setSent(false)} className="btn-accent justify-center">
+            {texts.newCalc}
+          </button>
+          <Link href="/" className="btn-ghost justify-center">
+            {texts.toHome}
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-6xl px-4 pb-28 pt-8 sm:px-6 lg:pb-16">
+      {/* Заголовок + доверие */}
+      <h1 className="text-3xl font-extrabold leading-[1.05] tracking-[-0.03em] sm:text-5xl">
+        {texts.h1} <span className="accent">{texts.h1Accent}</span>
+      </h1>
+      <p className="mt-3 max-w-2xl text-white/60">{texts.lead}</p>
+      <ul className="mt-5 grid grid-cols-1 gap-2 text-xs text-white/60 sm:grid-cols-3">
+        {texts.trust.map((t) => (
+          <li key={t} className="flex items-center gap-2">
+            <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-lime-400/15 text-[11px] accent">✓</span>
+            {t}
+          </li>
+        ))}
+      </ul>
+
+      {/* 1. Марка */}
+      <section className="mt-10" aria-labelledby={`${uid}-s1`}>
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 id={`${uid}-s1`} className={stepTitle}>
+            {texts.step1}
+          </h2>
+          <span className="text-xs text-white/40">{fillTemplate(texts.brandsCount, { n: String(brands.length) })}</span>
+        </div>
+        <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-7">
+          {brands.map((b) => {
+            const active = b === brand;
+            return (
+              <button
+                key={b}
+                type="button"
+                aria-pressed={active}
+                onClick={() => pickBrand(b)}
+                className={`${cardClass(active)} flex min-h-16 items-center justify-center px-2 py-3 text-center text-sm font-extrabold leading-tight`}
+              >
+                {b}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* 2. Модель и поколение + фото */}
+      <section className="mt-10" aria-labelledby={`${uid}-s2`}>
+        <h2 id={`${uid}-s2`} className={stepTitle}>
+          {texts.step2}
+        </h2>
+        <div className="mt-4 grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+          <ul className="order-2 grid max-h-[300px] gap-2 overflow-y-auto pr-1 sm:max-h-[420px] sm:grid-cols-2 lg:order-1 lg:max-h-[520px] lg:grid-cols-1" role="listbox" aria-labelledby={`${uid}-s2`}>
+            {brandCars.map((c) => {
+              const active = c.code === car;
               return (
-                <div key={label} className="flex flex-1 items-center gap-2">
-                  <div
-                    className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-extrabold transition ${
-                      active
-                        ? "bg-lime-400 text-black shadow-lg shadow-lime-400/30"
-                        : done
-                        ? "bg-lime-400/20 text-lime-300"
-                        : "bg-white/5 text-white/40"
-                    }`}
+                <li key={c.code}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={active}
+                    onClick={() => pickCar(c.code)}
+                    className={`${cardClass(active)} flex w-full items-center gap-3 p-2 pr-3`}
                   >
-                    {done ? "✓" : n}
-                  </div>
-                  <span
-                    className={`hidden text-sm font-bold sm:inline ${
-                      active ? "text-white" : "text-white/40"
-                    }`}
-                  >
-                    {label}
+                    {c.hasImage ? (
+                      <img
+                        src={carImg(c.code, true)}
+                        alt=""
+                        width={56}
+                        height={56}
+                        loading="lazy"
+                        className="h-14 w-14 shrink-0 rounded-xl object-cover"
+                      />
+                    ) : (
+                      <CarPlaceholder label="" className="h-14 w-14 shrink-0 rounded-xl" />
+                    )}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-extrabold">{c.base}</span>
+                      <span className="block truncate text-xs text-white/50">{c.gen}</span>
+                    </span>
+                    <span aria-hidden="true" className={active ? "accent" : "text-white/30"}>
+                      ›
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+
+          <figure className="dark-card order-1 overflow-hidden p-0 lg:order-2">
+            {carObj?.hasImage ? (
+              <img
+                src={carImg(carObj.code)}
+                alt={carObj.label}
+                width={1600}
+                height={900}
+                className="aspect-[16/9] w-full object-cover"
+              />
+            ) : (
+              <CarPlaceholder label={carObj?.label ?? ""} className="aspect-[16/9] w-full" />
+            )}
+            <figcaption className="flex flex-wrap items-end justify-between gap-2 p-4 sm:p-5">
+              <span>
+                <span className="block text-xl font-extrabold sm:text-2xl">{carObj?.label}</span>
+                <span className="block text-sm text-white/50">{carObj?.gen}</span>
+              </span>
+              {carObj?.hasImage && <span className="text-[11px] text-white/35">{texts.illustration}</span>}
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      {/* 3. Пакет защиты — все цены сразу */}
+      <section className="mt-10" aria-labelledby={`${uid}-s3`}>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 id={`${uid}-s3`} className={stepTitle}>
+            {texts.step3}
+          </h2>
+          <span className="text-xs text-white/45">{texts.pricesHint}</span>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" role="radiogroup" aria-labelledby={`${uid}-s3`}>
+          {variants.map((x) => {
+            const p = priceOf(x);
+            const active = x.key === variant;
+            // На телефоне схема пакета — один раз на состав работ (у второй плёнки та же картинка).
+            const firstFilm = x.film.code === films[0]?.code;
+            return (
+              <label key={x.key} className={`${cardClass(active)} flex cursor-pointer flex-col overflow-hidden`}>
+                {x.scenario.image && (
+                  <img
+                    src={x.scenario.image}
+                    alt=""
+                    width={832}
+                    height={316}
+                    loading="lazy"
+                    className={`aspect-[832/316] w-full object-cover ${firstFilm ? "" : "hidden sm:block"}`}
+                  />
+                )}
+                <span className="flex flex-1 flex-col p-4">
+                  <span className="text-base font-extrabold">{x.scenario.label}</span>
+                  <span className="text-sm text-white/60">{x.film.label}</span>
+                  <span className="mt-2 text-xs leading-5 text-white/45">
+                    {x.scenario.desc}. Срок {x.scenario.days}.
                   </span>
-                  {i < 2 && (
-                    <div className={`h-px flex-1 ${done ? "bg-lime-400/40" : "bg-white/10"}`} />
-                  )}
-                </div>
+                  <span className="mt-auto flex items-center justify-between gap-2 pt-4">
+                    <span className={`whitespace-nowrap text-xl font-extrabold tabular-nums ${active ? "accent" : ""}`}>
+                      {p ? `от ${formatRub(p.low)}` : "по запросу"}
+                    </span>
+                    <input
+                      type="radio"
+                      name={`${uid}-variant`}
+                      value={x.key}
+                      checked={active}
+                      onChange={() => setVariant(x.key)}
+                      aria-label={`${x.scenario.label} · ${x.film.label}`}
+                      className="h-5 w-5 shrink-0 accent-lime-400"
+                    />
+                  </span>
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Допы */}
+      {visibleAddons.length > 0 && (
+        <section className="mt-10" aria-labelledby={`${uid}-s4`}>
+          <h2 id={`${uid}-s4`} className={stepTitle}>
+            {texts.addonsTitle}
+          </h2>
+          <p className="mt-1 text-xs text-white/50">{texts.addonsNote}</p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {visibleAddons.map((a) => {
+              const qty = selected[a.code] ?? 0;
+              const thumb = a.image ? (
+                <img src={a.image} alt="" width={64} height={54} loading="lazy" className="h-14 w-16 shrink-0 rounded-lg object-cover" />
+              ) : null;
+              const info = (
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-extrabold leading-tight">{a.label}</span>
+                  <span className="mt-1 block text-xs text-white/50">
+                    {addonPriceLabel(a)}
+                    {a.unit ? ` за ${a.unit}` : ""}
+                  </span>
+                </span>
+              );
+              if (a.maxQty > 1) {
+                return (
+                  <div key={a.code} className={`${cardClass(qty > 0)} flex items-center gap-3 p-2 pr-3`}>
+                    {thumb}
+                    {info}
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <button
+                        type="button"
+                        aria-label={`${texts.qtyLess}: ${a.label}`}
+                        onClick={() => setQty(a.code, Math.max(0, qty - 1))}
+                        disabled={qty <= 0}
+                        className="grid h-8 w-8 place-items-center rounded-full border border-white/15 font-extrabold disabled:opacity-30"
+                      >
+                        −
+                      </button>
+                      <span className="w-4 text-center font-extrabold tabular-nums" aria-live="polite">
+                        {qty}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={`${texts.qtyMore}: ${a.label}`}
+                        onClick={() => setQty(a.code, Math.min(a.maxQty, qty + 1))}
+                        disabled={qty >= a.maxQty}
+                        className="grid h-8 w-8 place-items-center rounded-full border border-white/15 font-extrabold disabled:opacity-30"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <label key={a.code} className={`${cardClass(qty > 0)} flex cursor-pointer items-center gap-3 p-2 pr-3`}>
+                  {thumb}
+                  {info}
+                  <input
+                    type="checkbox"
+                    checked={qty > 0}
+                    onChange={(e) => setQty(a.code, e.target.checked ? 1 : 0)}
+                    className="h-5 w-5 shrink-0 accent-lime-400"
+                  />
+                </label>
               );
             })}
           </div>
+        </section>
+      )}
 
-          {step === 1 && (
-            <div className="reveal">
-              <div className="eyebrow">Шаг 1 из 3</div>
-              <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
-                Какой автомобиль?
-              </h1>
-              <p className="mt-3 text-white/60">Выберите марку и поколение кузова.</p>
-
-              <div className="mt-8 grid gap-2">
-                {topCars.map((c) => (
-                  <button key={c.code} onClick={() => setCar(c.code)} className={cardClass(car === c.code)}>
-                    <div className="flex items-center justify-between">
-                      <span className="font-extrabold text-white">{c.label}</span>
-                      {car === c.code && <span className="accent">●</span>}
-                    </div>
-                  </button>
-                ))}
-                {showAll &&
-                  otherCars.map((c) => (
-                    <button key={c.code} onClick={() => setCar(c.code)} className={cardClass(car === c.code)}>
-                      <div className="flex items-center justify-between">
-                        <span className="font-extrabold text-white">{c.label}</span>
-                        {car === c.code && <span className="accent">●</span>}
-                      </div>
-                    </button>
-                  ))}
-                {otherCars.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAll((v) => !v)}
-                    className="rounded-2xl border border-dashed border-white/15 px-5 py-3 text-sm font-bold text-white/60 transition hover:text-white"
-                  >
-                    {showAll ? texts.hideAll : `${texts.showAll} (${otherCars.length})`}
-                  </button>
-                )}
+      {/* Итог */}
+      <section className="dark-card mt-10 p-5 sm:p-6" aria-label={texts.summaryTitle}>
+        {price && total && v ? (
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+            <div>
+              <div className="text-sm font-bold text-white/60">
+                {carObj?.label} · {v.scenario.label} · {v.film.label}
+                {chosen.map((a) => `, ${a.label.toLowerCase()}${a.maxQty > 1 ? ` × ${effective[a.code]}` : ""}`).join("")}
               </div>
-
-              <button
-                onClick={() => setStep(2)}
-                disabled={!carObj}
-                className="btn-accent mt-8 w-full justify-center disabled:opacity-50"
-              >
-                Далее →
+              <div className="mt-1 flex flex-wrap items-baseline gap-x-3">
+                <span className="text-sm font-bold text-white/60">{texts.addonsTotal}</span>
+                <span className="whitespace-nowrap text-4xl font-extrabold tracking-[-0.03em] tabular-nums">
+                  от <span className="accent">{formatRub(total.low)}</span>
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-white/45">{texts.priceNote}</p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2 lg:w-[420px]">
+              <button type="button" onClick={book} className="btn-accent justify-center">
+                {texts.bookButton} →
               </button>
-
-              <div className="mt-8">{noModel}</div>
+              <a
+                href={buildTelegramUrl(form.telegram, tgText)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-ghost justify-center"
+              >
+                {form.texts.telegramButton}
+              </a>
             </div>
-          )}
+          </div>
+        ) : (
+          <div>
+            <div className="font-extrabold">{texts.noModelTitle}</div>
+            <p className="mt-1 text-sm text-white/60">{texts.noModelText}</p>
+          </div>
+        )}
+      </section>
 
-          {step === 2 && (
-            <div className="reveal">
-              <div className="eyebrow">Шаг 2 из 3</div>
-              <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
-                Состав и плёнка
-              </h1>
-              <p className="mt-3 text-white/60">Что нужно защитить и какой плёнкой.</p>
+      {/* Заявка */}
+      {price && v && (
+        <section ref={formRef} id="zayavka" className="dark-card mt-6 scroll-mt-28 p-5 sm:p-6">
+          <h2 className="text-2xl font-extrabold tracking-tight">{texts.leadTitle}</h2>
+          <p className="mt-2 text-sm text-white/60">{texts.leadText}</p>
+          <div className="mt-5 max-w-xl">
+            <LeadForm
+              content={form}
+              selection={{ carCode: car, scenario, filmCode: film, addons: effective }}
+              submitLabel={texts.bookButton}
+              onSuccess={() => setSent(true)}
+            />
+          </div>
+        </section>
+      )}
 
-              <div className="mt-8">
-                <div className="text-xs font-bold uppercase tracking-[0.16em] text-white/50">
-                  Состав работ
-                </div>
-                <div className="mt-3 grid gap-2">
-                  {scenarios.map((p) => (
-                    <button key={p.code} onClick={() => setPkg(p.code)} className={cardClass(pkg === p.code)}>
-                      <div className="font-extrabold text-white">{p.label}</div>
-                      <div className="mt-1 text-xs text-white/50">{p.desc}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
+      <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="font-extrabold">{texts.noModelTitle}</div>
+        <p className="mt-1 text-sm text-white/60">{texts.noModelText}</p>
+        <a
+          href={buildTelegramUrl(form.telegram)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn-ghost mt-4 inline-flex text-sm"
+        >
+          {form.texts.telegramButton}
+        </a>
+      </div>
 
-              <div className="mt-8">
-                <div className="text-xs font-bold uppercase tracking-[0.16em] text-white/50">
-                  Плёнка
-                </div>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  {films.map((f) => (
-                    <button key={f.code} onClick={() => setFilm(f.code)} className={cardClass(film === f.code)}>
-                      <div className="font-extrabold text-white">{f.label}</div>
-                      <div className="mt-1 text-xs text-white/50">{f.desc}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {addons.length > 0 && (
-                <div className="mt-8">
-                  <div className="text-xs font-bold uppercase tracking-[0.16em] text-white/50">
-                    {texts.addonsTitle}
-                  </div>
-                  <p className="mt-2 text-xs text-white/50">{texts.addonsNote}</p>
-                  <div className="mt-3 grid gap-2">
-                    {addons.map((a) => {
-                      const qty = selected[a.code] ?? 0;
-                      const info = (
-                        <div className="min-w-0 flex-1">
-                          <div className="font-extrabold text-white">{a.label}</div>
-                          <div className="mt-1 text-xs text-white/50">
-                            {addonPriceLabel(a)}
-                            {a.unit ? ` за ${a.unit}` : ""}
-                            {a.desc ? ` · ${a.desc}` : ""}
-                          </div>
-                        </div>
-                      );
-                      if (a.maxQty > 1) {
-                        return (
-                          <div key={a.code} className={`${cardClass(qty > 0)} flex items-center gap-4`}>
-                            {info}
-                            <div className="flex shrink-0 items-center gap-2">
-                              <button
-                                type="button"
-                                aria-label={texts.qtyLess}
-                                onClick={() => setQty(a.code, Math.max(0, qty - 1))}
-                                disabled={qty <= 0}
-                                className="grid h-8 w-8 place-items-center rounded-full border border-white/15 font-extrabold disabled:opacity-30"
-                              >
-                                −
-                              </button>
-                              <span className="w-5 text-center font-extrabold tabular-nums">{qty}</span>
-                              <button
-                                type="button"
-                                aria-label={texts.qtyMore}
-                                onClick={() => setQty(a.code, Math.min(a.maxQty, qty + 1))}
-                                disabled={qty >= a.maxQty}
-                                className="grid h-8 w-8 place-items-center rounded-full border border-white/15 font-extrabold disabled:opacity-30"
-                              >
-                                +
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      }
-                      return (
-                        <label
-                          key={a.code}
-                          className={`${cardClass(qty > 0)} flex cursor-pointer items-center gap-4`}
-                        >
-                          {info}
-                          <input
-                            type="checkbox"
-                            checked={qty > 0}
-                            onChange={(e) => setQty(a.code, e.target.checked ? 1 : 0)}
-                            className="h-5 w-5 shrink-0 accent-lime-400"
-                          />
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <div className="mt-8 flex gap-3">
-                <button onClick={() => setStep(1)} className="btn-ghost">
-                  ← Назад
-                </button>
-                <button onClick={() => setStep(3)} className="btn-accent flex-1 justify-center">
-                  Рассчитать
-                </button>
+      {/* Телефон: итог и кнопка всегда под рукой */}
+      {price && total && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-black/90 px-4 py-3 backdrop-blur-xl lg:hidden">
+          <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="truncate text-xs text-white/55">{carObj?.label}</div>
+              <div className="whitespace-nowrap text-lg font-extrabold tabular-nums">
+                от <span className="accent">{formatRub(total.low)}</span>
               </div>
             </div>
-          )}
-
-          {step === 3 && (
-            <div className="reveal">
-              <div className="eyebrow">Шаг 3 из 3</div>
-              <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
-                Предварительный расчёт
-              </h1>
-
-              <div className="dark-card mt-8 p-6 sm:p-8">
-                <div className="text-sm font-extrabold uppercase tracking-[0.14em] accent">
-                  {carObj?.label}
-                </div>
-                <div className="mt-2 text-base text-white/60">
-                  {pkgObj?.label} · {filmObj?.label}
-                </div>
-
-                {price && total ? (
-                  <>
-                    {chosen.length > 0 && (
-                      <div className="mt-6 space-y-1.5 border-b border-white/10 pb-4 text-sm text-white/70">
-                        <div className="flex justify-between gap-4">
-                          <span>{pkgObj?.label}</span>
-                          <span className="shrink-0">от {formatRub(price.low)}</span>
-                        </div>
-                        {chosen.map((a) => {
-                          const qty = selected[a.code];
-                          return (
-                            <div key={a.code} className="flex justify-between gap-4">
-                              <span>
-                                {a.label}
-                                {a.maxQty > 1 ? ` × ${qty}` : ""}
-                              </span>
-                              <span className="shrink-0">
-                                {a.priceMax && a.priceMax > a.price ? "от " : ""}
-                                {formatRub(a.price * qty)}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                    <div className="mt-6 text-4xl font-extrabold tracking-[-0.04em] sm:text-5xl">
-                      {chosen.length > 0 && (
-                        <span className="mr-2 text-base font-bold tracking-normal text-white/60">
-                          {texts.addonsTotal}
-                        </span>
-                      )}
-                      от <span className="accent">{formatRub(total.low)}</span>
-                    </div>
-                    <p className="mt-3 text-base text-white/60">{texts.priceNote}</p>
-                  </>
-                ) : (
-                  <div className="mt-6">{noModel}</div>
-                )}
-              </div>
-
-              {price && (
-                <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                  <a
-                    href={buildTelegramUrl(form.telegram, tgText)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn-accent justify-center"
-                  >
-                    {form.texts.telegramButton}
-                  </a>
-                  <button onClick={() => setStep(2)} className="btn-ghost justify-center">
-                    Изменить расчёт
-                  </button>
-                </div>
-              )}
-
-              {price && (
-                <div className="dark-card mt-6 p-6 sm:p-8">
-                  <h2 className="text-2xl font-extrabold tracking-tight">{texts.leadTitle}</h2>
-                  <p className="mt-2 text-base text-white/60">{texts.leadText}</p>
-                  <div className="mt-6">
-                    <LeadForm
-                      content={form}
-                      selection={{ carCode: car, scenario: pkg, filmCode: film, addons: selected }}
-                      submitLabel="Отправить"
-                      onSuccess={() => setSent(true)}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {!price && (
-                <button onClick={reset} className="btn-ghost mt-6 w-full justify-center">
-                  Изменить расчёт
-                </button>
-              )}
-            </div>
-          )}
-        </>
+            <button type="button" onClick={book} className="btn-accent shrink-0">
+              {texts.bookButton}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

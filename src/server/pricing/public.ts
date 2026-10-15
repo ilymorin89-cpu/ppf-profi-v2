@@ -2,7 +2,7 @@ import "server-only";
 import { quote } from "./quote";
 import { getCars } from "./catalog";
 import { ADDONS, DIRECT_PRICES, HOME_ADDON_EXAMPLE, PART_PRICES_XL, fixedRetailPrice, partPrice } from "./config";
-import { addonsRange, parseAddons, type AddonSelection } from "@/shared/addons";
+import { addonsRange, parseAddons, type AddonSelection, forScenario } from "@/shared/addons";
 import {
   FILM_CODES,
   PRICE_EXAMPLE,
@@ -42,9 +42,13 @@ export function getPublicPrice(
   return { low: q.low, high: q.high };
 }
 
-/** Проверяет выбор допов из запроса; null — некорректный выбор (неизвестный код, количество вне 0..max). */
-export function parsePublicAddons(raw: unknown): AddonSelection | null {
-  return parseAddons(raw, ADDONS);
+/**
+ * Проверяет выбор допов из запроса; null — некорректный выбор (неизвестный код, количество вне 0..max).
+ * Допы, не подходящие к составу работ (мат к зонам риска), молча убираются.
+ */
+export function parsePublicAddons(raw: unknown, scenario: string): AddonSelection | null {
+  const parsed = parseAddons(raw, ADDONS);
+  return parsed ? forScenario(parsed, ADDONS, scenario) : null;
 }
 
 /** Итог для клиента: оклейка + допы. Допы одинаковы для всех моделей. */
