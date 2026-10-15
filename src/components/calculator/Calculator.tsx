@@ -399,9 +399,9 @@ export default function Calculator({ cars, defaultCar, scenarios, films, addons,
               return (
                 <li key={a.code} className={`flex items-center gap-3 py-2.5 ${allowed ? "" : "opacity-45"}`}>
                   {a.image ? (
-                    <img src={a.image} alt="" width={40} height={40} loading="lazy" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+                    <img src={a.image} alt="" width={96} height={96} loading="lazy" className="h-16 w-16 shrink-0 rounded-xl object-cover sm:h-24 sm:w-24" />
                   ) : (
-                    <span className="h-10 w-10 shrink-0 rounded-lg bg-white/5" />
+                    <span className="h-16 w-16 shrink-0 rounded-xl bg-white/5 sm:h-24 sm:w-24" />
                   )}
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-bold leading-tight">{a.label}</span>
