@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useId } from "react";
 import { filmLabel } from "@/content/site";
 
 type Partner = {
@@ -59,6 +59,7 @@ const IS_DEV = process.env.NODE_ENV !== "production";
 const rub = (n: number) => `${n.toLocaleString("ru-RU")} ₽`;
 
 export default function B2BPage() {
+  const uid = useId();
   const [slug, setSlug] = useState(IS_DEV ? "detailing-moscow" : "");
   const [pin, setPin] = useState("");
   const [partner, setPartner] = useState<Partner | null>(null);
@@ -195,10 +196,10 @@ export default function B2BPage() {
 
             <form onSubmit={handleLogin} className="dark-card mt-8 p-8">
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
+                <label htmlFor={`${uid}-1`} className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
                   Slug партнёра
                 </label>
-                <input
+                <input id={`${uid}-1`}
                   type="text"
                   value={slug}
                   onChange={(e) => setSlug(e.target.value)}
@@ -210,10 +211,10 @@ export default function B2BPage() {
               </div>
 
               <div className="mt-5">
-                <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
+                <label htmlFor={`${uid}-2`} className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
                   PIN-код
                 </label>
-                <input
+                <input id={`${uid}-2`}
                   type="password"
                   inputMode="numeric"
                   value={pin}

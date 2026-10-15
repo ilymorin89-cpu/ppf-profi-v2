@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import { postLead, type SubmitResult } from "./submit";
 import {
   ConsentCheckbox,
@@ -41,6 +41,7 @@ export default function LeadForm({
   submitLabel,
   onSuccess,
 }: Props) {
+  const uid = useId();
   const [carCode, setCarCode] = useState(selection?.carCode ?? cars[0]?.code ?? "");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -76,8 +77,8 @@ export default function LeadForm({
     <form onSubmit={submit} className="space-y-4" noValidate>
       {!selection && cars.length > 0 && (
         <div>
-          <label className={labelClass}>{modelLabel}</label>
-          <select
+          <label htmlFor={`${uid}-1`} className={labelClass}>{modelLabel}</label>
+          <select id={`${uid}-1`}
             value={carCode}
             onChange={(e) => setCarCode(e.target.value)}
             className={inputClass}
@@ -93,8 +94,8 @@ export default function LeadForm({
       )}
 
       <div>
-        <label className={labelClass}>Ваше имя</label>
-        <input
+        <label htmlFor={`${uid}-2`} className={labelClass}>Ваше имя</label>
+        <input id={`${uid}-2`}
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -106,8 +107,8 @@ export default function LeadForm({
       </div>
 
       <div>
-        <label className={labelClass}>Телефон</label>
-        <input
+        <label htmlFor={`${uid}-3`} className={labelClass}>Телефон</label>
+        <input id={`${uid}-3`}
           type="tel"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
