@@ -240,9 +240,6 @@ export default function Calculator({ cars, defaultCar, scenarios, films, addons,
       ) : (
         <CarPlaceholder label={carObj?.label ?? ""} className="aspect-[16/9] w-full rounded-3xl" />
       )}
-      {carObj?.hasImage && (
-        <figcaption className="absolute bottom-2 right-3 text-[11px] text-white/45">{texts.illustration}</figcaption>
-      )}
     </figure>
   );
 
