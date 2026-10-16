@@ -15,7 +15,11 @@ export const metadata: Metadata = {
   openGraph: { siteName: SITE.name, locale: "ru_RU", type: "website", images: [OG_IMAGE] },
   twitter: TWITTER_CARD,
   // Подтверждение прав в Google Search Console (тег HTML). Не удалять: без него Google снимет доступ.
-  verification: { google: "rjQuyCsReahhqirzavuVKwHrqzAKCOvooImQ9nQoZpc" },
+  // Подтверждение прав: Google Search Console и Яндекс Вебмастер (meta-теги). Не удалять.
+  verification: {
+    google: "rjQuyCsReahhqirzavuVKwHrqzAKCOvooImQ9nQoZpc",
+    yandex: "8e84373381798ef4",
+  },
   title: "PPF PROFI — Защита автомобиля плёнкой",
   description: "Оклейка авто защитной плёнкой PPF в Москве. Работаем на проверенных площадках.",
 };
