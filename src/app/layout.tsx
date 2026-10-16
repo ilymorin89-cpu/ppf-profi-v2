@@ -3,6 +3,7 @@ import { Manrope } from "next/font/google";
 import "./globals.css";
 import UtmCapture from "@/components/forms/UtmCapture";
 import { SITE } from "@/content/site";
+import { OG_IMAGE, TWITTER_CARD } from "@/lib/seo";
 
 const manrope = Manrope({
   subsets: ["latin", "cyrillic"],
@@ -11,7 +12,8 @@ const manrope = Manrope({
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
-  openGraph: { siteName: SITE.name, locale: "ru_RU", type: "website" },
+  openGraph: { siteName: SITE.name, locale: "ru_RU", type: "website", images: [OG_IMAGE] },
+  twitter: TWITTER_CARD,
   // Подтверждение прав в Google Search Console (тег HTML). Не удалять: без него Google снимет доступ.
   verification: { google: "rjQuyCsReahhqirzavuVKwHrqzAKCOvooImQ9nQoZpc" },
   title: "PPF PROFI — Защита автомобиля плёнкой",

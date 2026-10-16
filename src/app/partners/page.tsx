@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { OG_IMAGE, TWITTER_CARD } from "@/lib/seo";
 import Link from "next/link";
 import SiteHeader from "@/components/site/SiteHeader";
 import SiteFooter from "@/components/site/SiteFooter";
@@ -29,7 +30,7 @@ export function generateMetadata(): Metadata {
   const title = fillTemplate(SEO.partners.title, k);
   const description = fillTemplate(SEO.partners.description, k);
   // Страница для партнёров не индексируется: не рекламируем себя конкурентам через поиск.
-  return { title, description, robots: { index: false, follow: true }, openGraph: { title, description } };
+  return { title, description, robots: { index: false, follow: true }, openGraph: { title, description, images: [OG_IMAGE] }, twitter: { ...TWITTER_CARD, title, description } };
 }
 
 const fmt = (n: number) => n.toLocaleString("ru-RU");
@@ -46,6 +47,7 @@ export default function PartnersPage() {
   return (
     <div className="dark-grid min-h-screen text-white">
       <SiteHeader />
+      <main id="main-content">
 
       {/* HERO */}
       <section className="mx-auto max-w-7xl px-4 pt-12 pb-8 sm:px-6">
@@ -185,6 +187,7 @@ export default function PartnersPage() {
         </div>
       </section>
 
+      </main>
       <SiteFooter />
     </div>
   );

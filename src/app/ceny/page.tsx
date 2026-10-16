@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { OG_IMAGE, TWITTER_CARD } from "@/lib/seo";
 import Link from "next/link";
 import SiteHeader from "@/components/site/SiteHeader";
 import SiteFooter from "@/components/site/SiteFooter";
@@ -40,7 +41,8 @@ export function generateMetadata(): Metadata {
     title,
     description: PRICES_PAGE.seoDescription,
     alternates: { canonical: "/ceny" },
-    openGraph: { title, description: PRICES_PAGE.seoDescription, url: "/ceny" },
+    openGraph: { title, description: PRICES_PAGE.seoDescription, url: "/ceny", images: [OG_IMAGE] },
+    twitter: { ...TWITTER_CARD, title, description: PRICES_PAGE.seoDescription },
   };
 }
 
@@ -166,6 +168,7 @@ export default function PricesPage() {
         ]}
       />
       <SiteHeader />
+      <main id="main-content">
 
       <section className="mx-auto max-w-7xl px-4 pt-12 pb-8 sm:px-6">
         <div className="eyebrow">{PRICES_PAGE.eyebrow}</div>
@@ -281,6 +284,7 @@ export default function PricesPage() {
         </div>
       </section>
 
+      </main>
       <SiteFooter />
     </div>
   );

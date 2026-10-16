@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { OG_IMAGE, TWITTER_CARD } from "@/lib/seo";
 import Link from "next/link";
 import SiteHeader from "@/components/site/SiteHeader";
 import SiteFooter from "@/components/site/SiteFooter";
@@ -7,7 +8,7 @@ import JsonLd from "@/components/site/JsonLd";
 import { BRANDS, BRAND_PAGE, formatRub } from "@/content/site";
 import { fillTemplate } from "@/shared/format";
 import { pickerBrands } from "@/server/seo/brands";
-import { breadcrumbSchema, brandCars } from "@/server/seo/schema";
+import { allBrandCars, breadcrumbSchema, brandCars, organizationSchema, serviceSchema } from "@/server/seo/schema";
 
 export const revalidate = 3600;
 
@@ -15,7 +16,8 @@ export const metadata: Metadata = {
   title: BRAND_PAGE.listSeoTitle,
   description: BRAND_PAGE.listSeoDescription,
   alternates: { canonical: "/ppf" },
-  openGraph: { title: BRAND_PAGE.listSeoTitle, description: BRAND_PAGE.listSeoDescription, url: "/ppf" },
+  openGraph: { title: BRAND_PAGE.listSeoTitle, description: BRAND_PAGE.listSeoDescription, url: "/ppf", images: [OG_IMAGE] },
+  twitter: { ...TWITTER_CARD, title: BRAND_PAGE.listSeoTitle, description: BRAND_PAGE.listSeoDescription },
 };
 
 export default function BrandsPage() {
@@ -30,12 +32,17 @@ export default function BrandsPage() {
   return (
     <div className="dark-grid min-h-screen text-white">
       <JsonLd
-        data={breadcrumbSchema([
-          { name: BRAND_PAGE.breadcrumbHome, path: "/" },
-          { name: BRAND_PAGE.breadcrumbList, path: "/ppf" },
-        ])}
+        data={[
+          organizationSchema(),
+          serviceSchema("Оклейка авто защитной плёнкой PPF по маркам", allBrandCars()),
+          breadcrumbSchema([
+            { name: BRAND_PAGE.breadcrumbHome, path: "/" },
+            { name: BRAND_PAGE.breadcrumbList, path: "/ppf" },
+          ]),
+        ]}
       />
       <SiteHeader />
+      <main id="main-content">
 
       <section className="mx-auto grid max-w-7xl gap-10 px-4 pt-12 pb-10 sm:px-6 lg:grid-cols-[1.15fr_1fr]">
         <div>
@@ -77,6 +84,7 @@ export default function BrandsPage() {
         </div>
       </section>
 
+      </main>
       <SiteFooter />
     </div>
   );
