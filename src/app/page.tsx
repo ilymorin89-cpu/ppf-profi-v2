@@ -218,10 +218,12 @@ export default function HomePage() {
 
       {/* ПОЛОСА ФАКТОВ */}
       <section className="border-y border-white/8 bg-black/40">
-        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-6 px-4 py-10 sm:px-6 lg:grid-cols-4">
+        {/* Каждая плитка занимает две строки сетки (значение и подпись) и делит их с соседями:
+            длинные значения переносятся, но подписи всё равно стоят на одной линии. */}
+        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-x-6 px-4 py-10 sm:px-6 lg:grid-cols-4">
           {FACT_TILES.map((f) => (
-            <div key={f.label}>
-              <div className="text-2xl font-extrabold accent sm:text-3xl">{f.value}</div>
+            <div key={f.label} className="row-span-2 grid grid-rows-subgrid pb-8 lg:pb-0">
+              <div className="text-2xl font-extrabold leading-tight accent sm:text-3xl">{f.value}</div>
               <div className="mt-2 text-xs leading-5 text-white/60">{f.label}</div>
             </div>
           ))}
