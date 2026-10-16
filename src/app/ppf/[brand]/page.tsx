@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { OG_IMAGE, TWITTER_CARD } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import SiteHeader from "@/components/site/SiteHeader";
@@ -66,7 +67,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         })
       : fillTemplate(BRAND_PAGE.seoDescription, { brand: b.name, warranty: WARRANTY_WORK });
   const path = `/ppf/${b.slug}`;
-  return { title, description, alternates: { canonical: path }, openGraph: { title, description, url: path } };
+  return {
+    title,
+    description,
+    alternates: { canonical: path },
+    openGraph: { title, description, url: path, images: [OG_IMAGE] },
+    twitter: { ...TWITTER_CARD, title, description },
+  };
 }
 
 export default async function BrandPage({ params }: Props) {
@@ -96,6 +103,7 @@ export default async function BrandPage({ params }: Props) {
         ]}
       />
       <SiteHeader />
+      <main id="main-content">
 
       <section className="mx-auto grid max-w-7xl gap-10 px-4 pt-12 pb-10 sm:px-6 lg:grid-cols-[1.15fr_1fr]">
         <div>
@@ -235,6 +243,7 @@ export default async function BrandPage({ params }: Props) {
         </Link>
       </section>
 
+      </main>
       <SiteFooter />
     </div>
   );

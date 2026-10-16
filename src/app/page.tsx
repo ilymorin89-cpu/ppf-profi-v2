@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { OG_IMAGE, TWITTER_CARD } from "@/lib/seo";
 import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -52,7 +53,8 @@ export function generateMetadata(): Metadata {
     title,
     description,
     alternates: { canonical: "/" },
-    openGraph: { title, description, url: "/" },
+    openGraph: { title, description, url: "/", images: [OG_IMAGE] },
+    twitter: { ...TWITTER_CARD, title, description },
   };
 }
 
@@ -90,6 +92,7 @@ export default function HomePage() {
     <div className="dark-grid min-h-screen text-white">
       <JsonLd data={[organizationSchema(), serviceSchema("Оклейка авто защитной плёнкой PPF в Москве", allBrandCars())]} />
       <SiteHeader onHome />
+      <main id="main-content">
 
       {/* HERO: макет агента — текст слева, Zeekr 9X справа */}
       <section className="scroll-mt-28 overflow-hidden">
@@ -432,6 +435,7 @@ export default function HomePage() {
         </div>
       </section>
 
+      </main>
       <SiteFooter />
     </div>
   );
