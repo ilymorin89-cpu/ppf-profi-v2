@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { Suspense } from "react";
 import SiteHeader from "@/components/site/SiteHeader";
 import SiteFooter from "@/components/site/SiteFooter";
-import HeroCalculator, { type MiniCar } from "@/components/site/HeroCalculator";
+import type { MiniCar } from "@/components/site/HeroCalculator";
+import Calculator from "@/components/calculator/Calculator";
+import { getCalculatorProps } from "@/server/calculator/props";
 import HomeLeadForm from "@/components/site/HomeLeadForm";
 import CaseCard from "@/components/site/CaseCard";
 import {
@@ -82,8 +85,8 @@ export default function HomePage() {
       <JsonLd data={[organizationSchema(), serviceSchema("Оклейка авто защитной плёнкой PPF в Москве", allBrandCars())]} />
       <SiteHeader onHome />
 
-      {/* HERO + мини-калькулятор */}
-      <section id="calculator" className="scroll-mt-28 overflow-hidden">
+      {/* HERO */}
+      <section className="scroll-mt-28 overflow-hidden">
         <div className="mx-auto grid max-w-7xl gap-10 px-4 pt-12 pb-16 sm:px-6 lg:grid-cols-[1.15fr_1fr] lg:gap-14 lg:pt-16">
           <div className="reveal">
             <div className="eyebrow">{HOME.eyebrow}</div>
@@ -105,8 +108,11 @@ export default function HomePage() {
               </a>
             </div>
 
-            {/* Картинка первого экрана: файл public/hero.jpg */}
-            <div className="mt-10 overflow-hidden rounded-3xl border border-white/8 bg-black">
+          </div>
+
+          {/* Картинка первого экрана: файл public/hero.jpg */}
+          <div className="reveal">
+            <div className="overflow-hidden rounded-3xl border border-white/8 bg-black">
               <Image
                 src="/hero.jpg"
                 alt="Премиальный внедорожник"
@@ -118,22 +124,18 @@ export default function HomePage() {
               />
             </div>
           </div>
-
-          <div className="reveal">
-            <HeroCalculator
-              cars={orderedCars}
-              texts={{
-                title: HOME.miniCalcTitle,
-                brand: HOME.miniCalcBrand,
-                model: HOME.miniCalcModel,
-                more: HOME.miniCalcMore,
-                full: HOME.pricesFull,
-                risk: HOME.pricesRisk,
-                note: HOME.pricesNote,
-              }}
-            />
-          </div>
         </div>
+      </section>
+
+      {/* КАЛЬКУЛЯТОР: полный расчёт, тот же, что на /calculator */}
+      <section id="calculator" className="scroll-mt-28 border-t border-white/8">
+        <Suspense
+          fallback={
+            <div className="grid min-h-[50vh] place-items-center text-sm text-white/50">Загрузка...</div>
+          }
+        >
+          <Calculator {...getCalculatorProps()} />
+        </Suspense>
       </section>
 
       {/* ПОЛОСА ФАКТОВ */}
