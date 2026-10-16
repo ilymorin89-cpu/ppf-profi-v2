@@ -19,6 +19,9 @@ export default function CalculatorPage() {
     <div className="dark-grid min-h-screen text-white">
       <SiteHeader />
 
+      {/* Серверный H1: есть в исходном HTML, виден поисковикам и скринридерам (Calculator рендерится на клиенте). */}
+      <h1 className="sr-only">Калькулятор оклейки авто плёнкой PPF в Москве</h1>
+
       <Suspense
         fallback={
           <div className="grid min-h-[50vh] place-items-center text-sm text-white/50">Загрузка...</div>

@@ -79,6 +79,11 @@ export default function HomePage() {
   // Минимальная цена зон риска среди моделей главной — «вход» в услугу.
   const riskLows = topCars.map((c) => c.risk?.low).filter((v): v is number => typeof v === "number");
   const minRisk = riskLows.length > 0 ? Math.min(...riskLows) : null;
+  // Модели, на которых достигается этот минимум: цена на главной всегда привязана к названию машины.
+  const minRiskModels = topCars
+    .filter((c) => c.risk?.low === minRisk)
+    .map((c) => `${c.brand} ${c.model}`)
+    .join(", ");
   const addonPrices = getPublicAddonPrices() as Record<string, { price: number }>;
 
   return (
@@ -229,7 +234,7 @@ export default function HomePage() {
           </h2>
           {minRisk !== null && (
             <p className="mt-4 max-w-2xl text-base leading-7 text-white/70">
-              {fillTemplate(HOME.pricesLead, { price: formatRub(minRisk) })}
+              {fillTemplate(HOME.pricesLead, { price: formatRub(minRisk), models: minRiskModels })}
             </p>
           )}
           <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

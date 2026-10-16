@@ -199,7 +199,7 @@ export default function Calculator({ cars, defaultCar, scenarios, films, addons,
         <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-lime-400/15 ring-1 ring-lime-400/40">
           <span className="text-4xl accent">✓</span>
         </div>
-        <h1 className="mt-8 text-3xl font-extrabold tracking-tight sm:text-4xl">{texts.successTitle}</h1>
+        <h2 className="mt-8 text-3xl font-extrabold tracking-tight sm:text-4xl">{texts.successTitle}</h2>
         <p className="mt-4 text-white/60">{texts.successText}</p>
         <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <button onClick={() => setSent(false)} className="btn-accent justify-center">
@@ -302,11 +302,12 @@ export default function Calculator({ cars, defaultCar, scenarios, films, addons,
       {/* Hero: заголовок + выбор машины слева, фото справа */}
       <section className="grid items-center gap-6 lg:grid-cols-[minmax(0,6fr)_minmax(0,7fr)]">
         <div className="space-y-5">
-          <h1 className="text-3xl font-extrabold leading-[1.05] tracking-[-0.03em] sm:text-5xl lg:text-[44px]">
+          {/* h2: единственный H1 страницы задаёт /calculator (sr-only) или главная. */}
+          <h2 className="text-3xl font-extrabold leading-[1.05] tracking-[-0.03em] sm:text-5xl lg:text-[44px]">
             {texts.h1}
             <br />
             {texts.h1Mid} <span className="accent">{texts.h1Accent}</span>
-          </h1>
+          </h2>
           <p className="max-w-xl text-white/60">{texts.lead}</p>
           <div className="lg:hidden">{photo}</div>
           {selects}
