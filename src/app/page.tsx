@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import SiteHeader from "@/components/site/SiteHeader";
@@ -22,6 +21,8 @@ import { allBrandCars, organizationSchema, serviceSchema } from "@/server/seo/sc
 import {
   ADDON_TEXTS,
   BRAND_PAGE,
+  BRANDS,
+  CONTACTS,
   CALCULATOR,
   CASES,
   FACT_TILES,
@@ -110,18 +111,28 @@ export default function HomePage() {
 
           </div>
 
-          {/* Картинка первого экрана: файл public/hero.jpg */}
+          {/* Вместо фото: марки и контакты для записи */}
           <div className="reveal">
-            <div className="overflow-hidden rounded-3xl border border-white/8 bg-black">
-              <Image
-                src="/hero.jpg"
-                alt="Премиальный внедорожник"
-                width={1672}
-                height={941}
-                sizes="(min-width: 1024px) 50vw, 100vw"
-                preload
-                className="h-auto w-full"
-              />
+            <div className="dark-card flex h-full flex-col p-6 sm:p-8">
+              <div className="eyebrow">Работаем с марками</div>
+              <div className="mt-5 flex flex-wrap gap-2">
+                {BRANDS.map((b) => (
+                  <span key={b.slug} className="rounded-full border border-white/10 px-3 py-1.5 text-sm text-white/85">
+                    {b.name}
+                  </span>
+                ))}
+              </div>
+              <p className="mt-6 text-sm leading-6 text-white/60">
+                Оригинальная плёнка Spectroll. Работаем в Москве. Точную цену подтверждаем после осмотра.
+              </p>
+              <div className="mt-auto grid gap-3 pt-8">
+                <a href={CONTACTS.phoneHref} className="btn-accent text-center">
+                  Позвонить {CONTACTS.phone}
+                </a>
+                <a href={telegramUrl()} target="_blank" rel="noopener noreferrer" className="btn-ghost text-center">
+                  Написать в Telegram
+                </a>
+              </div>
             </div>
           </div>
         </div>
