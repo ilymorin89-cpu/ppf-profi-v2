@@ -77,13 +77,13 @@ export default function HomePage() {
   // Пример расчёта: X5 G05 FULL · Spectroll TPU-S + допы, все числа из src/server/pricing/config.ts.
   const example = getHomeExample();
   // Минимальная цена зон риска среди моделей главной — «вход» в услугу.
-  const riskLows = topCars.map((c) => c.risk?.low).filter((v): v is number => typeof v === "number");
-  const minRisk = riskLows.length > 0 ? Math.min(...riskLows) : null;
-  // Модели, на которых достигается этот минимум: цена на главной всегда привязана к названию машины.
-  const minRiskModels = topCars
-    .filter((c) => c.risk?.low === minRisk)
-    .map((c) => `${c.brand} ${c.model}`)
-    .join(", ");
+  // Минимум по всему каталогу (как на /ceny и /ppf), а не только по карточкам главной.
+  const riskCars = miniCars.filter((c): c is MiniCar & { risk: { low: number } } => typeof c.risk?.low === "number");
+  const minRisk = riskCars.length > 0 ? Math.min(...riskCars.map((c) => c.risk.low)) : null;
+  // Модели, на которых достигается минимум: до трёх названий, остальные — «и др.».
+  const minRiskNames = riskCars.filter((c) => c.risk.low === minRisk).map((c) => `${c.brand} ${c.model}`);
+  const minRiskModels =
+    minRiskNames.length > 3 ? `${minRiskNames.slice(0, 3).join(", ")} и др.` : minRiskNames.join(", ");
   const addonPrices = getPublicAddonPrices() as Record<string, { price: number }>;
 
   return (
