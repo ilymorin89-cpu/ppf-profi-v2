@@ -66,3 +66,6 @@ backups/
 push-github.ps1
 *.bak-*
 *.bundle
+
+# выгрузки поисковых запросов (локально)
+keywords-out/
