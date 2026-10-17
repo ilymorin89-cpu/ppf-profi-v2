@@ -304,12 +304,12 @@ export const CONTACTS = {
   /** Ссылка, если NEXT_PUBLIC_TG_USERNAME не задан (без ?text). */
   telegramFallbackUrl: "https://t.me/partner_detiling",
   telegramFallbackHandle: "@partner_detiling",
-  email: "kent777_09@mail.ru",
+  email: "ilymorin89@gmail.com",
   city: "Москва и область",
 };
 
 export const LEGAL = {
-  owner: "ИП Морин Илья Владимирович",
+  owner: "ИП Морин И. В.",
   inn: "ИНН 740414579370",
   ogrnip: "ОГРНИП 321745600022340",
 };
