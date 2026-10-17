@@ -212,13 +212,11 @@ export default function HomePage() {
                 src="/hero/zeekr-9x.webp"
                 alt="Чёрный Zeekr 9X в студии оклейки PPF PROFI"
                 width={1200}
-                height={1098}
+                height={675}
                 sizes="(min-width: 1024px) 55vw, 100vw"
                 priority
                 className="h-auto w-full"
               />
-              {/* Маска на левый нижний угол: в исходном фото там смазанный участок пола */}
-              <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_60%_at_0%_100%,rgba(0,0,0,0.97),rgba(0,0,0,0.6)_45%,transparent_75%)]" />
             </div>
           </div>
         </div>
