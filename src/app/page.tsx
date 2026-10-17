@@ -94,27 +94,44 @@ export default function HomePage() {
       <SiteHeader onHome />
       <main id="main-content">
 
-      {/* HERO: макет агента — текст слева, Zeekr 9X справа */}
+      {/* ВЕРХ: заголовок на первом экране, сразу под ним калькулятор */}
+      <section className="scroll-mt-28 pt-10 sm:pt-14">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="text-lg font-extrabold tracking-[0.2em]">
+            PPF <span className="accent">PROFI</span>
+          </div>
+          <div className="mt-8 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.35em] text-lime-400">
+            Защита кузова
+            <span className="h-px w-16 bg-lime-400/70" />
+          </div>
+          <h1 className="mt-5 text-4xl font-extrabold leading-[1.05] tracking-[-0.03em] sm:text-5xl lg:text-6xl">
+            Плёнка, которая
+            <br />
+            <span className="accent">бережёт</span>
+            <br />
+            ваш автомобиль
+          </h1>
+          <p className="mt-6 max-w-md text-base leading-7 text-white/70 sm:text-lg">
+            Подберём защиту под ваш автомобиль и условия эксплуатации.
+          </p>
+        </div>
+      </section>
+
+      {/* КАЛЬКУЛЯТОР: полный расчёт, тот же, что на /calculator */}
+      <section id="calculator" className="scroll-mt-28 border-t border-white/8">
+        <Suspense
+          fallback={
+            <div className="grid min-h-[50vh] place-items-center text-sm text-white/50">Загрузка...</div>
+          }
+        >
+          <Calculator {...getCalculatorProps()} />
+        </Suspense>
+      </section>
+
+      {/* HERO: преимущества и кнопки слева, Zeekr 9X ниже калькулятора */}
       <section className="scroll-mt-28 overflow-hidden">
         <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 pt-10 pb-28 sm:px-6 lg:grid-cols-[1fr_1.1fr] lg:gap-12 lg:pt-14 lg:pb-16">
           <div className="reveal">
-            <div className="text-lg font-extrabold tracking-[0.2em]">
-              PPF <span className="accent">PROFI</span>
-            </div>
-            <div className="mt-8 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.35em] text-lime-400">
-              Защита кузова
-              <span className="h-px w-16 bg-lime-400/70" />
-            </div>
-            <h1 className="mt-5 text-4xl font-extrabold leading-[1.05] tracking-[-0.03em] sm:text-5xl lg:text-6xl">
-              Плёнка, которая
-              <br />
-              <span className="accent">бережёт</span>
-              <br />
-              ваш автомобиль
-            </h1>
-            <p className="mt-6 max-w-md text-base leading-7 text-white/70 sm:text-lg">
-              Подберём защиту под ваш автомобиль и условия эксплуатации.
-            </p>
 
             {/* Три преимущества */}
             <ul className="mt-8 grid max-w-xl gap-3 sm:grid-cols-3">
@@ -200,20 +217,11 @@ export default function HomePage() {
                 priority
                 className="h-auto w-full"
               />
+              {/* Маска на левый нижний угол: в исходном фото там смазанный участок пола */}
+              <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_60%_at_0%_100%,rgba(0,0,0,0.97),rgba(0,0,0,0.6)_45%,transparent_75%)]" />
             </div>
           </div>
         </div>
-      </section>
-
-      {/* КАЛЬКУЛЯТОР: полный расчёт, тот же, что на /calculator */}
-      <section id="calculator" className="scroll-mt-28 border-t border-white/8">
-        <Suspense
-          fallback={
-            <div className="grid min-h-[50vh] place-items-center text-sm text-white/50">Загрузка...</div>
-          }
-        >
-          <Calculator {...getCalculatorProps()} />
-        </Suspense>
       </section>
 
       {/* ПОЛОСА ФАКТОВ */}
