@@ -339,6 +339,45 @@ export default function HomePage() {
         <p className="mt-2 text-[11px] text-white/40">{HOME.filmFootnote}</p>
       </section>
 
+      {/* БРЕНДЫ ПЛЁНОК — компактный каталог */}
+      <section id="film-brands" className="mx-auto max-w-7xl px-4 pb-20 sm:px-6">
+        <div className="eyebrow">Материалы для защиты и стайлинга</div>
+        <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Бренды автомобильных плёнок</h2>
+            <p className="mt-4 max-w-2xl text-base leading-7 text-white/65">
+              Подбираем материал по задачам автомобиля, желаемому эффекту и бюджету. Доступность конкретной серии уточняем перед заказом.
+            </p>
+          </div>
+          <Link href="#calculator" className="btn-ghost shrink-0 justify-center">Подобрать плёнку →</Link>
+        </div>
+        <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {[
+            { name: "Spectroll", type: "Полиуретановая PPF", text: "Прозрачная защита лакокрасочного покрытия от повседневных дорожных воздействий.", mark: "S" },
+            { name: "SunTek", type: "Защитная PPF", text: "Материалы для сохранения заводского вида кузова и защиты наиболее уязвимых зон.", mark: "ST" },
+            { name: "3M", type: "PPF и винил", text: "Решения для защиты кузова и изменения внешнего вида автомобиля.", mark: "3M" },
+            { name: "HEXIS", type: "PPF и стайлинг", text: "Плёнки для защитных и декоративных задач — в зависимости от выбранной линейки.", mark: "H" },
+            { name: "Avery Dennison", type: "Винил для стайлинга", text: "Материалы для изменения цвета и создания индивидуального оформления кузова.", mark: "AD" },
+            { name: "KPMF", type: "Винил для стайлинга", text: "Цветные плёнки для выразительных решений и персонализации автомобиля.", mark: "K" },
+            { name: "ORACAL", type: "Винил и декоративные решения", text: "Материалы для декоративного оформления и отдельных элементов автомобиля.", mark: "O" },
+          ].map((brand) => (
+            <article key={brand.name} className="group flex min-h-36 gap-4 rounded-2xl border border-white/10 bg-white/[0.025] p-4 transition duration-200 hover:border-lime-400/40 hover:bg-white/[0.045] sm:p-5">
+              <div aria-hidden="true" className="grid h-14 w-14 shrink-0 place-items-center rounded-xl border border-lime-400/25 bg-lime-400/[0.06] text-lg font-black tracking-tight text-lime-300">
+                {brand.mark}
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-base font-extrabold tracking-wide">{brand.name}</h3>
+                <div className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] text-lime-300/90">{brand.type}</div>
+                <p className="mt-2 text-sm leading-5 text-white/60">{brand.text}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+        <p className="mt-4 text-xs leading-5 text-white/45">
+          Перечень показывает направления подбора материалов, а не подтверждает наличие каждой серии на складе. Конкретный бренд и линейку согласуем перед оформлением заказа.
+        </p>
+      </section>
+
       {/* РАБОТЫ — скрыт, если кейсов нет */}
       {CASES.length > 0 && (
         <section id="works" className="mx-auto max-w-7xl scroll-mt-28 px-4 pb-20 sm:px-6">
