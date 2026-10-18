@@ -353,14 +353,14 @@ export default function HomePage() {
         </div>
         <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { name: "Spectroll", type: "Защитная PPF", text: "Полиуретановая защита лакокрасочного покрытия от повседневных дорожных воздействий.", mark: "S" },
-            { name: "LLumar", type: "Защитные и тонировочные плёнки", text: "Материалы для защиты кузова и комфорта в салоне — в зависимости от линейки.", mark: "LLumar" },
-            { name: "SunTek", type: "PPF и плёнки для стёкол", text: "Решения для защиты лакокрасочного покрытия и автомобильного остекления.", mark: "SunTek" },
-            { name: "HEXIS", type: "Защита и стайлинг", text: "Плёнки для защитных и декоративных задач в зависимости от выбранной серии.", mark: "HEXIS" },
+            { name: "Spectroll", type: "Защитная PPF", text: "Полиуретановая защита лакокрасочного покрытия от повседневных дорожных воздействий.", logo: "/brands/spectroll.jpg", w: 828, h: 404 },
+            { name: "LLumar", type: "Защитные и тонировочные плёнки", text: "Материалы для защиты кузова и комфорта в салоне — в зависимости от линейки.", logo: "/brands/llumar.jpg", w: 411, h: 215 },
+            { name: "SunTek", type: "PPF и плёнки для стёкол", text: "Решения для защиты лакокрасочного покрытия и автомобильного остекления.", logo: "/brands/suntek.jpg", w: 494, h: 283 },
+            { name: "HEXIS", type: "Защита и стайлинг", text: "Плёнки для защитных и декоративных задач в зависимости от выбранной серии.", logo: "/brands/hexis.jpg", w: 828, h: 339 },
           ].map((brand) => (
             <article key={brand.name} className="flex min-h-40 flex-col rounded-2xl border border-white/10 bg-white/[0.025] p-4 transition duration-200 hover:border-lime-400/40 hover:bg-white/[0.045] sm:p-5">
               <div className="flex h-16 items-center justify-start border-b border-white/8 pb-3">
-                <span aria-hidden="true" className="text-2xl font-black tracking-tight text-white">{brand.mark}</span>
+                <Image src={brand.logo} alt={`Логотип ${brand.name}`} width={brand.w} height={brand.h} sizes="(min-width: 1024px) 22vw, 50vw" className="h-14 w-auto max-w-full rounded-md object-contain" />
               </div>
               <h3 className="mt-3 text-base font-extrabold tracking-wide">{brand.name}</h3>
               <div className="mt-1 text-xs font-semibold uppercase tracking-[0.06em] text-lime-300/90">{brand.type}</div>
