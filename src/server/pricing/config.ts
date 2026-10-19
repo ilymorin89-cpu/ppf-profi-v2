@@ -147,6 +147,7 @@ export type AddonCode =
   | "PANORAMA"
   | "WINDSHIELD"
   | "TINT"
+  | "BUMPER_MESH"
   | "MATTE";
 
 /**
@@ -155,11 +156,14 @@ export type AddonCode =
  */
 export const ADDONS: Record<AddonCode, { price: number; priceMax?: number; maxQty: number; onlyScenario?: string }> = {
   PILLARS: { price: 2_000, maxQty: 6 },
-  SILLS_INNER: { price: 2_000, maxQty: 1 },
+  /** Цена за штуку, до 4 шт (решение Ильи 20.10.2026). */
+  SILLS_INNER: { price: 2_000, maxQty: 4 },
   SCREENS: { price: 7_000, priceMax: 9_000, maxQty: 1 },
   PANORAMA: { price: 20_000, maxQty: 1 },
   WINDSHIELD: { price: 30_000, maxQty: 1 },
   TINT: { price: 15_000, maxQty: 1 },
+  /** Сетка в бампер. Цена 10 000 ₽ — Илья, 20.10.2026; единица (один бампер или комплект) не уточнена, maxQty 1. */
+  BUMPER_MESH: { price: 10_000, maxQty: 1 },
   /** Доплата за матовую плёнку к полной оклейке (решение Ильи 14.10.2026). */
   MATTE: { price: 35_000, maxQty: 1, onlyScenario: "FULL" },
 };

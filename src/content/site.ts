@@ -394,7 +394,7 @@ export const CALCULATOR = {
 
 export const ADDON_TEXTS: Record<string, { label: string; desc?: string; unit?: string }> = {
   PILLARS: { label: "Стойки", desc: "Цена за штуку", unit: "шт" },
-  SILLS_INNER: { label: "Пороги внутри" },
+  SILLS_INNER: { label: "Пороги внутри", desc: "Цена за штуку", unit: "шт" },
   SCREENS: { label: "Экраны в салоне" },
   PANORAMA: { label: "Панорамная крыша, если есть", desc: "Бронирование стекла" },
   WINDSHIELD: { label: "Броня лобового стекла" },
@@ -402,6 +402,7 @@ export const ADDON_TEXTS: Record<string, { label: string; desc?: string; unit?: 
     label: "Тонировка",
     desc: "В рамках требований к светопропусканию стёкол",
   },
+  BUMPER_MESH: { label: "Сетка в бампер" },
   MATTE: { label: "Матовая плёнка", desc: "Доплата к полной оклейке" },
 };
 
