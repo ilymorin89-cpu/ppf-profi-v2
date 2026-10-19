@@ -402,6 +402,7 @@ export const ADDON_TEXTS: Record<string, { label: string; desc?: string; unit?: 
     label: "Тонировка",
     desc: "В рамках требований к светопропусканию стёкол",
   },
+  BUMPER_MESH: { label: "Сетка в бампер" },
   MATTE: { label: "Матовая плёнка", desc: "Доплата к полной оклейке" },
 };
 
