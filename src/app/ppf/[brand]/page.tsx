@@ -151,6 +151,8 @@ export default async function BrandPage({ params }: Props) {
                 const risk = c.prices.RISK_ZONES?.[STD];
                 const full = c.prices.FULL?.[STD];
                 const fullP = c.prices.FULL?.[PREMIUM];
+                const riskNar190 = c.prices.RISK_ZONES?.NAR_H190;
+                const riskNar210 = c.prices.RISK_ZONES?.NAR_H210;
                 return (
                   <Link
                     key={c.code}
@@ -175,6 +177,16 @@ export default async function BrandPage({ params }: Props) {
                     {fullP && (
                       <div className="mt-1 text-sm text-white/65">
                         {fillTemplate(BRAND_PAGE.fullPremium, { price: formatRub(fullP.low) })}
+                      </div>
+                    )}
+                    {riskNar190 && (
+                      <div className="mt-1 text-sm text-white/65">
+                        {fillTemplate(BRAND_PAGE.riskNarH190, { price: formatRub(riskNar190.low) })}
+                      </div>
+                    )}
+                    {riskNar210 && (
+                      <div className="mt-1 text-sm text-white/65">
+                        {fillTemplate(BRAND_PAGE.riskNarH210, { price: formatRub(riskNar210.low) })}
                       </div>
                     )}
                     <div className="mt-3 text-sm font-bold accent">{BRAND_PAGE.calcLink}</div>

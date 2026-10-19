@@ -74,6 +74,8 @@ function Table({ cars }: { cars: PublicCar[] }) {
     (c: PublicCar) => c.prices.RISK_ZONES?.[STD]?.low,
     (c: PublicCar) => c.prices.FULL?.[STD]?.low,
     (c: PublicCar) => c.prices.FULL?.[PREMIUM]?.low,
+    (c: PublicCar) => c.prices.RISK_ZONES?.NAR_H190?.low,
+    (c: PublicCar) => c.prices.RISK_ZONES?.NAR_H210?.low,
   ];
   return (
     <>
@@ -104,11 +106,13 @@ function Table({ cars }: { cars: PublicCar[] }) {
       {/* table-fixed + одинаковые ширины: колонки ровные во всех таблицах марок */}
       <table className="w-full table-fixed text-left text-sm">
         <colgroup>
-          <col className="w-[26%]" />
-          <col className="w-[17%]" />
-          <col className="w-[19%]" />
-          <col className="w-[19%]" />
-          <col className="w-[19%]" />
+          <col className="w-[20%]" />
+          <col className="w-[13%]" />
+          <col className="w-[13.4%]" />
+          <col className="w-[13.4%]" />
+          <col className="w-[13.4%]" />
+          <col className="w-[13.4%]" />
+          <col className="w-[13.4%]" />
         </colgroup>
         <thead>
           <tr>
