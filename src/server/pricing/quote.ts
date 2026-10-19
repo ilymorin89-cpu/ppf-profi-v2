@@ -106,10 +106,21 @@ export function calculateQuote(
   };
 }
 
+// NAR: розница = цена пары Spectroll + разница закупки (то же правило, что в DIRECT_PRICES и CLASS_PRICES).
+// Пары: H190 к TPU-S 180, H210 к Premium 210. Решение Ильи 20.10.2026.
+const NAR_PAIR: Partial<Record<FilmCode, FilmCode>> = {
+  NAR_H190: "PPF_STANDARD",
+  NAR_H210: "SPECTROLL_PREMIUM",
+};
+
 // Совместимость: orders и public-quote пока вызывают quote().
 // Возвращает цену партнёра (Target) и условный диапазон розницы.
 // ДИАПАЗОН РОЗНИЦЫ ВРЕМЕННЫЙ, заменить данными рынка.
-export function quote(car: string, pkg: string, film: string) {
+export function quote(
+  car: string,
+  pkg: string,
+  film: string
+): { pp: number; low: number; high: number } | null {
   const r = calculateQuote({
     carCode: car,
     scenario: pkg as ScenarioCode,
@@ -123,6 +134,17 @@ export function quote(car: string, pkg: string, film: string) {
   const entry = getCar(car);
   const fixed = entry ? fixedRetailPrice(entry, pkg, film) : null;
   if (fixed !== null) return { pp, low: fixed, high: fixed };
+
+  const pair = NAR_PAIR[film as FilmCode];
+  if (pair) {
+    const base = quote(car, pkg, pair);
+    if (base) {
+      const perMeter = FILMS[film as FilmCode].pricePerMeter - FILMS[pair].pricePerMeter;
+      const delta =
+        (r.result.breakdown.meters * perMeter * (1 + PRICING_CONFIG.reserve)) / (1 - PRICING_CONFIG.usn);
+      return { pp, low: roundUp(base.low + delta, 500), high: roundUp(base.high + delta, 500) };
+    }
+  }
 
   const low = Math.round(pp / 0.85 / 500) * 500;
   const high = Math.round(pp / 0.8 / 500) * 500;

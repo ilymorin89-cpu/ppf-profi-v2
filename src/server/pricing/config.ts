@@ -1,6 +1,6 @@
-import { filmLabel } from "@/content/site";
+import { filmLabel, type FilmCode } from "@/content/site";
 
-export type FilmCode = "PPF_STANDARD" | "SPECTROLL_PREMIUM";
+export type { FilmCode };
 
 export const PRICING_CONFIG = {
   dailyRate: 15_000,
@@ -23,6 +23,15 @@ export const FILMS: Record<FilmCode, { label: string; pricePerMeter: number }> =
   SPECTROLL_PREMIUM: {
     label: filmLabel("SPECTROLL_PREMIUM"),
     pricePerMeter: 4_000,
+  },
+  // NAR: закупка рулона 15 м × 1,52 м — H190 65 000 ₽, H210 72 000 ₽ (Илья, 20.10.2026).
+  NAR_H190: {
+    label: filmLabel("NAR_H190"),
+    pricePerMeter: 65_000 / 15,
+  },
+  NAR_H210: {
+    label: filmLabel("NAR_H210"),
+    pricePerMeter: 72_000 / 15,
   },
 };
 
@@ -62,6 +71,33 @@ export const DIRECT_PRICES: {
   { carCode: "GEELY_MONJARO",      scenario: "FULL",       filmCode: "SPECTROLL_PREMIUM", price: 359000 },
   { carCode: "GEELY_MONJARO",      scenario: "RISK_ZONES", filmCode: "PPF_STANDARD",      price: 94000 },
   { carCode: "GEELY_MONJARO",      scenario: "RISK_ZONES", filmCode: "SPECTROLL_PREMIUM", price: 109000 },
+
+  // NAR PPF Premium: цена Spectroll-пары + разница закупки (метры плёнки × разница ₽/м × 1,07 / 0,94 — резерв и УСН),
+  // округление вверх до 1 000 ₽. Пары: H190 к TPU-S 180, H210 к Premium 210. Решение Ильи 20.10.2026.
+  { carCode: "BMW_X5_G05",         scenario: "FULL",       filmCode: "NAR_H190", price: 383000 },
+  { carCode: "BMW_X5_G05",         scenario: "FULL",       filmCode: "NAR_H210", price: 426000 },
+  { carCode: "BMW_X5_G05",         scenario: "RISK_ZONES", filmCode: "NAR_H190", price: 143000 },
+  { carCode: "BMW_X5_G05",         scenario: "RISK_ZONES", filmCode: "NAR_H210", price: 156000 },
+  { carCode: "BMW_X7_G07",         scenario: "FULL",       filmCode: "NAR_H190", price: 470000 },
+  { carCode: "BMW_X7_G07",         scenario: "FULL",       filmCode: "NAR_H210", price: 520000 },
+  { carCode: "BMW_X7_G07",         scenario: "RISK_ZONES", filmCode: "NAR_H190", price: 143000 },
+  { carCode: "BMW_X7_G07",         scenario: "RISK_ZONES", filmCode: "NAR_H210", price: 156000 },
+  { carCode: "MB_GLE_V167",        scenario: "FULL",       filmCode: "NAR_H190", price: 383000 },
+  { carCode: "MB_GLE_V167",        scenario: "FULL",       filmCode: "NAR_H210", price: 426000 },
+  { carCode: "MB_GLE_V167",        scenario: "RISK_ZONES", filmCode: "NAR_H190", price: 104000 },
+  { carCode: "MB_GLE_V167",        scenario: "RISK_ZONES", filmCode: "NAR_H210", price: 114000 },
+  { carCode: "PORSCHE_CAYENNE_E3", scenario: "FULL",       filmCode: "NAR_H190", price: 383000 },
+  { carCode: "PORSCHE_CAYENNE_E3", scenario: "FULL",       filmCode: "NAR_H210", price: 426000 },
+  { carCode: "PORSCHE_CAYENNE_E3", scenario: "RISK_ZONES", filmCode: "NAR_H190", price: 104000 },
+  { carCode: "PORSCHE_CAYENNE_E3", scenario: "RISK_ZONES", filmCode: "NAR_H210", price: 114000 },
+  { carCode: "TOYOTA_LC300",       scenario: "FULL",       filmCode: "NAR_H190", price: 470000 },
+  { carCode: "TOYOTA_LC300",       scenario: "FULL",       filmCode: "NAR_H210", price: 520000 },
+  { carCode: "TOYOTA_LC300",       scenario: "RISK_ZONES", filmCode: "NAR_H190", price: 134000 },
+  { carCode: "TOYOTA_LC300",       scenario: "RISK_ZONES", filmCode: "NAR_H210", price: 149000 },
+  { carCode: "GEELY_MONJARO",      scenario: "FULL",       filmCode: "NAR_H190", price: 337000 },
+  { carCode: "GEELY_MONJARO",      scenario: "FULL",       filmCode: "NAR_H210", price: 373000 },
+  { carCode: "GEELY_MONJARO",      scenario: "RISK_ZONES", filmCode: "NAR_H190", price: 104000 },
+  { carCode: "GEELY_MONJARO",      scenario: "RISK_ZONES", filmCode: "NAR_H210", price: 114000 },
 ];
 
 /**
@@ -73,17 +109,18 @@ export const CLASS_PRICES: Record<
   "L" | "XL" | "XL+",
   Record<"FULL" | "RISK_ZONES", Record<FilmCode, number>>
 > = {
+  // NAR: та же формула, что в DIRECT_PRICES; метры плёнки по опорным моделям класса (L = Monjaro, XL = GLE, XL+ = LC300).
   L: {
-    FULL: { PPF_STANDARD: 309000, SPECTROLL_PREMIUM: 359000 },
-    RISK_ZONES: { PPF_STANDARD: 94000, SPECTROLL_PREMIUM: 109000 },
+    FULL: { PPF_STANDARD: 309000, SPECTROLL_PREMIUM: 359000, NAR_H190: 337000, NAR_H210: 373000 },
+    RISK_ZONES: { PPF_STANDARD: 94000, SPECTROLL_PREMIUM: 109000, NAR_H190: 104000, NAR_H210: 114000 },
   },
   XL: {
-    FULL: { PPF_STANDARD: 349000, SPECTROLL_PREMIUM: 409000 },
-    RISK_ZONES: { PPF_STANDARD: 94000, SPECTROLL_PREMIUM: 109000 },
+    FULL: { PPF_STANDARD: 349000, SPECTROLL_PREMIUM: 409000, NAR_H190: 383000, NAR_H210: 426000 },
+    RISK_ZONES: { PPF_STANDARD: 94000, SPECTROLL_PREMIUM: 109000, NAR_H190: 104000, NAR_H210: 114000 },
   },
   "XL+": {
-    FULL: { PPF_STANDARD: 429000, SPECTROLL_PREMIUM: 499000 },
-    RISK_ZONES: { PPF_STANDARD: 124000, SPECTROLL_PREMIUM: 144000 },
+    FULL: { PPF_STANDARD: 429000, SPECTROLL_PREMIUM: 499000, NAR_H190: 470000, NAR_H210: 520000 },
+    RISK_ZONES: { PPF_STANDARD: 124000, SPECTROLL_PREMIUM: 144000, NAR_H190: 134000, NAR_H210: 149000 },
   },
 };
 

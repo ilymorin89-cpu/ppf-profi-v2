@@ -25,6 +25,8 @@ const SCENARIOS = [
 const FILMS = [
   { code: "PPF_STANDARD", label: filmLabel("PPF_STANDARD"), desc: "Надёжная защита" },
   { code: "SPECTROLL_PREMIUM", label: filmLabel("SPECTROLL_PREMIUM"), desc: "Премиальная защита" },
+  { code: "NAR_H190", label: filmLabel("NAR_H190"), desc: "Полиуретановая плёнка NAR PPF" },
+  { code: "NAR_H210", label: filmLabel("NAR_H210"), desc: "Полиуретановая плёнка NAR PPF" },
 ];
 
 function newKey(): string {

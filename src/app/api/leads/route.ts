@@ -5,6 +5,7 @@ import { leads } from "@/server/db/schema";
 import { sendTelegramNotification } from "@/server/telegram/notify";
 import {
   ADDON_TEXTS,
+  FILM_CODES,
   PARTNER_TYPES,
   SCENARIOS,
   filmLabel,
@@ -21,7 +22,7 @@ import {
 import type { AddonSelection } from "@/shared/addons";
 
 const ALLOWED_SCENARIOS = ["FULL", "RISK_ZONES"] as const;
-const ALLOWED_FILMS = ["PPF_STANDARD", "SPECTROLL_PREMIUM"] as const;
+const ALLOWED_FILMS: readonly string[] = FILM_CODES;
 
 const str = (v: unknown, max: number) =>
   typeof v === "string" ? v.trim().slice(0, max) : "";

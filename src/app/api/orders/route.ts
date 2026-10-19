@@ -4,12 +4,12 @@ import { db } from "@/server/db/client";
 import { orders, partners } from "@/server/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { sendTelegramNotification } from "@/server/telegram/notify";
-import { filmLabel } from "@/content/site";
+import { FILM_CODES, filmLabel, type FilmCode } from "@/content/site";
 import { getSession } from "@/server/auth/current";
 import { calculateQuote } from "@/server/pricing/quote";
 
 const ALLOWED_SCENARIOS = ["FULL", "RISK_ZONES"] as const;
-const ALLOWED_FILMS = ["PPF_STANDARD", "SPECTROLL_PREMIUM"] as const;
+const ALLOWED_FILMS: readonly string[] = FILM_CODES;
 
 const str = (v: unknown, max: number) =>
   typeof v === "string" ? v.trim().slice(0, max) : "";
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
     const q = calculateQuote({
       carCode,
       scenario: scenario as "FULL" | "RISK_ZONES",
-      filmCode: filmCode as "PPF_STANDARD" | "SPECTROLL_PREMIUM",
+      filmCode: filmCode as FilmCode,
     });
 
     if (!q.ok) {

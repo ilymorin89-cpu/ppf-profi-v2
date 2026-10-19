@@ -5,30 +5,35 @@
 
 import { buildTelegramUrl, formatRub, type TelegramContact } from "@/shared/format";
 
-export type FilmCode = "PPF_STANDARD" | "SPECTROLL_PREMIUM";
+export type FilmCode = "PPF_STANDARD" | "SPECTROLL_PREMIUM" | "NAR_H190" | "NAR_H210";
 export type ScenarioCode = "FULL" | "RISK_ZONES";
 
 // ---------- Плёнки ----------
 
 export const THICKNESS_UNIT = "микрон";
 
-export const FILMS: Record<FilmCode, { name: string; thickness: number; short: string }> = {
+// thickness не задан у NAR: толщина линеек H190 и H210 владельцем не подтверждена, в тексты её не пишем.
+export const FILMS: Record<FilmCode, { name: string; thickness?: number; short: string }> = {
   PPF_STANDARD: { name: "Spectroll TPU-S", thickness: 180, short: "Подходит для большинства машин" },
   SPECTROLL_PREMIUM: { name: "Spectroll Premium", thickness: 210, short: "Слой толще, для езды по трассе" },
+  // ЗАГЛУШКА: описание NAR нужно согласовать с владельцем.
+  NAR_H190: { name: "NAR PPF Premium H190", short: "Полиуретановая плёнка NAR PPF" },
+  NAR_H210: { name: "NAR PPF Premium H210", short: "Полиуретановая плёнка NAR PPF" },
 };
 
 export const FILM_CODES = Object.keys(FILMS) as FilmCode[];
 
-/** «Spectroll TPU-S 180 микрон» — так плёнка подписывается в прайсах. */
+/** «Spectroll TPU-S 180 микрон» — так плёнка подписывается в прайсах. Без толщины — только название. */
 export function filmPriceLabel(code: FilmCode): string {
   const f = FILMS[code];
-  return `${f.name} ${f.thickness} ${THICKNESS_UNIT}`;
+  return f.thickness ? `${f.name} ${f.thickness} ${THICKNESS_UNIT}` : f.name;
 }
 
 /** «Spectroll TPU-S · 180 микрон»; неизвестный код возвращается как есть. */
 export function filmLabel(code: string): string {
   const f = FILMS[code as FilmCode];
-  return f ? `${f.name} · ${f.thickness} ${THICKNESS_UNIT}` : code;
+  if (!f) return code;
+  return f.thickness ? `${f.name} · ${f.thickness} ${THICKNESS_UNIT}` : f.name;
 }
 
 // ---------- Состав работ ----------
@@ -189,7 +194,7 @@ export function brandFaq(
     },
     {
       q: "Какую плёнку выбрать?",
-      a: `${filmLabel("PPF_STANDARD")} подходит для большинства машин. ${filmLabel("SPECTROLL_PREMIUM")} — слой толще, дольше сохраняет вид при езде по трассе.`,
+      a: `${filmLabel("PPF_STANDARD")} подходит для большинства машин. ${filmLabel("SPECTROLL_PREMIUM")} — слой толще, дольше сохраняет вид при езде по трассе. Также есть плёнка ${filmLabel("NAR_H190")} и ${filmLabel("NAR_H210")}.`,
     },
     {
       q: "Какая гарантия?",
@@ -228,6 +233,8 @@ export const BRAND_PAGE = {
   riskTpu: `Зоны риска · ${filmPriceLabel("PPF_STANDARD")} — от {price}`,
   fullTpu: `FULL · ${filmPriceLabel("PPF_STANDARD")} — от {price}`,
   fullPremium: `FULL · ${filmPriceLabel("SPECTROLL_PREMIUM")} — от {price}`,
+  riskNarH190: `Зоны риска · ${filmPriceLabel("NAR_H190")} — от {price}`,
+  riskNarH210: `Зоны риска · ${filmPriceLabel("NAR_H210")} — от {price}`,
   calcLink: "Подробный расчёт →",
   noModelsTitle: "Стоимость — индивидуально",
   noModelsText:
@@ -276,6 +283,8 @@ export const PRICES_PAGE = {
     { title: "Зоны риска", film: filmPriceLabel("PPF_STANDARD") },
     { title: "FULL", film: filmPriceLabel("PPF_STANDARD") },
     { title: "FULL", film: filmPriceLabel("SPECTROLL_PREMIUM") },
+    { title: "Зоны риска", film: filmPriceLabel("NAR_H190") },
+    { title: "Зоны риска", film: filmPriceLabel("NAR_H210") },
   ],
   otherBrands: "Другие марки",
   partsTitle: "Оклейка отдельных деталей",
@@ -484,7 +493,7 @@ export const HOME = {
   pricesLead: "Начните с зон риска — от {price} на моделях: {models}. Капот, бампер, фары и зеркала первыми ловят сколы. Полную оклейку можно добавить позже.",
   pricesFull: `FULL · ${filmPriceLabel("PPF_STANDARD")} — от {price}`,
   pricesRisk: `Зоны риска · ${filmPriceLabel("PPF_STANDARD")} — от {price}`,
-  pricesNote: "Цены «от» для плёнки Spectroll TPU-S 180 микрон. Spectroll Premium 210 микрон — в калькуляторе. Точную цену подтвердим после осмотра.",
+  pricesNote: "Цены «от» для плёнки Spectroll TPU-S 180 микрон. Spectroll Premium 210 микрон и NAR PPF Premium H190 и H210 — в калькуляторе. Точную цену подтвердим после осмотра.",
   /** Показывать ли на главной пример с допами. Выключен: большая итоговая сумма отпугивает, допы видны в калькуляторе. */
   showExample: false,
   /** Пример расчёта: {car}, {items} — список допов, {total} — итог «от». */
@@ -496,10 +505,13 @@ export const HOME = {
   wrapEyebrow: "Что клеим",
   wrapTitle: "Полная оклейка или зоны риска",
 
-  filmTitle: "Две плёнки Spectroll: выбираем под машину и дорогу",
+  filmTitle: "Плёнки Spectroll и NAR PPF: выбираем под машину и дорогу",
   filmText: {
     PPF_STANDARD: "Защищает от сколов, песка, камней и реагентов. Подходит для большинства машин.",
     SPECTROLL_PREMIUM: "Тот же набор защит, слой толще, дольше сохраняет вид при езде по трассе.",
+    // ЗАГЛУШКА: описание NAR нужно согласовать с владельцем.
+    NAR_H190: "Полиуретановая плёнка NAR PPF Premium для защиты лакокрасочного покрытия.",
+    NAR_H210: "Полиуретановая плёнка NAR PPF Premium для защиты лакокрасочного покрытия.",
   } as Record<FilmCode, string>,
   filmCaption: "Не знаете, что выбрать? Напишите марку и как ездите, подскажем.",
   filmFootnote: "Толщина по данным производителя",
@@ -572,7 +584,7 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "Какую плёнку выбрать?",
-    a: `${filmLabel("PPF_STANDARD")} подходит для большинства машин. ${filmLabel("SPECTROLL_PREMIUM")} — слой толще, дольше сохраняет вид при езде по трассе.`,
+    a: `${filmLabel("PPF_STANDARD")} подходит для большинства машин. ${filmLabel("SPECTROLL_PREMIUM")} — слой толще, дольше сохраняет вид при езде по трассе. Также есть плёнка ${filmLabel("NAR_H190")} и ${filmLabel("NAR_H210")}.`,
   },
   {
     q: "Цена на сайте окончательная?",

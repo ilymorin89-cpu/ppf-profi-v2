@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { getPublicTotal, parsePublicAddons } from "@/server/pricing/public";
+import { FILM_CODES } from "@/content/site";
 
 const ALLOWED_SCENARIOS = ["FULL", "RISK_ZONES"] as const;
-const ALLOWED_FILMS = ["PPF_STANDARD", "SPECTROLL_PREMIUM"] as const;
+const ALLOWED_FILMS: readonly string[] = FILM_CODES;
 
 const str = (v: unknown, max: number) =>
   typeof v === "string" ? v.trim().slice(0, max) : "";
