@@ -354,8 +354,8 @@ export default function HomePage() {
         <div className="mt-8 grid gap-3 sm:grid-cols-2">
           {[
             { name: "Spectroll", type: "Защитная PPF", text: "Полиуретановая защита лакокрасочного покрытия от повседневных дорожных воздействий.", logo: "/brands/spectroll.jpg", w: 828, h: 404 },
-            // ЗАГЛУШКА: логотипа NAR PPF в репозитории нет, пока показываем название текстом. Текст карточки нужно согласовать с владельцем.
-            { name: "NAR PPF", type: "Защитная PPF", text: "Полиуретановая плёнка для защиты лакокрасочного покрытия. Конкретную линейку согласуем перед заказом." },
+            // ЗАГЛУШКА: логотипа NAR PPF в репозитории нет, пока показываем название текстом. Формулировку описания нужно согласовать с владельцем.
+            { name: "NAR PPF", type: "Защитная PPF · Premium H190 и H210", text: "Линейки NAR PPF Premium H190 и Premium H210 — полиуретановая плёнка для защиты лакокрасочного покрытия." },
           ].map((brand) => (
             <article key={brand.name} className="flex min-h-40 flex-col rounded-2xl border border-white/10 bg-white/[0.025] p-4 transition duration-200 hover:border-lime-400/40 hover:bg-white/[0.045] sm:p-5">
               <div className="flex h-16 items-center justify-start border-b border-white/8 pb-3">
