@@ -156,7 +156,8 @@ export type AddonCode =
  */
 export const ADDONS: Record<AddonCode, { price: number; priceMax?: number; maxQty: number; onlyScenario?: string }> = {
   PILLARS: { price: 2_000, maxQty: 6 },
-  SILLS_INNER: { price: 2_000, maxQty: 1 },
+  /** Цена за штуку, до 4 шт (решение Ильи 20.10.2026). */
+  SILLS_INNER: { price: 2_000, maxQty: 4 },
   SCREENS: { price: 7_000, priceMax: 9_000, maxQty: 1 },
   PANORAMA: { price: 20_000, maxQty: 1 },
   WINDSHIELD: { price: 30_000, maxQty: 1 },
