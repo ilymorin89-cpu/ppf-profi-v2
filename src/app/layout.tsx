@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     yandex: "8e84373381798ef4",
   },
   title: "PPF PROFI — Защита автомобиля плёнкой",
-  description: "Оклейка авто защитной плёнкой PPF в Москве. Работаем на проверенных площадках.",
+  description: "Оклейка авто пленкой в Москве: полиуретановая плёнка Spectroll (бронепленка). Зоны риска от 1 дня. Работаем на проверенных площадках.",
 };
 
 export default function RootLayout({
