@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CONTACTS, FOOTER_LINKS, LEGAL, telegramHandle, telegramUrl } from "@/content/site";
+import { CONTACTS, FOOTER_LINKS, LEGAL, WORKPLACE, telegramHandle, telegramUrl } from "@/content/site";
 
 export default function SiteFooter() {
   return (
@@ -41,6 +41,8 @@ export default function SiteFooter() {
               </a>
             </>
           )}
+          <div className="mt-3 text-white/50">Адрес</div>
+          <div className="mt-1 leading-snug">{WORKPLACE.address}</div>
         </div>
 
         <div className="text-sm text-white/60">
