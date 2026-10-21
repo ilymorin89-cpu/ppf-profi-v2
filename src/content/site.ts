@@ -16,7 +16,7 @@ export const THICKNESS_UNIT = "микрон";
 export const FILMS: Record<FilmCode, { name: string; thickness?: number; short: string }> = {
   PPF_STANDARD: { name: "Spectroll TPU-S", thickness: 180, short: "Подходит для большинства машин" },
   SPECTROLL_PREMIUM: { name: "Spectroll Premium", thickness: 210, short: "Слой толще, для езды по трассе" },
-  // ЗАГЛУШКА: описание NAR нужно согласовать с владельцем.
+  // Описание NAR подтверждено владельцем 21.10.2026.
   NAR_H190: { name: "NAR PPF Premium H190", short: "Полиуретановая плёнка NAR PPF" },
   NAR_H210: { name: "NAR PPF Premium H210", short: "Полиуретановая плёнка NAR PPF" },
 };
@@ -510,7 +510,7 @@ export const HOME = {
   filmText: {
     PPF_STANDARD: "Защищает от сколов, песка, камней и реагентов. Подходит для большинства машин.",
     SPECTROLL_PREMIUM: "Тот же набор защит, слой толще, дольше сохраняет вид при езде по трассе.",
-    // ЗАГЛУШКА: описание NAR нужно согласовать с владельцем.
+    // Описание NAR подтверждено владельцем 21.10.2026.
     NAR_H190: "Полиуретановая плёнка NAR PPF Premium для защиты лакокрасочного покрытия.",
     NAR_H210: "Полиуретановая плёнка NAR PPF Premium для защиты лакокрасочного покрытия.",
   } as Record<FilmCode, string>,
