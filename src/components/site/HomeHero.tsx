@@ -32,7 +32,7 @@ export default function HomeHero() {
           <span className="whitespace-nowrap">в Москве —</span> BMW, Mercedes, Porsche, Range Rover
         </h1>
         <p className="mt-6 max-w-md text-base leading-7 text-white/80 sm:text-lg">
-          Профессиональная оклейка авто плёнкой PPF в Москве. Гарантия 24 месяца.
+          Профессиональная оклейка авто плёнкой PPF в Москве. Spectroll Premium. Расчёт стоимости онлайн
         </p>
         <a href="#calculator" className="btn-accent mt-8 w-fit">
           Рассчитать стоимость →
