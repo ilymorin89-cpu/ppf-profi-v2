@@ -8,7 +8,7 @@ export default function HomeHero() {
   return (
     <section className="relative isolate overflow-hidden border-b border-white/8">
       <img
-        src="/hero/garage-bmw.webp"
+        src="/hero/garage-bmw-source.png"
         alt=""
         width={1536}
         height={1024}
@@ -16,10 +16,10 @@ export default function HomeHero() {
         className="absolute inset-0 -z-10 h-full w-full object-cover object-[65%_50%]"
       />
       {/* Слева плотнее, чтобы текст читался; на телефоне затемнение снизу. */}
-      <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-r from-black via-black/75 to-black/10" />
+      <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-r from-black/85 via-black/45 to-transparent" />
       <div
         aria-hidden="true"
-        className="absolute inset-0 -z-10 bg-gradient-to-t from-black via-black/70 to-black/20 lg:hidden"
+        className="absolute inset-0 -z-10 bg-gradient-to-t from-black/90 via-black/45 to-transparent lg:hidden"
       />
 
       <div className="mx-auto flex min-h-[80svh] max-w-7xl flex-col justify-end px-4 pb-14 pt-12 sm:px-6 lg:min-h-[86svh] lg:justify-center lg:pb-20">

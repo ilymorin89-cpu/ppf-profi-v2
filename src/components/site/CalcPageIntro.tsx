@@ -7,13 +7,13 @@ export default function CalcPageIntro() {
   return (
     <section className="relative isolate overflow-hidden border-b border-white/8">
       <img
-        src="/hero/garage-bmw.webp"
+        src="/hero/garage-bmw-source.png"
         alt=""
         width={1536}
         height={1024}
-        className="absolute inset-0 -z-10 h-full w-full object-cover object-[80%_30%] opacity-50"
+        className="absolute inset-0 -z-10 h-full w-full object-cover object-[80%_30%]"
       />
-      <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-r from-black via-black/85 to-black/40" />
+      <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-r from-black/85 via-black/65 to-black/20" />
 
       <div className="mx-auto max-w-7xl px-4 pb-14 pt-12 sm:px-6 sm:pb-20 sm:pt-16">
         <div className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.35em] text-lime-400">
