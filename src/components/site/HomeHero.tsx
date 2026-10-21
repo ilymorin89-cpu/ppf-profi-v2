@@ -27,8 +27,9 @@ export default function HomeHero() {
           Защита кузова
           <span className="h-px w-16 bg-lime-400/70" />
         </div>
-        <h1 className="mt-5 max-w-2xl text-4xl font-extrabold leading-[1.05] tracking-[-0.03em] sm:text-5xl lg:text-6xl">
-          Плёнка, которая <span className="accent">бережёт</span> ваш автомобиль
+        <h1 className="mt-5 max-w-3xl text-balance text-4xl font-extrabold leading-[1.05] tracking-[-0.03em] sm:text-5xl lg:text-6xl">
+          Оклейка авто <span className="accent">защитной плёнкой PPF</span>{" "}
+          <span className="whitespace-nowrap">в Москве —</span> BMW, Mercedes, Porsche, Range Rover
         </h1>
         <p className="mt-6 max-w-md text-base leading-7 text-white/80 sm:text-lg">
           Профессиональная оклейка авто плёнкой PPF в Москве. Гарантия 24 месяца.
