@@ -16,6 +16,7 @@ import {
   FORM_TEXTS,
   HOME,
   TELEGRAM,
+  MATERIAL_WARRANTY,
   WARRANTY_WORK,
   brandFaq,
   formatRub,
@@ -117,7 +118,7 @@ export default async function BrandPage({ params }: Props) {
           <h1 className="mt-4 text-3xl font-extrabold leading-[1.08] tracking-[-0.035em] sm:text-5xl">{h1}</h1>
           <p className="mt-5 max-w-xl text-base leading-7 text-white/70">{b.intro}</p>
           <p className="mt-3 max-w-xl text-sm leading-6 text-white/60">
-            Гарантия {WARRANTY_WORK}. {FILM_LIFE}.
+            Гарантия {WARRANTY_WORK}. {MATERIAL_WARRANTY}. {FILM_LIFE}.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <a href={telegramUrl()} target="_blank" rel="noopener noreferrer" className="btn-accent">
