@@ -260,10 +260,10 @@ export default function HomePage() {
           </div>
           <p className="mt-4 text-xs text-white/50">{HOME.pricesNote}</p>
           <div className="mt-3 flex flex-wrap gap-5">
-            <Link href="/ceny" className="text-sm font-bold accent hover:underline">
+            <Link href="/ceny" className="inline-flex min-h-11 items-center text-sm font-bold accent hover:underline">
               Все цены →
             </Link>
-            <Link href="/ppf" className="text-sm font-bold accent hover:underline">
+            <Link href="/ppf" className="inline-flex min-h-11 items-center text-sm font-bold accent hover:underline">
               {BRAND_PAGE.allBrands}
             </Link>
           </div>

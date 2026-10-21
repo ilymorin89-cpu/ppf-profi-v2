@@ -29,7 +29,7 @@ export default function TopHeader({ onHome = false }: { onHome?: boolean }) {
           className="hidden items-center gap-7 whitespace-nowrap text-sm font-semibold text-white/75 xl:flex"
         >
           {items.map((item) => (
-            <Link key={item.label} href={item.href} className="transition hover:text-white">
+            <Link key={item.label} href={item.href} className="inline-flex min-h-11 items-center transition hover:text-white">
               {item.label}
             </Link>
           ))}
@@ -38,14 +38,14 @@ export default function TopHeader({ onHome = false }: { onHome?: boolean }) {
         <div className="flex items-center gap-2 sm:gap-4">
           <a
             href={CONTACTS.phoneHref}
-            className="hidden whitespace-nowrap text-sm font-bold text-white/85 hover:text-white xl:inline"
+            className="hidden min-h-11 items-center whitespace-nowrap text-sm font-bold text-white/85 hover:text-white xl:inline-flex"
           >
             {CONTACTS.phone}
           </a>
           {/* Не .btn-accent: его стили стоят вне слоёв Tailwind и перебивают утилиты отступов. */}
           <a
             href={CONTACTS.phoneHref}
-            className="inline-flex items-center whitespace-nowrap rounded-lg bg-[#a3e635] px-4 py-2 text-sm font-extrabold text-[#0a0a0a] transition hover:bg-[#84cc16]"
+            className="inline-flex min-h-11 items-center whitespace-nowrap rounded-lg bg-[#a3e635] px-4 py-2 text-sm font-extrabold text-[#0a0a0a] transition hover:bg-[#84cc16]"
           >
             Позвонить
           </a>
