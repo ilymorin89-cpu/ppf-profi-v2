@@ -4,6 +4,7 @@ import SiteHeader from "@/components/site/SiteHeader";
 import SiteFooter from "@/components/site/SiteFooter";
 import { Suspense } from "react";
 import Calculator from "@/components/calculator/Calculator";
+import CalculatorStaticBlock from "@/components/calculator/CalculatorStaticBlock";
 import { getCalculatorProps } from "@/server/calculator/props";
 import JsonLd from "@/components/site/JsonLd";
 import { allBrandCars, organizationSchema, serviceSchema } from "@/server/seo/schema";
@@ -26,6 +27,8 @@ export const metadata: Metadata = {
 };
 
 export default function CalculatorPage() {
+  // Один вызов: данные и для статического блока (до JS), и для самого калькулятора.
+  const calculator = getCalculatorProps();
   return (
     <div className="dark-grid min-h-screen text-white">
       <JsonLd data={[organizationSchema(), serviceSchema("Калькулятор оклейки авто плёнкой PPF", allBrandCars())]} />
@@ -35,12 +38,8 @@ export default function CalculatorPage() {
       {/* Серверный H1: есть в исходном HTML, виден поисковикам и скринридерам (Calculator рендерится на клиенте). */}
       <h1 className="sr-only">Калькулятор оклейки авто плёнкой PPF в Москве</h1>
 
-      <Suspense
-        fallback={
-          <div className="grid min-h-[50vh] place-items-center text-sm text-white/50">Загрузка...</div>
-        }
-      >
-        <Calculator {...getCalculatorProps()} />
+      <Suspense fallback={<CalculatorStaticBlock cars={calculator.cars} />}>
+        <Calculator {...calculator} />
       </Suspense>
 
       </main>

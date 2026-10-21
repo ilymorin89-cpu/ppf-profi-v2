@@ -7,6 +7,7 @@ import SiteHeader from "@/components/site/SiteHeader";
 import SiteFooter from "@/components/site/SiteFooter";
 import type { MiniCar } from "@/components/site/HeroCalculator";
 import Calculator from "@/components/calculator/Calculator";
+import CalculatorStaticBlock from "@/components/calculator/CalculatorStaticBlock";
 import { getCalculatorProps } from "@/server/calculator/props";
 import HomeLeadForm from "@/components/site/HomeLeadForm";
 import CaseCard from "@/components/site/CaseCard";
@@ -87,6 +88,8 @@ export default function HomePage() {
   const minRiskModels =
     minRiskNames.length > 3 ? `${minRiskNames.slice(0, 3).join(", ")} и др.` : minRiskNames.join(", ");
   const addonPrices = getPublicAddonPrices() as Record<string, { price: number }>;
+  // Один вызов: данные и для статического блока (до JS), и для самого калькулятора.
+  const calculator = getCalculatorProps();
 
   return (
     <div className="dark-grid min-h-screen text-white">
@@ -117,14 +120,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* КАЛЬКУЛЯТОР: полный расчёт, тот же, что на /calculator */}
+      {/* КАЛЬКУЛЯТОР: полный расчёт, тот же, что на /calculator. До загрузки JS в HTML — статический блок с публичными «от». */}
       <section id="calculator" className="scroll-mt-28 border-t border-white/8">
-        <Suspense
-          fallback={
-            <div className="grid min-h-[50vh] place-items-center text-sm text-white/50">Загрузка...</div>
-          }
-        >
-          <Calculator {...getCalculatorProps()} />
+        <Suspense fallback={<CalculatorStaticBlock cars={calculator.cars} />}>
+          <Calculator {...calculator} />
         </Suspense>
       </section>
 
