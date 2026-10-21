@@ -75,6 +75,8 @@ type Props = {
   addons: CalcAddon[];
   texts: CalculatorTexts;
   form: FormContent;
+  /** Скрыть видимый заголовок: на / и /calculator H1 задаёт страница. Текст остаётся для скринридеров. */
+  headingHidden?: boolean;
 };
 
 /** Вариант защиты = состав работ × плёнка (Зоны риска · TPU-S 180 и т. д.). */
@@ -114,7 +116,7 @@ function CarPlaceholder({ label, className = "" }: { label: string; className?: 
   );
 }
 
-export default function Calculator({ cars, defaultCar, scenarios, films, addons, texts, form }: Props) {
+export default function Calculator({ cars, defaultCar, scenarios, films, addons, texts, form, headingHidden = false }: Props) {
   const uid = useId();
   const searchParams = useSearchParams();
   const fromUrl = cars.find((c) => c.code === searchParams.get("car"));
@@ -302,8 +304,8 @@ export default function Calculator({ cars, defaultCar, scenarios, films, addons,
       {/* Hero: заголовок + выбор машины слева, фото справа */}
       <section className="grid items-center gap-6 lg:grid-cols-[minmax(0,6fr)_minmax(0,7fr)]">
         <div className="space-y-5">
-          {/* h2: единственный H1 страницы задаёт /calculator (sr-only) или главная. */}
-          <h2 className="text-3xl font-extrabold leading-[1.05] tracking-[-0.03em] sm:text-5xl lg:text-[44px]">
+          {/* h2: заголовок калькулятора. На / и /calculator его скрываем (sr-only): H1 задают страницы. */}
+          <h2 className={headingHidden ? "sr-only" : "text-3xl font-extrabold leading-[1.05] tracking-[-0.03em] sm:text-5xl lg:text-[44px]"}>
             {texts.h1}
             <br />
             {texts.h1Mid} <span className="accent">{texts.h1Accent}</span>

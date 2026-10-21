@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { OG_IMAGE, TWITTER_CARD } from "@/lib/seo";
-import SiteHeader from "@/components/site/SiteHeader";
-import SiteFooter from "@/components/site/SiteFooter";
 import { Suspense } from "react";
+import TopHeader from "@/components/site/TopHeader";
+import SiteFooter from "@/components/site/SiteFooter";
+import CalcPageIntro from "@/components/site/CalcPageIntro";
 import Calculator from "@/components/calculator/Calculator";
-import CalculatorStaticBlock from "@/components/calculator/CalculatorStaticBlock";
+import CalculatorStaticBlock, { CalculatorSkeleton } from "@/components/calculator/CalculatorStaticBlock";
 import { getCalculatorProps } from "@/server/calculator/props";
 import JsonLd from "@/components/site/JsonLd";
 import { allBrandCars, organizationSchema, serviceSchema } from "@/server/seo/schema";
@@ -32,15 +33,21 @@ export default function CalculatorPage() {
   return (
     <div className="dark-grid min-h-screen text-white">
       <JsonLd data={[organizationSchema(), serviceSchema("Калькулятор оклейки авто плёнкой PPF", allBrandCars())]} />
-      <SiteHeader />
+      <TopHeader />
       <main id="main-content">
 
-      {/* Серверный H1: есть в исходном HTML, виден поисковикам и скринридерам (Calculator рендерится на клиенте). */}
-      <h1 className="sr-only">Калькулятор оклейки авто плёнкой PPF в Москве</h1>
+        {/* H1 страницы: виден пользователям и есть в исходном HTML для поисковиков и скринридеров. */}
+        <CalcPageIntro />
 
-      <Suspense fallback={<CalculatorStaticBlock cars={calculator.cars} />}>
-        <Calculator {...calculator} />
-      </Suspense>
+        {/* Карточки основных моделей и полный список «от» рендерятся на сервере, до JS. */}
+        <CalculatorStaticBlock cars={calculator.cars} />
+
+        {/* Калькулятор рендерится на клиенте (useSearchParams), до загрузки — скелетон без текста. */}
+        <section className="border-t border-white/8">
+          <Suspense fallback={<CalculatorSkeleton />}>
+            <Calculator {...calculator} headingHidden />
+          </Suspense>
+        </section>
 
       </main>
       <SiteFooter />

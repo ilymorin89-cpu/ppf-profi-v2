@@ -3,11 +3,13 @@ import { OG_IMAGE, TWITTER_CARD } from "@/lib/seo";
 import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
-import SiteHeader from "@/components/site/SiteHeader";
+import TopHeader from "@/components/site/TopHeader";
+import HomeHero from "@/components/site/HomeHero";
+import BenefitsRow from "@/components/site/BenefitsRow";
 import SiteFooter from "@/components/site/SiteFooter";
 import type { MiniCar } from "@/components/site/HeroCalculator";
 import Calculator from "@/components/calculator/Calculator";
-import CalculatorStaticBlock from "@/components/calculator/CalculatorStaticBlock";
+import CalculatorStaticBlock, { CalculatorSkeleton } from "@/components/calculator/CalculatorStaticBlock";
 import { getCalculatorProps } from "@/server/calculator/props";
 import HomeLeadForm from "@/components/site/HomeLeadForm";
 import CaseCard from "@/components/site/CaseCard";
@@ -94,36 +96,21 @@ export default function HomePage() {
   return (
     <div className="dark-grid min-h-screen text-white">
       <JsonLd data={[organizationSchema(), serviceSchema("Оклейка авто защитной плёнкой PPF в Москве", allBrandCars())]} />
-      <SiteHeader onHome />
+      <TopHeader onHome />
       <main id="main-content">
 
-      {/* ВЕРХ: заголовок на первом экране, сразу под ним калькулятор */}
-      <section className="scroll-mt-28 pt-10 sm:pt-14">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="text-lg font-extrabold tracking-[0.2em]">
-            PPF <span className="accent">PROFI</span>
-          </div>
-          <div className="mt-8 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.35em] text-lime-400">
-            Защита кузова
-            <span className="h-px w-16 bg-lime-400/70" />
-          </div>
-          <h1 className="mt-5 text-4xl font-extrabold leading-[1.05] tracking-[-0.03em] sm:text-5xl lg:text-6xl">
-            Плёнка, которая
-            <br />
-            <span className="accent">бережёт</span>
-            <br />
-            ваш автомобиль
-          </h1>
-          <p className="mt-6 max-w-md text-base leading-7 text-white/70 sm:text-lg">
-            Подберём защиту под ваш автомобиль и условия эксплуатации.
-          </p>
-        </div>
-      </section>
+      {/* ВЕРХ: первый экран с фото, H1 и кнопкой к калькулятору */}
+      <HomeHero />
 
-      {/* КАЛЬКУЛЯТОР: полный расчёт, тот же, что на /calculator. До загрузки JS в HTML — статический блок с публичными «от». */}
+      {/* СТАТИЧЕСКИЙ БЛОК: карточки моделей и полный список «от» — в HTML до JS, видны поисковикам. */}
+      <CalculatorStaticBlock cars={calculator.cars} intro />
+
+      <BenefitsRow />
+
+      {/* КАЛЬКУЛЯТОР: полный расчёт, тот же, что на /calculator. До загрузки JS — скелетон без текста. */}
       <section id="calculator" className="scroll-mt-28 border-t border-white/8">
-        <Suspense fallback={<CalculatorStaticBlock cars={calculator.cars} />}>
-          <Calculator {...calculator} />
+        <Suspense fallback={<CalculatorSkeleton />}>
+          <Calculator {...calculator} headingHidden />
         </Suspense>
       </section>
 
@@ -421,7 +408,7 @@ export default function HomePage() {
 
       {/* ВОПРОСЫ */}
       {FAQ.length > 0 && (
-        <section className="mx-auto max-w-4xl px-4 pb-20 sm:px-6">
+        <section id="faq" className="mx-auto max-w-4xl scroll-mt-28 px-4 pb-20 sm:px-6">
           <div className="eyebrow">{HOME.faqEyebrow}</div>
           <h2 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">{HOME.faqTitle}</h2>
           <div className="mt-8 space-y-2">
