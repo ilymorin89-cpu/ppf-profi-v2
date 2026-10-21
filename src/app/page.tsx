@@ -260,10 +260,10 @@ export default function HomePage() {
           </div>
           <p className="mt-4 text-xs text-white/50">{HOME.pricesNote}</p>
           <div className="mt-3 flex flex-wrap gap-5">
-            <Link href="/ceny" className="text-sm font-bold accent hover:underline">
+            <Link href="/ceny" className="inline-flex min-h-11 items-center text-sm font-bold accent hover:underline">
               Все цены →
             </Link>
-            <Link href="/ppf" className="text-sm font-bold accent hover:underline">
+            <Link href="/ppf" className="inline-flex min-h-11 items-center text-sm font-bold accent hover:underline">
               {BRAND_PAGE.allBrands}
             </Link>
           </div>
@@ -340,7 +340,7 @@ export default function HomePage() {
         <div className="mt-8 grid gap-3 sm:grid-cols-2">
           {[
             { name: "Spectroll", type: "Защитная PPF", text: "Полиуретановая защита лакокрасочного покрытия от повседневных дорожных воздействий.", logo: "/brands/spectroll.jpg", w: 828, h: 404 },
-            // ЗАГЛУШКА: логотипа NAR PPF в репозитории нет, пока показываем название текстом. Формулировку описания нужно согласовать с владельцем.
+            // Логотипа NAR PPF в репозитории нет, пока показываем название текстом. Описание подтверждено владельцем 21.10.2026.
             { name: "NAR PPF", type: "Защитная PPF · Premium H190 и H210", text: "Линейки NAR PPF Premium H190 и Premium H210 — полиуретановая плёнка для защиты лакокрасочного покрытия." },
           ].map((brand) => (
             <article key={brand.name} className="flex min-h-40 flex-col rounded-2xl border border-white/10 bg-white/[0.025] p-4 transition duration-200 hover:border-lime-400/40 hover:bg-white/[0.045] sm:p-5">

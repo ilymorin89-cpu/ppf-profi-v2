@@ -16,7 +16,7 @@ export default function MobileMenu({ items, telegramHref }: { items: MenuItem[];
 
   return (
     <details className="xl:hidden" onClick={closeOnLink}>
-      <summary className="flex cursor-pointer list-none items-center rounded-lg border border-white/15 px-3 py-2 text-sm font-bold transition hover:bg-white/5">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center rounded-lg border border-white/15 px-3 py-2 text-sm font-bold transition hover:bg-white/5">
         Меню
       </summary>
       <nav
