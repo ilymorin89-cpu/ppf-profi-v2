@@ -8,7 +8,7 @@ export default function HomeHero() {
   return (
     <section className="relative isolate overflow-hidden border-b border-white/8">
       <img
-        src="/hero/garage-bmw-source.png"
+        src="/hero/garage-bmw-portrait.webp"
         alt=""
         width={1536}
         height={1024}
