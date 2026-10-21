@@ -436,8 +436,10 @@ export const FACTS = {
   /** Оклеено машин с 2022 года. null — не подтверждено, плитка скрыта. */
   carsDone: null as number | null,
   carsDoneSince: 2022,
-  /** Гарантия только на работу (монтаж). На материал гарантию не обещаем. */
+  /** Гарантия на работу (монтаж). */
   warrantyMonths: 24,
+  /** Гарантия на материал (плёнку). Срок подтвердил владелец 22.10.2026. */
+  materialWarrantyYears: 7,
   /** Срок службы плёнки по данным производителя. Это не гарантия. */
   filmLifeYears: 10,
 };
@@ -455,6 +457,8 @@ export function monthsWord(n: number): string {
 export const WARRANTY_WORK = `${FACTS.warrantyMonths} ${monthsWord(FACTS.warrantyMonths)} на работу`;
 /** Формулировка про плёнку: только срок службы, не гарантия. */
 export const FILM_LIFE = `Срок службы плёнки Spectroll — до ${FACTS.filmLifeYears} лет по данным производителя`;
+/** Гарантия на материал (плёнку): «7 лет». */
+export const MATERIAL_WARRANTY = `Гарантия на материал (плёнку) — ${FACTS.materialWarrantyYears} лет`;
 
 // ---------- Fallback-значения (если расчёт недоступен) ----------
 
@@ -528,8 +532,8 @@ export const HOME = {
   warrantyTitle: `Гарантия ${WARRANTY_WORK}`,
   /** Что покрывает гарантия. Пустой список — строка скрыта. */
   warrantyCovers: ["отслоение, пузыри и поднятые края по вине монтажа"] as string[],
-  /** Строка про плёнку под гарантией: срок службы, не гарантия. */
-  warrantyFilmLife: `${FILM_LIFE}.`,
+  /** Строка про материал: гарантия 7 лет и срок службы до 10 лет (не гарантия). */
+  warrantyFilmLife: `${MATERIAL_WARRANTY}. ${FILM_LIFE}.`,
   warrantyCoversLabel: "Покрывает:",
   warrantyNotCovered:
     "Не покрывает: механические повреждения плёнки — сколы, порезы, царапины. Плёнка принимает удар на себя, поэтому следы ударов дефектом не считаются.",
