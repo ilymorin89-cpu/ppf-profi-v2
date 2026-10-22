@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
 import UtmCapture from "@/components/forms/UtmCapture";
+import YandexMetrika from "@/components/site/YandexMetrika";
 import { SITE } from "@/content/site";
 import { OG_IMAGE, TWITTER_CARD } from "@/lib/seo";
 
@@ -32,6 +33,7 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <UtmCapture />
         {children}
+        <YandexMetrika />
       </body>
     </html>
   );
