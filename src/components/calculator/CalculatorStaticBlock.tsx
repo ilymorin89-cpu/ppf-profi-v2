@@ -53,7 +53,12 @@ export default function CalculatorStaticBlock({ cars, intro = false }: Props) {
           const risk = riskOf(c);
           const full = fullOf(c);
           return (
-            <li key={c.code} className="dark-card overflow-hidden">
+            <li key={c.code}>
+              <Link
+                href={`/calculator?car=${c.code}`}
+                aria-label={`Рассчитать оклейку: ${c.label}, ${c.gen}`}
+                className="dark-card block overflow-hidden transition hover:border-lime-400/40"
+              >
               <img
                 src={`/cars/${c.code}.webp`}
                 alt={`${c.label}, ${c.gen}`}
@@ -81,7 +86,9 @@ export default function CalculatorStaticBlock({ cars, intro = false }: Props) {
                     </p>
                   )}
                 </div>
+                <div className="mt-4 text-sm font-bold accent">Рассчитать стоимость →</div>
               </div>
+              </Link>
             </li>
           );
         })}

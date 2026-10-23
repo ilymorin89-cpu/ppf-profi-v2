@@ -12,6 +12,7 @@ export default function TopHeader({ onHome = false }: { onHome?: boolean }) {
     { label: "Калькулятор", href: onHome ? "#calculator" : "/calculator" },
     { label: "Цены", href: "/ceny" },
     { label: "Марки", href: "/ppf" },
+    { label: "Наши работы", href: onHome ? "#gallery" : "/#gallery" },
     { label: "Гарантия", href: onHome ? "#warranty" : "/#warranty" },
     { label: "Вопросы", href: onHome ? "#faq" : "/#faq" },
     { label: "Партнёрам", href: "/partners" },
