@@ -640,6 +640,7 @@ export const NAV: NavItem[] = [
   { label: "Цены", href: "/ceny" },
   ...(CASES.length > 0 ? [{ label: "Работы", href: "/#works", anchor: "works" }] : []),
   { label: "Марки", href: "/ppf" },
+  { label: "Наши работы", href: "/#gallery", anchor: "gallery" },
   { label: "Гарантия", href: "/#warranty", anchor: "warranty" },
   { label: "Вход для мастеров", href: "/master" },
   { label: "Партнёрам", href: "/partners" },
