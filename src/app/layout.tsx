@@ -3,6 +3,7 @@ import { Manrope } from "next/font/google";
 import "./globals.css";
 import UtmCapture from "@/components/forms/UtmCapture";
 import YandexMetrika from "@/components/site/YandexMetrika";
+import GoogleAnalytics from "@/components/site/GoogleAnalytics";
 import { SITE } from "@/content/site";
 import { OG_IMAGE, TWITTER_CARD } from "@/lib/seo";
 
@@ -34,6 +35,7 @@ export default function RootLayout({
         <UtmCapture />
         {children}
         <YandexMetrika />
+        <GoogleAnalytics />
       </body>
     </html>
   );
