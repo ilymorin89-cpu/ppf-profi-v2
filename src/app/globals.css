@@ -125,3 +125,53 @@ details > summary::-webkit-details-marker {
   .text-white\/55 { color: rgb(255 255 255 / 0.74); }
   .text-white\/60 { color: rgb(255 255 255 / 0.78); }
 }
+
+/* --- PPF PROFI readability pass: high contrast without changing layout --- */
+:root {
+  color-scheme: dark;
+  --ppf-text-primary: #f4f6f5;
+  --ppf-text-secondary: #d0d5d3;
+  --ppf-text-muted: #aeb7b3;
+  --ppf-accent: #a3e635;
+}
+
+body {
+  color: var(--ppf-text-primary);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Improve contrast of common muted Tailwind text utilities on dark surfaces. */
+@layer utilities {
+  .text-white\/30 { color: rgb(255 255 255 / 0.58); }
+  .text-white\/35 { color: rgb(255 255 255 / 0.62); }
+  .text-white\/40 { color: rgb(255 255 255 / 0.68); }
+  .text-white\/45 { color: rgb(255 255 255 / 0.72); }
+  .text-white\/50 { color: rgb(255 255 255 / 0.76); }
+  .text-white\/55 { color: rgb(255 255 255 / 0.80); }
+  .text-white\/60 { color: rgb(255 255 255 / 0.84); }
+}
+
+/* Clearer interactive states, keeping the existing lime brand accent. */
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--ppf-accent);
+  outline-offset: 3px;
+}
+
+::selection {
+  color: #0a0a0a;
+  background: #a3e635;
+}
+
+/* Comfortable reading rhythm for descriptive copy and feature lists. */
+.prose,
+article p,
+section p {
+  text-wrap: pretty;
+}
+
+@media (max-width: 640px) {
+  body {
+    line-height: 1.55;
+  }
+}
