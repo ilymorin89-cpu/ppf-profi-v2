@@ -82,7 +82,7 @@ type Props = {
 /** Вариант защиты = состав работ × плёнка (Зоны риска · TPU-S 180 и т. д.). */
 type Variant = { key: string; scenario: CalcOption; film: CalcFilm };
 
-const stepTitle = "text-lg font-extrabold tracking-tight sm:text-xl";
+const stepTitle = "text-xl font-extrabold tracking-tight text-white sm:text-2xl";
 
 const cardClass = (active: boolean) =>
   `rounded-2xl border text-left transition ${
@@ -257,7 +257,7 @@ export default function Calculator({ cars, defaultCar, scenarios, films, addons,
   const selects = (
     <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1.35fr]">
       <div className="relative">
-        <label htmlFor={`${uid}-brand`} className="text-xs font-bold text-white/55">
+        <label htmlFor={`${uid}-brand`} className="text-sm font-bold text-white/80">
           {texts.brandLabel}
         </label>
         <select id={`${uid}-brand`} value={brand} onChange={(e) => pickBrand(e.target.value)} className={selectClass}>
@@ -319,10 +319,10 @@ export default function Calculator({ cars, defaultCar, scenarios, films, addons,
             <br />
             {texts.h1Mid} <span className="accent">{texts.h1Accent}</span>
           </h2>
-          <p className="max-w-xl text-white/60">{texts.lead}</p>
+          <p className="max-w-xl text-base leading-7 text-white/80 sm:text-lg sm:leading-8">{texts.lead}</p>
           <div className="lg:hidden">{photo}</div>
           {selects}
-          <ul className="grid gap-1.5 text-xs text-white/55">
+          <ul className="grid gap-2 text-sm leading-relaxed text-white/75">
             {texts.trust.map((t) => (
               <li key={t} className="flex items-center gap-2">
                 <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-lime-400/15 text-[10px] accent">✓</span>
@@ -357,8 +357,8 @@ export default function Calculator({ cars, defaultCar, scenarios, films, addons,
               >
                 <span className="flex items-start justify-between gap-2 p-4 pb-2">
                   <span>
-                    <span className="block text-base font-extrabold">{x.scenario.label}</span>
-                    <span className="block text-sm text-white/60">{x.film.label}</span>
+                    <span className="block text-lg font-extrabold text-white sm:text-xl">{x.scenario.label}</span>
+                    <span className="block text-base text-white/80">{x.film.label}</span>
                   </span>
                   <input
                     type="radio"
@@ -402,7 +402,7 @@ export default function Calculator({ cars, defaultCar, scenarios, films, addons,
           <h2 id={`${uid}-s4`} className={stepTitle}>
             {texts.addonsTitle}
           </h2>
-          <p className="mt-1 text-xs text-white/45">{texts.addonsNote}</p>
+          <p className="mt-2 text-sm leading-relaxed text-white/75">{texts.addonsNote}</p>
           <ul className="mt-3 divide-y divide-white/8">
             {addons.map((a) => {
               const allowed = !a.onlyScenario || a.onlyScenario === scenario;
@@ -416,8 +416,8 @@ export default function Calculator({ cars, defaultCar, scenarios, films, addons,
                     <span className={`h-16 w-16 shrink-0 rounded-xl bg-white/5 sm:h-24 sm:w-24 ${allowed ? "" : "opacity-45"}`} />
                   )}
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-bold leading-tight">{a.label}</span>
-                    <span className="block text-xs text-white/45">
+                    <span className="block text-base font-bold leading-snug text-white">{a.label}</span>
+                    <span className="block text-sm leading-relaxed text-white/75">
                       {allowed
                         ? `${addonPriceLabel(a)}${a.unit ? ` / ${a.unit}` : ""}`
                         : `${addonPriceLabel(a)} · ${texts.onlyFull}`}
@@ -517,7 +517,7 @@ export default function Calculator({ cars, defaultCar, scenarios, films, addons,
           ) : (
             <div className="mt-4">
               <div className="font-extrabold">{texts.noModelTitle}</div>
-              <p className="mt-1 text-sm text-white/60">{texts.noModelText}</p>
+              <p className="mt-2 text-base leading-relaxed text-white/80">{texts.noModelText}</p>
             </div>
           )}
         </aside>
