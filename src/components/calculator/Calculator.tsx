@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element -- статичные картинки из public/, оптимизатор не нужен */
 
 import Link from "next/link";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import LeadForm from "@/components/forms/LeadForm";
 import type { FormContent } from "@/components/forms/FormParts";
@@ -123,6 +123,15 @@ export default function Calculator({ cars, defaultCar, scenarios, films, addons,
   const start = fromUrl ?? cars.find((c) => c.code === defaultCar) ?? cars[0];
 
   const [car, setCar] = useState(start?.code ?? "");
+
+  // Переход с карточки модели (/calculator?car=КОД): сразу к выбору пакета, а не к началу страницы.
+  useEffect(() => {
+    if (!fromUrl) return;
+    document.getElementById("packages")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    // Только при первом открытии страницы с этой машиной.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const variants: Variant[] = scenarios
     .slice()
     // Зоны риска первыми: с них проще начать.
@@ -326,7 +335,7 @@ export default function Calculator({ cars, defaultCar, scenarios, films, addons,
       </section>
 
       {/* Пакеты: все цены сразу; на телефоне листаются вбок */}
-      <section className="mt-10" aria-labelledby={`${uid}-s3`}>
+      <section id="packages" className="mt-10 scroll-mt-28" aria-labelledby={`${uid}-s3`}>
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 id={`${uid}-s3`} className={stepTitle}>
             {texts.step3}
