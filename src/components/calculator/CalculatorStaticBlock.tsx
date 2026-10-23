@@ -41,8 +41,8 @@ export default function CalculatorStaticBlock({ cars, intro = false }: Props) {
     <section className="mx-auto max-w-7xl px-4 pb-14 pt-16 sm:px-6 sm:pb-20 sm:pt-20">
       {intro ? (
         <div className="max-w-3xl">
-          <h2 className="text-3xl font-extrabold leading-[1.05] tracking-[-0.03em] sm:text-4xl">{TITLE}</h2>
-          <p className="mt-4 text-base leading-7 text-white/75">{DESCRIPTION}</p>
+          <h2 className="text-3xl font-extrabold leading-[1.08] tracking-[-0.03em] text-white sm:text-4xl">{TITLE}</h2>
+          <p className="mt-4 max-w-2xl text-lg leading-8 text-white/85 sm:text-xl">{DESCRIPTION}</p>
         </div>
       ) : (
         <h2 className="sr-only">Популярные модели и цены «от»</h2>
@@ -73,20 +73,20 @@ export default function CalculatorStaticBlock({ cars, intro = false }: Props) {
                   <span className="text-xs font-bold uppercase tracking-[0.18em] accent">{c.brand}</span>
                   <span className="text-xs text-white/60">{c.gen}</span>
                 </div>
-                <h3 className="mt-1 text-xl font-extrabold">{c.base}</h3>
-                <div className="mt-4 space-y-1.5 text-sm">
+                <h3 className="mt-1 text-2xl font-extrabold tracking-tight text-white">{c.base}</h3>
+                <div className="mt-4 space-y-2 text-base leading-relaxed sm:text-lg">
                   {risk !== undefined && (
                     <p>
                       Зоны риска — от <span className="font-bold accent">{formatRub(risk)}</span>
                     </p>
                   )}
                   {full !== undefined && (
-                    <p className="text-white/80">
+                    <p className="text-white/90">
                       Полная оклейка — от <span className="font-bold text-white">{formatRub(full)}</span>
                     </p>
                   )}
                 </div>
-                <div className="mt-4 text-sm font-bold accent">Рассчитать стоимость →</div>
+                <div className="mt-5 text-base font-extrabold accent sm:text-lg">Рассчитать стоимость →</div>
               </div>
               </Link>
             </li>
@@ -110,7 +110,7 @@ export default function CalculatorStaticBlock({ cars, intro = false }: Props) {
             +
           </span>
         </summary>
-        <ul className="mt-5 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-5 grid gap-x-6 gap-y-4 text-base leading-relaxed sm:grid-cols-2 lg:grid-cols-3">
           {all.map((c) => {
             const risk = riskOf(c);
             const full = fullOf(c);
