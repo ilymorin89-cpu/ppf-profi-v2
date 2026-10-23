@@ -13,6 +13,7 @@ import CalculatorStaticBlock, { CalculatorSkeleton } from "@/components/calculat
 import { getCalculatorProps } from "@/server/calculator/props";
 import HomeLeadForm from "@/components/site/HomeLeadForm";
 import CaseCard from "@/components/site/CaseCard";
+import WorksGallery from "@/components/site/WorksGallery";
 import {
   getExampleLow,
   getHomeExample,
@@ -389,6 +390,8 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+
+      <WorksGallery />
 
       {/* ГАРАНТИЯ */}
       <section id="warranty" className="mx-auto max-w-7xl scroll-mt-28 px-4 pb-20 sm:px-6">
