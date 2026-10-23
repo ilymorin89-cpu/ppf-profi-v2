@@ -6,13 +6,13 @@
  * их добавит владелец, когда подтвердит модели.
  */
 const WORKS = [
-  "/works/work-01.png",
-  "/works/work-02.png",
-  "/works/work-03.png",
-  "/works/work-04.png",
-  "/works/work-05.png",
-  "/works/work-06.png",
-  "/works/work-07.png",
+  "/works/work-01.webp",
+  "/works/work-02.webp",
+  "/works/work-03.webp",
+  "/works/work-04.webp",
+  "/works/work-05.webp",
+  "/works/work-06.webp",
+  "/works/work-07.webp",
 ];
 
 export default function WorksGallery() {
