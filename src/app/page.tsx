@@ -294,6 +294,8 @@ export default function HomePage() {
         </section>
       )}
 
+      <WorksGallery />
+
       {/* ЧТО КЛЕИМ */}
       <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6">
         <div className="eyebrow">{HOME.wrapEyebrow}</div>
@@ -390,8 +392,6 @@ export default function HomePage() {
           ))}
         </div>
       </section>
-
-      <WorksGallery />
 
       {/* ГАРАНТИЯ */}
       <section id="warranty" className="mx-auto max-w-7xl scroll-mt-28 px-4 pb-20 sm:px-6">
