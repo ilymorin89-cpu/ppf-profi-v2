@@ -22,7 +22,7 @@ BMW_5_G60;BMW;5 серия G60;L;15;;5;4;;1;yes;5 серия;G60;2023–н.в.;p
 BMW_7_G70;BMW;7 серия G70;XL;18;;5;5;;1;yes;7 серия;G70;2022–н.в.;premium;class-default
 MB_GLE_C167;Mercedes-Benz;GLE Coupe C167;XL;18;;5;5;;1;yes;GLE Coupe;C167;2019–н.в.;premium;class-default
 MB_GLS_X167;Mercedes-Benz;GLS X167;XL+;22;;7;7;;2;yes;GLS;X167;2019–н.в.;premium;class-default
-MB_G_W463;Mercedes-Benz;G-класс W463;XL;18;;5;5;;1;yes;G-класс;W463;2018–н.в.;premium;class-default
+MB_G_W463;Mercedes-Benz;G-класс W463;XL;25;;6;10;;4;yes;G-класс;W463;2018–н.в.;premium;ilya
 MB_GLC_X253;Mercedes-Benz;GLC X253;L;15;;5;4;;1;yes;GLC;X253;2015–2022;premium;class-default
 MB_GLC_X254;Mercedes-Benz;GLC X254;L;15;;5;4;;1;yes;GLC;X254;2022–н.в.;premium;class-default
 MB_E_W214;Mercedes-Benz;E-класс W214;L;15;;5;4;;1;yes;E-класс;W214;2023–н.в.;premium;class-default
