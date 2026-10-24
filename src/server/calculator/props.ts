@@ -27,6 +27,10 @@ const CALC_SCENARIO_DESC: Record<ScenarioCode, string> = {
   RISK_ZONES: "Бампер, капот, крылья, зеркала, зона погрузки и другие элементы",
 };
 
+/** Порядок плёнок в калькуляторе: от дешёвой к дорогой, NAR H190 — сразу за Spectroll TPU-S 180.
+ *  На главной и в прайсах порядок FILMS не меняется. */
+const CALC_FILM_ORDER: string[] = ["PPF_STANDARD", "NAR_H190", "SPECTROLL_PREMIUM", "NAR_H210"];
+
 /** Есть ли файл в public/ (иллюстрации машин, схемы пакетов, картинки допов). */
 function hasPublic(rel: string): boolean {
   return existsSync(path.join(process.cwd(), "public", rel));
@@ -65,7 +69,9 @@ export function getCalculatorProps() {
       days: scenarioDays(code),
       image: hasPublic(`packages/${code}.webp`) ? `/packages/${code}.webp` : undefined,
     })),
-    films: FILM_CODES.map((code) => ({
+    films: [...FILM_CODES]
+      .sort((a, b) => CALC_FILM_ORDER.indexOf(a) - CALC_FILM_ORDER.indexOf(b))
+      .map((code) => ({
       code,
       label: filmPriceLabel(code),
       name: FILMS[code].name,
