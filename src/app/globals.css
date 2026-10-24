@@ -125,3 +125,16 @@ details > summary::-webkit-details-marker {
   .text-white\/55 { color: rgb(255 255 255 / 0.74); }
   .text-white\/60 { color: rgb(255 255 255 / 0.78); }
 }
+/* Автозаполнение браузера (Safari, Chrome) красит текст поля в чёрный и на тёмном фоне его не видно.
+   Возвращаем белый текст и тёмный фон, как у остальных полей формы. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: #ffffff;
+  caret-color: #ffffff;
+  -webkit-box-shadow: 0 0 0 1000px #151515 inset;
+  box-shadow: 0 0 0 1000px #151515 inset;
+  transition: background-color 9999s ease-out 0s;
+}
