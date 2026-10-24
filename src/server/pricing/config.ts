@@ -98,6 +98,14 @@ export const DIRECT_PRICES: {
   { carCode: "GEELY_MONJARO",      scenario: "FULL",       filmCode: "NAR_H210", price: 373000 },
   { carCode: "GEELY_MONJARO",      scenario: "RISK_ZONES", filmCode: "NAR_H190", price: 104000 },
   { carCode: "GEELY_MONJARO",      scenario: "RISK_ZONES", filmCode: "NAR_H210", price: 114000 },
+
+  // Mercedes G-класс W463 (MB_G_W463), зоны риска: решение Ильи 24.10.2026.
+  // Spectroll TPU-S 180 — 139 000, Spectroll Premium 210 — 161 000 (масштаб лесенки GLE V167 и X5 G05).
+  // NAR H190 к TPU-S 180: +14 000; NAR H210 к Premium 210: +7 000 (те же разницы, что у X5/X7 G07).
+  { carCode: "MB_G_W463",          scenario: "RISK_ZONES", filmCode: "PPF_STANDARD",      price: 139000 },
+  { carCode: "MB_G_W463",          scenario: "RISK_ZONES", filmCode: "NAR_H190",          price: 153000 },
+  { carCode: "MB_G_W463",          scenario: "RISK_ZONES", filmCode: "SPECTROLL_PREMIUM", price: 161000 },
+  { carCode: "MB_G_W463",          scenario: "RISK_ZONES", filmCode: "NAR_H210",          price: 168000 },
 ];
 
 /**
