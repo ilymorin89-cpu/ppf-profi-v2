@@ -106,6 +106,13 @@ export const DIRECT_PRICES: {
   { carCode: "MB_G_W463",          scenario: "RISK_ZONES", filmCode: "NAR_H190",          price: 153000 },
   { carCode: "MB_G_W463",          scenario: "RISK_ZONES", filmCode: "SPECTROLL_PREMIUM", price: 161000 },
   { carCode: "MB_G_W463",          scenario: "RISK_ZONES", filmCode: "NAR_H210",          price: 168000 },
+
+  // Mercedes G-класс W463, полная оклейка: решение Ильи 24.10.2026, тот же коэффициент, что у зон риска (168 / 114 к лесенке GLE V167).
+  // TPU-S 180 — 514 000, NAR H190 — 564 000, Spectroll Premium 210 — 603 000, NAR H210 — 628 000.
+  { carCode: "MB_G_W463",          scenario: "FULL",       filmCode: "PPF_STANDARD",      price: 514000 },
+  { carCode: "MB_G_W463",          scenario: "FULL",       filmCode: "NAR_H190",          price: 564000 },
+  { carCode: "MB_G_W463",          scenario: "FULL",       filmCode: "SPECTROLL_PREMIUM", price: 603000 },
+  { carCode: "MB_G_W463",          scenario: "FULL",       filmCode: "NAR_H210",          price: 628000 },
 ];
 
 /**
