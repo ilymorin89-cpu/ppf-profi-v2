@@ -9,16 +9,17 @@ export const PRICING_CONFIG = {
   reserve: 0.07,
   usn: 0.06,
   marginAutoApprove: 0.25,
-  // Цена для партнёра (Target). 0.37 даёт X5 G05 FULL TPU-S = 243 500 ₽ (решение Ильи, 14.10.2026).
+  // Цена для партнёра (Target). 0.37 даёт X5 G05 FULL TPU-S = 235 500 ₽ при закупке TPU-S 37 000 ₽/рулон (Илья, 24.10.2026).
   marginTarget: 0.37,
   roundingStep: 500,
-  pricingVersion: "v2-2026-10-14",
+  pricingVersion: "v2-2026-10-24",
 } as const;
 
 export const FILMS: Record<FilmCode, { label: string; pricePerMeter: number }> = {
+  // Spectroll TPU-S 180: закупка 37 000 ₽ за рулон 15 м (Илья, 24.10.2026); было 2 700 ₽/м.
   PPF_STANDARD: {
     label: filmLabel("PPF_STANDARD"),
-    pricePerMeter: 2_700,
+    pricePerMeter: 37_000 / 15,
   },
   SPECTROLL_PREMIUM: {
     label: filmLabel("SPECTROLL_PREMIUM"),
@@ -99,13 +100,13 @@ export const DIRECT_PRICES: {
   { carCode: "GEELY_MONJARO",      scenario: "RISK_ZONES", filmCode: "NAR_H190", price: 104000 },
   { carCode: "GEELY_MONJARO",      scenario: "RISK_ZONES", filmCode: "NAR_H210", price: 114000 },
 
-  // Mercedes G-класс W463 (MB_G_W463), зоны риска: решение Ильи 24.10.2026.
-  // Spectroll TPU-S 180 — 139 000, Spectroll Premium 210 — 161 000 (масштаб лесенки GLE V167 и X5 G05).
-  // NAR H190 к TPU-S 180: +14 000; NAR H210 к Premium 210: +7 000 (те же разницы, что у X5/X7 G07).
-  { carCode: "MB_G_W463",          scenario: "RISK_ZONES", filmCode: "PPF_STANDARD",      price: 139000 },
-  { carCode: "MB_G_W463",          scenario: "RISK_ZONES", filmCode: "NAR_H190",          price: 153000 },
-  { carCode: "MB_G_W463",          scenario: "RISK_ZONES", filmCode: "SPECTROLL_PREMIUM", price: 161000 },
-  { carCode: "MB_G_W463",          scenario: "RISK_ZONES", filmCode: "NAR_H210",          price: 168000 },
+  // Mercedes G-класс W463 (MB_G_W463), зоны риска, 24.10.2026: розница = партнёрская цена при закупке TPU-S 37 000 ₽/рулон,
+  // 6 м плёнки, 4 дня. TPU-S 180 — 152 000, Premium 210 — 169 000.
+  // NAR H190 — 173 000, NAR H210 — 178 000: выше правила (пара + разница закупки = 165 000 / 175 000), ручное решение.
+  { carCode: "MB_G_W463",          scenario: "RISK_ZONES", filmCode: "PPF_STANDARD",      price: 152000 },
+  { carCode: "MB_G_W463",          scenario: "RISK_ZONES", filmCode: "NAR_H190",          price: 173000 },
+  { carCode: "MB_G_W463",          scenario: "RISK_ZONES", filmCode: "SPECTROLL_PREMIUM", price: 169000 },
+  { carCode: "MB_G_W463",          scenario: "RISK_ZONES", filmCode: "NAR_H210",          price: 178000 },
 
   // Mercedes G-класс W463, полная оклейка: решение Ильи 24.10.2026, тот же коэффициент, что у зон риска (168 / 114 к лесенке GLE V167).
   // TPU-S 180 — 514 000, NAR H190 — 564 000, Spectroll Premium 210 — 603 000, NAR H210 — 628 000.
