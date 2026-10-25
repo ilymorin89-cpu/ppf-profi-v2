@@ -1,4 +1,4 @@
-/* eslint-disable @next/next/no-img-element -- фон из public/, оптимизатор не нужен */
+import Image from "next/image";
 
 /**
  * Первый экран главной: фото гаража с автомобилем, H1, описание и кнопка к калькулятору.
@@ -7,13 +7,13 @@
 export default function HomeHero() {
   return (
     <section className="relative isolate overflow-hidden border-b border-white/8">
-      <img
+      <Image
         src="/hero/garage-bmw-portrait.webp"
         alt=""
-        width={1536}
-        height={1024}
-        fetchPriority="high"
-        className="absolute inset-0 -z-10 h-full w-full object-cover object-[65%_50%]"
+        fill
+        priority
+        sizes="100vw"
+        className="-z-10 object-cover object-[65%_50%]"
       />
       {/* Слева плотнее, чтобы текст читался; на телефоне затемнение снизу. */}
       <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-r from-black/85 via-black/45 to-transparent" />

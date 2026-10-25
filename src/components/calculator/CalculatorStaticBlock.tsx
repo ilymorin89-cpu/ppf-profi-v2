@@ -1,4 +1,4 @@
-/* eslint-disable @next/next/no-img-element -- фото из public/cars, оптимизатор не нужен */
+import Image from "next/image";
 import Link from "next/link";
 import type { CalcCar } from "@/components/calculator/Calculator";
 import { TOP_MODELS } from "@/content/site";
@@ -59,13 +59,12 @@ export default function CalculatorStaticBlock({ cars, intro = false }: Props) {
                 aria-label={`Рассчитать оклейку: ${c.label}, ${c.gen}`}
                 className="dark-card block overflow-hidden transition hover:border-lime-400/40"
               >
-              <img
+              <Image
                 src={`/cars/${c.code}.webp`}
                 alt={`${c.label}, ${c.gen}`}
                 width={1600}
                 height={900}
-                loading="lazy"
-                decoding="async"
+                sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                 className="aspect-[16/9] w-full object-cover"
               />
               <div className="p-5">
