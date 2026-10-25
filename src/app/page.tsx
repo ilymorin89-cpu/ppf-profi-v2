@@ -201,7 +201,6 @@ export default function HomePage() {
                 width={1200}
                 height={675}
                 sizes="(min-width: 1024px) 55vw, 100vw"
-                priority
                 className="h-auto w-full"
               />
             </div>
