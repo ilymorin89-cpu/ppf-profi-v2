@@ -26,6 +26,8 @@ import {
 import { fillTemplate } from "@/shared/format";
 import { genLabel, pickerBrands } from "@/server/seo/brands";
 import { breadcrumbSchema, brandCars, organizationSchema, serviceSchema } from "@/server/seo/schema";
+import { CAR_LANDINGS, getCarLanding } from "@/content/car-landing-pages";
+import CarLandingPage, { carLandingMetadata } from "@/components/site/CarLandingPage";
 
 export const revalidate = 3600;
 /** Только марки из BRANDS; любой другой адрес — 404. */
@@ -34,7 +36,10 @@ export const dynamicParams = false;
 type Props = { params: Promise<{ brand: string }> };
 
 export function generateStaticParams() {
-  return BRANDS.map((b) => ({ brand: b.slug }));
+  return [
+    ...BRANDS.map((b) => ({ brand: b.slug })),
+    ...CAR_LANDINGS.map((page) => ({ brand: page.slug })),
+  ];
 }
 
 const STD = "PPF_STANDARD" as const;
@@ -51,6 +56,8 @@ function minRisk(slug: string): number | null {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { brand: slug } = await params;
+  const carLanding = getCarLanding(slug);
+  if (carLanding) return carLandingMetadata(carLanding);
   const b = getBrand(slug);
   if (!b) return {};
   const cars = brandCars(b);
@@ -79,6 +86,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function BrandPage({ params }: Props) {
   const { brand: slug } = await params;
+  const carLanding = getCarLanding(slug);
+  if (carLanding) return <CarLandingPage page={carLanding} />;
   const b = getBrand(slug);
   if (!b) notFound();
 
@@ -157,7 +166,7 @@ export default async function BrandPage({ params }: Props) {
                 return (
                   <Link
                     key={c.code}
-                    href={`/calculator?car=${c.code}`}
+                    href={CAR_LANDINGS.find((page) => page.code === c.code) ? `/ppf/${CAR_LANDINGS.find((page) => page.code === c.code)!.slug}` : `/calculator?car=${c.code}`}
                     className="dark-card block p-5 transition hover:border-lime-400/40"
                   >
                     <div className="text-lg font-extrabold">

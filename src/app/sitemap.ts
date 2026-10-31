@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { BRANDS, SITE } from "@/content/site";
+import { CAR_LANDINGS } from "@/content/car-landing-pages";
 
 // Только публичные страницы для клиентов. /partners не включён: он под noindex.
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -14,6 +15,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: now,
       changeFrequency: "weekly" as const,
       priority: 0.8,
+    })),
+    ...CAR_LANDINGS.map((page) => ({
+      url: `${SITE.url}/ppf/${page.slug}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.85,
     })),
     { url: `${SITE.url}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.2 },
   ];
