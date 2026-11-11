@@ -222,13 +222,13 @@ export const BRAND_PAGE = {
   /** {brand} */
   h1: "Оклейка {brand} защитной плёнкой PPF в Москве",
   /** {brand}, {price} */
-  seoTitleWithPrice: "Оклейка {brand} плёнкой PPF в Москве — от {price} | PPF PROFI",
-  seoTitle: "Оклейка {brand} плёнкой PPF в Москве | PPF PROFI",
+  seoTitleWithPrice: "PPF {brand} в Москве — от {price} | PPF PROFI",
+  seoTitle: "Оклейка {brand} PPF в Москве | PPF PROFI",
   /** {brand}, {models} */
   seoDescriptionWithModels:
-    "Защитная плёнка Spectroll на {brand}: {models}. Цены «от», гарантия {warranty}. Работаем на проверенных площадках в Москве.",
+    "Оклейка {brand} плёнкой Spectroll в Москве. Цены на зоны риска и полную защиту, гарантия {warranty}. Точный расчёт после осмотра.",
   seoDescription:
-    "Защитная плёнка Spectroll на {brand} в Москве. Стоимость считаю индивидуально, гарантия {warranty}. Напишите модель в Telegram.",
+    "Оклейка {brand} плёнкой Spectroll в Москве. Индивидуальный расчёт стоимости и гарантия {warranty}. Уточните цену в Telegram.",
   modelsTitle: "Цены на модели",
   riskTpu: `Зоны риска · ${filmPriceLabel("PPF_STANDARD")} — от {price}`,
   fullTpu: `FULL · ${filmPriceLabel("PPF_STANDARD")} — от {price}`,
@@ -270,9 +270,9 @@ export const WORKPLACE = {
 // ---------- /ceny ----------
 
 export const PRICES_PAGE = {
-  seoTitle: "Цены на оклейку авто плёнкой PPF в Москве — от {price} | PPF PROFI",
+  seoTitle: "Цены на оклейку авто PPF в Москве — от {price}",
   seoDescription:
-    "Цены на оклейку защитной плёнкой Spectroll по маркам и моделям: зоны риска, полная оклейка, допы. BMW, Mercedes-Benz, Porsche, Land Rover, Lexus, Toyota и другие.",
+    "Цены на оклейку авто плёнкой Spectroll: зоны риска, полная защита и отдельные детали. Стоимость по маркам и моделям в Москве.",
   eyebrow: "Цены",
   h1: "Цены на оклейку авто защитной плёнкой PPF в Москве",
   lead: "Цены «от» на плёнке Spectroll по маркам, моделям и поколениям кузова. Точную стоимость подтвердим после осмотра.",
@@ -763,9 +763,9 @@ export const PARTNER_FORM = {
 
 export const SEO = {
   home: {
-    title: "PPF оклейка BMW, Mercedes, Porsche, LC300 в Москве | PPF PROFI",
+    title: "Оклейка авто PPF в Москве | PPF PROFI",
     /** {price} — цена «от» FULL X5 G05 на Spectroll TPU-S. */
-    description: `Защитная плёнка Spectroll на премиум-авто. Полная оклейка X5 G05 от {price}, зоны риска за ${scenarioDays("RISK_ZONES")}, гарантия ${WARRANTY_WORK}. Расчёт онлайн.`,
+    description: `Оклейка авто плёнкой Spectroll в Москве. Полная защита X5 G05 от {price}, зоны риска за ${scenarioDays("RISK_ZONES")}. Гарантия ${WARRANTY_WORK}. Расчёт онлайн.`,
   },
   partners: {
     title: "PPF партнёрам: спред {spread} тыс. ₽ с машины | PPF PROFI",
