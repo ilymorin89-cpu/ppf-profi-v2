@@ -29,8 +29,7 @@ export function generateMetadata(): Metadata {
   const k = { spread: spreadText(getPartnerExample()) };
   const title = fillTemplate(SEO.partners.title, k);
   const description = fillTemplate(SEO.partners.description, k);
-  // Страница для партнёров не индексируется: не рекламируем себя конкурентам через поиск.
-  return { title, description, robots: { index: false, follow: true }, openGraph: { title, description, images: [OG_IMAGE] }, twitter: { ...TWITTER_CARD, title, description } };
+  return { title, description, alternates: { canonical: "/partners" }, openGraph: { title, description, images: [OG_IMAGE] }, twitter: { ...TWITTER_CARD, title, description } };
 }
 
 const fmt = (n: number) => n.toLocaleString("ru-RU");
