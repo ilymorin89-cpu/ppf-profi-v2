@@ -13,18 +13,18 @@ import { allBrandCars, organizationSchema, serviceSchema } from "@/server/seo/sc
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "Калькулятор оклейки авто плёнкой PPF — цены в Москве | PPF PROFI",
+  title: "Калькулятор оклейки авто PPF — PPF PROFI",
   description:
-    "Оклейка авто пленкой в Москве. Выберите марку, модель и поколение — цены на зоны риска и полную оклейку полиуретановой плёнкой Spectroll.",
+    "Рассчитайте стоимость оклейки авто плёнкой Spectroll в Москве. Выберите марку, модель и пакет защиты.",
   alternates: { canonical: "/calculator" },
   openGraph: {
-    title: "Калькулятор оклейки авто плёнкой PPF — цены в Москве | PPF PROFI",
+    title: "Калькулятор оклейки авто PPF — PPF PROFI",
     description:
       "Оклейка авто пленкой в Москве. Выберите марку, модель и поколение — цены на зоны риска и полную оклейку полиуретановой плёнкой Spectroll.",
     url: "/calculator",
     images: [OG_IMAGE],
   },
-  twitter: { ...TWITTER_CARD, title: "Калькулятор оклейки авто плёнкой PPF — цены в Москве | PPF PROFI" },
+  twitter: { ...TWITTER_CARD, title: "Калькулятор оклейки авто PPF — PPF PROFI" },
 };
 
 export default function CalculatorPage() {
