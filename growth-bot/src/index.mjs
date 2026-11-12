@@ -1,4 +1,7 @@
 import process from "node:process";
+import { budgetSnapshot } from "./budget.mjs";
+import { POLICY } from "./policy.mjs";
+import { audit } from "./audit.mjs";
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ALLOWED_CHAT_ID = process.env.TELEGRAM_ALLOWED_CHAT_ID;
@@ -6,7 +9,7 @@ const SITE_URL = (process.env.SITE_URL || "https://ppfprofi.ru").replace(/\/$/, 
 const SCAN_INTERVAL_HOURS = Math.max(6, Number(process.env.SCAN_INTERVAL_HOURS || 24));
 const API = TOKEN ? `https://api.telegram.org/bot${TOKEN}` : "";
 let offset = 0;
-let scanInProgress = false;
+let scanInProgress = false;\nlet autonomousPaused = false;
 let lastScan = null;
 
 if (!TOKEN || !ALLOWED_CHAT_ID) {
@@ -98,9 +101,28 @@ async function handle(message) {
       "🤖 PPF PROFI Growth Bot",
       "Статус: работает",
       `Сайт: ${SITE_URL}`,
-      `Автопроверка: каждые ${SCAN_INTERVAL_HOURS} ч.`,
+      `Автопроверка: ежедневно в 09:00 по Москве`,\n      `Автономные действия: ${autonomousPaused ? "остановлены" : "разрешены политикой, интеграции пока не подключены"}`,
       `Последняя проверка: ${lastScan?.at || "ещё не запускалась"}`
     ].join("\n"));
+  } else if (text === "/budget") {
+    const b = await budgetSnapshot();
+    await send(chatId, [
+      "💳 Бюджет PPF PROFI",
+      `Месяц: ${b.month}`,
+      `Потрачено: ${b.spentRub} ₽ / ${POLICY.monthlyBudgetRub} ₽`,
+      `Зарезервировано: ${b.reservedRub} ₽`,
+      `Остаток месяца: ${b.monthlyRemainingRub} ₽`,
+      `Сегодня потрачено: ${b.dailySpentRub} ₽ / ${POLICY.dailyBudgetRub} ₽`,
+      `Остаток на сегодня: ${b.dailyRemainingRub} ₽`
+    ].join("\\n"));
+  } else if (text === "/pause") {
+    autonomousPaused = true;
+    await audit({ action: "kill_switch", actor: chatId, state: "paused" });
+    await send(chatId, "⛔ Автономные действия остановлены. Мониторинг сайта остаётся доступен.");
+  } else if (text === "/resume") {
+    autonomousPaused = false;
+    await audit({ action: "kill_switch", actor: chatId, state: "resumed" });
+    await send(chatId, "▶️ Мониторинг возобновлён. Внешние интеграции активируются только после настройки и проверки credentials.");
   } else if (text === "/scan") {
     await send(chatId, "Начинаю техническую проверку сайта…");
     await send(chatId, await scanSite());
