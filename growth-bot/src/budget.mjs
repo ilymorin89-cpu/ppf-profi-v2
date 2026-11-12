@@ -26,6 +26,7 @@ function roll(state) {
 export async function budgetSnapshot() {
   const s = roll(await load());
   const reserved = Object.values(s.reservations).reduce((a, x) => a + x.amountRub, 0);
+  const dailyReserved = Object.values(s.reservations).filter((x) => x.day === s.day).reduce((a, x) => a + x.amountRub, 0);
   return { month: s.month, day: s.day, spentRub: s.spentRub, dailySpentRub: s.dailySpentRub, reservedRub: rub(reserved), monthlyRemainingRub: rub(POLICY.monthlyBudgetRub - s.spentRub - reserved), dailyRemainingRub: rub(POLICY.dailyBudgetRub - s.dailySpentRub) };
 }
 export async function reserveSpend({ id, amountRub, channel, purpose }) {
@@ -34,6 +35,7 @@ export async function reserveSpend({ id, amountRub, channel, purpose }) {
   if (s.reservations[id]) throw new Error("Резерв с таким ID уже существует");
   const amount = rub(amountRub);
   const reserved = Object.values(s.reservations).reduce((a, x) => a + x.amountRub, 0);
+  const dailyReserved = Object.values(s.reservations).filter((x) => x.day === s.day).reduce((a, x) => a + x.amountRub, 0);
   if (s.spentRub + reserved + amount > POLICY.monthlyBudgetRub) throw new Error("Превышен месячный бюджет: действие заблокировано");
   if (s.dailySpentRub + dailyReserved + amount > POLICY.dailyBudgetRub) throw new Error("Превышен дневной лимит: действие заблокировано");
   s.reservations[id] = { amountRub: amount, channel, purpose, day: s.day, createdAt: new Date().toISOString() };
