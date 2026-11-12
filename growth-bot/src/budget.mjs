@@ -27,7 +27,7 @@ export async function budgetSnapshot() {
   const s = roll(await load());
   const reserved = Object.values(s.reservations).reduce((a, x) => a + x.amountRub, 0);
   const dailyReserved = Object.values(s.reservations).filter((x) => x.day === s.day).reduce((a, x) => a + x.amountRub, 0);
-  return { month: s.month, day: s.day, spentRub: s.spentRub, dailySpentRub: s.dailySpentRub, reservedRub: rub(reserved), monthlyRemainingRub: rub(POLICY.monthlyBudgetRub - s.spentRub - reserved), dailyRemainingRub: rub(POLICY.dailyBudgetRub - s.dailySpentRub) };
+  return { month: s.month, day: s.day, spentRub: s.spentRub, dailySpentRub: s.dailySpentRub, reservedRub: rub(reserved), monthlyRemainingRub: rub(POLICY.monthlyBudgetRub - s.spentRub - reserved), dailyRemainingRub: rub(POLICY.dailyBudgetRub - s.dailySpentRub - dailyReserved) };
 }
 export async function reserveSpend({ id, amountRub, channel, purpose }) {
   if (!id || !Number.isFinite(amountRub) || amountRub <= 0) throw new Error("Некорректный ID или сумма резерва");
