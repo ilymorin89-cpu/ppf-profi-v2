@@ -35,8 +35,8 @@ export async function reserveSpend({ id, amountRub, channel, purpose }) {
   const amount = rub(amountRub);
   const reserved = Object.values(s.reservations).reduce((a, x) => a + x.amountRub, 0);
   if (s.spentRub + reserved + amount > POLICY.monthlyBudgetRub) throw new Error("Превышен месячный бюджет: действие заблокировано");
-  if (s.dailySpentRub + amount > POLICY.dailyBudgetRub) throw new Error("Превышен дневной лимит: действие заблокировано");
-  s.reservations[id] = { amountRub: amount, channel, purpose, createdAt: new Date().toISOString() };
+  if (s.dailySpentRub + dailyReserved + amount > POLICY.dailyBudgetRub) throw new Error("Превышен дневной лимит: действие заблокировано");
+  s.reservations[id] = { amountRub: amount, channel, purpose, day: s.day, createdAt: new Date().toISOString() };
   s.events.push({ type: "reserve", id, amountRub: amount, channel, purpose, at: new Date().toISOString() });
   await save(s);
   return budgetSnapshot();
