@@ -1,12 +1,64 @@
+"use client";
+
+import { useEffect } from "react";
 import Script from "next/script";
+import { trackGoal } from "@/shared/analytics";
 
 /**
- * Яндекс Метрика. Включается только если задана переменная NEXT_PUBLIC_YM_ID (номер счётчика).
- * Без переменной ничего не загружается. Вебвизор выключен: он записывает действия посетителей.
+ * Яндекс Метрика. Включается только если задана NEXT_PUBLIC_YM_ID.
+ * Вебвизор выключен: он записывает действия посетителей.
  */
 export default function YandexMetrika() {
   const id = (process.env.NEXT_PUBLIC_YM_ID || "").trim();
-  if (!/^\d{4,12}$/.test(id)) return null;
+
+  useEffect(() => {
+    if (!/^\\d{4,12}$/.test(id)) return;
+
+    const onClick = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const link = target.closest("a");
+      if (!link) return;
+      const href = link.getAttribute("href") || "";
+
+      if (href.startsWith("tel:")) trackGoal("phone_click");
+      else if (/^(https?:\\/\\/(t\\.me|telegram\\.me)\\/|tg:\\/\\/)/i.test(href)) {
+        trackGoal("telegram_click");
+      } else if (href === "#calculator" || href.startsWith("/calculator")) {
+        trackGoal("calculator_open");
+      }
+    };
+
+    const onFocus = (event: FocusEvent) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement)) return;
+      const form = target.closest("form");
+      if (!form || form.dataset.ymStarted === "1") return;
+      form.dataset.ymStarted = "1";
+      trackGoal("lead_form_start");
+    };
+
+    const onChange = (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLSelectElement || target instanceof HTMLInputElement)) return;
+      if (target.type === "radio" && target.name.includes("variant")) {
+        trackGoal("calculator_package_selected", { package: target.value });
+      } else if (target.id.endsWith("-brand") || target.id.endsWith("-model") || target.id.endsWith("-gen")) {
+        trackGoal("calculator_car_selected", { field: target.id.split("-").pop() || "unknown", value: target.value });
+      }
+    };
+
+    document.addEventListener("click", onClick, true);
+    document.addEventListener("focusin", onFocus, true);
+    document.addEventListener("change", onChange, true);
+    return () => {
+      document.removeEventListener("click", onClick, true);
+      document.removeEventListener("focusin", onFocus, true);
+      document.removeEventListener("change", onChange, true);
+    };
+  }, [id]);
+
+  if (!/^\\d{4,12}$/.test(id)) return null;
 
   return (
     <>
