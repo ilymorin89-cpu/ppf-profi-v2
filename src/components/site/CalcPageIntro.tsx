@@ -1,17 +1,21 @@
-/* eslint-disable @next/next/no-img-element -- фон из public/, оптимизатор не нужен */
+import Image from "next/image";
 
 /**
- * Верх страницы /calculator: подпись, H1 и пояснение про цены «от». Фото — фон справа, затемнено слева.
+ * Верх страницы /calculator: подпись, H1 и пояснение про цены «от».
+ * Крупное фоновое изображение оптимизируется Next.js и загружается с высоким приоритетом:
+ * это главный визуальный элемент первого экрана на мобильных устройствах.
  */
 export default function CalcPageIntro() {
   return (
     <section className="relative isolate overflow-hidden border-b border-white/8">
-      <img
+      <Image
         src="/hero/garage-bmw-portrait.webp"
         alt=""
-        width={1536}
-        height={1024}
-        className="absolute inset-0 -z-10 h-full w-full object-cover object-[80%_30%]"
+        fill
+        priority
+        quality={65}
+        sizes="100vw"
+        className="absolute inset-0 -z-10 object-cover object-[80%_30%]"
       />
       <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-r from-black/85 via-black/65 to-black/20" />
 
