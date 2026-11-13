@@ -1,3 +1,4 @@
+import VenomButton from "@/components/site/VenomButton";
 import Image from "next/image";
 
 /**
@@ -34,9 +35,9 @@ export default function HomeHero() {
           Антигравийная защита кузова плёнкой Spectroll: полная оклейка или зоны риска.
           Рассчитайте стоимость для BMW, Mercedes-Benz, Porsche, Geely и других марок.
         </p>
-        <a href="#calculator" className="btn-accent mt-7 w-fit">
-          Рассчитать стоимость →
-        </a>
+        <VenomButton href="#calculator" className="mt-7 w-fit">
+          Рассчитать стоимость <span aria-hidden="true">→</span>
+        </VenomButton>
       </div>
     </section>
   );
