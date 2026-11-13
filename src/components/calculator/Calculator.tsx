@@ -1,7 +1,6 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element -- статичные картинки из public/, оптимизатор не нужен */
-
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -241,11 +240,13 @@ export default function Calculator({ cars, defaultCar, scenarios, films, addons,
   const photo = (
     <figure className="relative overflow-hidden rounded-3xl">
       {carObj?.hasImage ? (
-        <img
+        <Image
           src={carImg(carObj.code)}
           alt={carObj.label}
           width={1600}
           height={900}
+          quality={65}
+          sizes="(min-width: 1024px) 58vw, 100vw"
           className="aspect-[16/9] w-full object-cover"
         />
       ) : (
@@ -371,12 +372,13 @@ export default function Calculator({ cars, defaultCar, scenarios, films, addons,
                   />
                 </span>
                 {x.scenario.image && (
-                  <img
+                  <Image
                     src={x.scenario.image}
                     alt=""
                     width={832}
                     height={316}
-                    loading="lazy"
+                    quality={60}
+                    sizes="(min-width: 1024px) 25vw, 82vw"
                     className="aspect-[832/316] w-full object-cover"
                   />
                 )}
@@ -411,7 +413,7 @@ export default function Calculator({ cars, defaultCar, scenarios, films, addons,
               return (
                 <li key={a.code} className="flex items-center gap-3 py-2.5">
                   {a.image ? (
-                    <img src={a.image} alt="" width={96} height={96} loading="lazy" className={`h-16 w-16 shrink-0 rounded-xl object-cover sm:h-24 sm:w-24 ${allowed ? "" : "opacity-45"}`} />
+                    <Image src={a.image} alt="" width={96} height={96} quality={60} sizes="(min-width: 640px) 96px, 64px" className={`h-16 w-16 shrink-0 rounded-xl object-cover sm:h-24 sm:w-24 ${allowed ? "" : "opacity-45"}`} />
                   ) : (
                     <span className={`h-16 w-16 shrink-0 rounded-xl bg-white/5 sm:h-24 sm:w-24 ${allowed ? "" : "opacity-45"}`} />
                   )}
@@ -461,7 +463,7 @@ export default function Calculator({ cars, defaultCar, scenarios, films, addons,
           <h2 className={stepTitle}>{texts.summaryTitle}</h2>
           <div className="mt-4 flex items-center gap-3">
             {carObj?.hasImage ? (
-              <img src={carImg(carObj.code, true)} alt="" width={64} height={64} className="h-16 w-16 rounded-xl object-cover" />
+              <Image src={carImg(carObj.code, true)} alt="" width={64} height={64} quality={55} sizes="64px" className="h-16 w-16 rounded-xl object-cover" />
             ) : (
               <CarPlaceholder label="" className="h-16 w-16 rounded-xl" />
             )}
