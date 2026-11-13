@@ -14,7 +14,7 @@ export const CAR_LANDINGS: CarLanding[] = [
   {
     slug: "mercedes-benz-g-class",
     code: "MB_G_W463",
-    title: "Оклейка Mercedes-Benz G-Class W463 плёнкой PPF в Москве | PPF PROFI",
+    title: "Mercedes G-Class W463 — оклейка PPF в Москве | PPF PROFI",
     description: "Защита Mercedes-Benz G-Class W463 полиуретановой плёнкой PPF в Москве. Цены на зоны риска и полную оклейку, выбор Spectroll и NAR, расчёт онлайн.",
     h1: "Оклейка Mercedes-Benz G-Class W463 защитной плёнкой PPF в Москве",
     intro: "Mercedes-Benz G-Class W463 отличается сложной геометрией кузова и большим количеством отдельных элементов. Подбираем состав защиты под состояние автомобиля и задачи владельца: от зон риска до полной оклейки.",
@@ -38,7 +38,7 @@ export const CAR_LANDINGS: CarLanding[] = [
   {
     slug: "zeekr-009",
     code: "ZEEKR_009",
-    title: "Оклейка Zeekr 009 защитной плёнкой PPF в Москве — цена | PPF PROFI",
+    title: "Zeekr 009 — оклейка PPF в Москве | PPF PROFI",
     description: "Полная и частичная оклейка Zeekr 009 полиуретановой плёнкой PPF в Москве. Цены по вариантам плёнки, расчёт защиты кузова в PPF PROFI.",
     h1: "Оклейка Zeekr 009 защитной плёнкой PPF в Москве",
     intro: "Для Zeekr 009 можно подобрать частичную защиту наиболее уязвимых зон или полную оклейку кузова. Состав пакета выбираем с учётом состояния автомобиля и пожеланий владельца.",
@@ -50,7 +50,7 @@ export const CAR_LANDINGS: CarLanding[] = [
   {
     slug: "li-xiang-l9",
     code: "LIXIANG_L9",
-    title: "Оклейка LiXiang L9 защитной плёнкой PPF в Москве — цена | PPF PROFI",
+    title: "LiXiang L9 — оклейка PPF в Москве | PPF PROFI",
     description: "Защита кузова LiXiang L9 полиуретановой плёнкой PPF в Москве. Зоны риска, полная оклейка, варианты плёнки и расчёт стоимости в PPF PROFI.",
     h1: "Оклейка LiXiang L9 защитной плёнкой PPF в Москве",
     intro: "Подберём для LiXiang L9 подходящий объём защиты: от наиболее уязвимых элементов до полной оклейки кузова полиуретановой плёнкой.",
