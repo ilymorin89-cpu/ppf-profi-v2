@@ -161,7 +161,7 @@ export default function Calculator({ cars, defaultCar, scenarios, films, addons,
       film: v.film.code,
       price_from: price.low,
     });
-  }, [car, variant, price?.low, price?.high]);
+  }, [car, variant, carObj?.code, v?.scenario.code, v?.film.code, price?.low, price?.high]);
 
   // Итог на клиенте только для показа; при отправке заявки сервер считает заново.
   const addonPrices: Record<string, AddonPrice> = Object.fromEntries(addons.map((a) => [a.code, a]));
