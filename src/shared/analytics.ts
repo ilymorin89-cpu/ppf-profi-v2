@@ -6,7 +6,7 @@ export function trackGoal(
   params?: Record<string, string | number>
 ): void {
   const rawId = process.env.NEXT_PUBLIC_YM_ID;
-  if (!rawId || !/^\\d{4,12}$/.test(rawId)) return;
+  if (!rawId || !/^\d{4,12}$/.test(rawId)) return;
   const ym = (window as Window & {
     ym?: (id: number, action: string, goal: string, params?: Record<string, string | number>) => void;
   }).ym;
