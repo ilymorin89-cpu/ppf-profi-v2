@@ -2,6 +2,7 @@
 
 import { useState, useId } from "react";
 import { postLead, type SubmitResult } from "./submit";
+import { trackGoal } from "@/shared/analytics";
 import {
   ConsentCheckbox,
   FieldError,
@@ -62,7 +63,10 @@ export default function PartnerLeadForm({ content, types, texts }: Props) {
       consent,
     });
     setSending(false);
-    if (r.kind === "ok") setSent(true);
+    if (r.kind === "ok") {
+      trackGoal("lead_success", { form: "partner" });
+      setSent(true);
+    }
     else setResult(r);
   };
 

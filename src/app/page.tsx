@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import TopHeader from "@/components/site/TopHeader";
 import HomeHero from "@/components/site/HomeHero";
+import MobileActionBar from "@/components/site/MobileActionBar";
 import BenefitsRow from "@/components/site/BenefitsRow";
 import SiteFooter from "@/components/site/SiteFooter";
 import type { MiniCar } from "@/components/site/HeroCalculator";
@@ -469,6 +470,7 @@ export default function HomePage() {
       </section>
 
       </main>
+      <MobileActionBar />
       <SiteFooter />
     </div>
   );

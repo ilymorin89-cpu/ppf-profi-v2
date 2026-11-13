@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation";
 import LeadForm from "@/components/forms/LeadForm";
 import type { FormContent } from "@/components/forms/FormParts";
 import { buildTelegramUrl, fillTemplate, formatRub } from "@/shared/format";
+import { trackGoal } from "@/shared/analytics";
 import { addonsRange, forScenario, type AddonPrice, type AddonSelection } from "@/shared/addons";
 
 type Price = { low: number; high: number } | null;
@@ -151,6 +152,16 @@ export default function Calculator({ cars, defaultCar, scenarios, films, addons,
   const film = v?.film.code ?? "";
   const priceOf = (x: Variant): Price => carObj?.prices[x.scenario.code]?.[x.film.code] ?? null;
   const price = v ? priceOf(v) : null;
+
+  useEffect(() => {
+    if (!carObj || !v || !price) return;
+    trackGoal("calculator_price_view", {
+      car: carObj.code,
+      package: v.scenario.code,
+      film: v.film.code,
+      price_from: price.low,
+    });
+  }, [car, variant, carObj?.code, v?.scenario.code, v?.film.code, price?.low, price?.high]);
 
   // Итог на клиенте только для показа; при отправке заявки сервер считает заново.
   const addonPrices: Record<string, AddonPrice> = Object.fromEntries(addons.map((a) => [a.code, a]));

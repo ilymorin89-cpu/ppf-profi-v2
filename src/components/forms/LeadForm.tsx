@@ -2,6 +2,7 @@
 
 import { useState, useId } from "react";
 import { postLead, type SubmitResult } from "./submit";
+import { trackGoal } from "@/shared/analytics";
 import {
   ConsentCheckbox,
   FieldError,
@@ -69,7 +70,10 @@ export default function LeadForm({
       consent,
     });
     setSending(false);
-    if (r.kind === "ok") onSuccess(r.publicNumber);
+    if (r.kind === "ok") {
+      trackGoal("lead_success", { form: "customer" });
+      onSuccess(r.publicNumber);
+    }
     else setResult(r);
   };
 
