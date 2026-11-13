@@ -15,14 +15,14 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
   openGraph: { siteName: SITE.name, locale: "ru_RU", type: "website", images: [OG_IMAGE] },
   twitter: TWITTER_CARD,
-  // Подтверждение прав в Google Search Console (тег HTML). Не удалять: без него Google снимет доступ.
-  // Подтверждение прав: Google Search Console и Яндекс Вебмастер (meta-теги). Не удалять.
+  // Подтверждения Google Search Console и Яндекс Вебмастера. Не удалять.
   verification: {
     google: "rjQuyCsReahhqirzavuVKwHrqzAKCOvooImQ9nQoZpc",
     yandex: "8e84373381798ef4",
   },
   title: "PPF PROFI — Защита автомобиля плёнкой",
-  description: "Оклейка авто пленкой в Москве: полиуретановая плёнка Spectroll (бронепленка). Зоны риска от 1 дня. Работаем на проверенных площадках.",
+  description:
+    "Оклейка автомобилей полиуретановой антигравийной плёнкой PPF в Москве и области. Полная защита кузова и зоны риска. Цены по моделям, онлайн-калькулятор.",
 };
 
 export default function RootLayout({

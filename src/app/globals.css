@@ -138,3 +138,26 @@ select:-webkit-autofill {
   box-shadow: 0 0 0 1000px #151515 inset;
   transition: background-color 9999s ease-out 0s;
 }
+
+/* На мобильных устройствах сокращаем стоимость декоративных эффектов.
+   Содержимое остаётся видимым сразу, без анимации появления. */
+@media (max-width: 767px) {
+  .premium-panel {
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+
+  .reveal {
+    animation: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .reveal {
+    animation: none;
+  }
+}
