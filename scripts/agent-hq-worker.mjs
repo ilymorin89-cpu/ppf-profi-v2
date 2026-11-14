@@ -6,7 +6,8 @@ const workerId = process.env.AGENT_WORKER_ID || `${role || "worker"}-${process.p
 const apiKey = process.env.OPENAI_API_KEY;
 const model = process.env.AGENT_MODEL;
 const databaseUrl = process.env.DATABASE_URL;
-const maxOutputTokens = Number(process.env.AGENT_MAX_OUTPUT_TOKENS || 1200);\nconst maxModelTurns = 4;
+const maxOutputTokens = Number(process.env.AGENT_MAX_OUTPUT_TOKENS || 1200);
+const maxModelTurns = 4;
 const pollMs = Number(process.env.AGENT_POLL_MS || 5000);
 
 const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security"];
@@ -246,7 +247,10 @@ try {
   const once = process.argv.includes("--once");
   while (!stopping) {
     const task = await claim();
-    if (task) {\n      try { await runTask(task); }\n      catch (error) { console.error("Task setup failed; lease will expire and be recovered:", error instanceof Error ? error.message : error); }\n    }
+    if (task) {
+      try { await runTask(task); }
+      catch (error) { console.error("Task setup failed; lease will expire and be recovered:", error instanceof Error ? error.message : error); }
+    }
     else if (once) break;
     else await new Promise(resolve => setTimeout(resolve, pollMs));
     if (once) break;
