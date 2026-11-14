@@ -40,10 +40,20 @@ async function supervise() {
         return;
       }
       if (qa.status === "done") {
+        const [qaArtifact] = await tx`SELECT content FROM agent_artifacts WHERE task_id=${qa.id} ORDER BY created_at DESC LIMIT 1`;
+        const verdict = (qaArtifact?.content || "").toUpperCase();
+        if (!verdict.includes("PASS") || verdict.includes("REVISE")) {
+          await tx`UPDATE agent_tasks SET status='blocked',updated_at=now() WHERE id=${parent.id}`;
+          await tx`INSERT INTO agent_messages
+            (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
+            VALUES (${parent.id},gen_random_uuid(),'qa_security','coordinator','objection',${(qaArtifact?.content || "QA completed without a clear PASS verdict").slice(0,8000)},${`qa-${qa.id}-revision-required`})
+            ON CONFLICT (idempotency_key) DO NOTHING`;
+          return;
+        }
         const artifacts = await tx`SELECT a.id,a.created_by,a.artifact_type,a.title,a.content
           FROM agent_artifacts a JOIN agent_tasks c ON c.id=a.task_id
           WHERE c.parent_task_id=${parent.id} ORDER BY a.created_at`;
-        const summary = artifacts.map(a => `[Artifact ${a.id} | ${a.created_by} | ${a.title}]\n${a.content}`).join("\n\n");
+        const summary = artifacts.map(a => `[Artifact ${a.id} | ${a.created_by} | ${a.title}]\\n${a.content}`).join("\\n\\n");
         await tx`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
           VALUES (${parent.id},'supervisor','consolidated',${parent.title},${summary.slice(0,50000)})`;
         await tx`UPDATE agent_tasks SET status='done',completed_at=now(),updated_at=now() WHERE id=${parent.id}`;
