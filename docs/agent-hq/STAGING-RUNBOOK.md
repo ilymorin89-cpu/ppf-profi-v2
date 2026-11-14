@@ -86,21 +86,20 @@ Set conservative staging-only limits. The worker reserves a worst-case estimate 
 
 ## 5. Run a single smoke test
 
-Start one worker for the coordinator role in a controlled terminal/session, then enqueue one harmless test task. Do not start all roles yet.
+First enqueue a harmless task, then start exactly one coordinator worker in a controlled terminal/session. The worker's `--once` mode exits after one claim cycle, so enqueue must happen first.
 
 ```sh
-AGENT_ROLE=coordinator node scripts/agent-hq-worker.mjs --once
 node scripts/agent-hq-bus.mjs enqueue coordinator "Staging smoke test" "Verify the staging queue and report that no external actions are available."
+set -a
+. /etc/ppf-agent-hq/coordinator.env
+set +a
+node scripts/agent-hq-worker.mjs --once
 node scripts/agent-hq-bus.mjs status
 ```
 
-Start a role worker with its own environment file; run the supervisor once after specialists finish:
+The environment file must contain the staging-only `DATABASE_URL`, `OPENAI_API_KEY`, `AGENT_MODEL`, and `AGENT_ROLE=coordinator`. Run the bus command with the same staging `DATABASE_URL`. Never run a command with an unset or production `DATABASE_URL`.
 
-```sh
-node scripts/agent-hq-supervisor.mjs --once
-```
-
-The actual shell environment must load the correct per-role file before invoking each command. Do not run a command with an unset or production `DATABASE_URL`.
+For a full delegated lifecycle, start the specialist workers with their own role-specific environment files, keep the supervisor running, and enqueue a coordinator task whose acceptance criteria require specialist work and independent QA. Do not start all roles until the single-worker smoke test succeeds.
 
 ## 6. Validate before expanding
 
