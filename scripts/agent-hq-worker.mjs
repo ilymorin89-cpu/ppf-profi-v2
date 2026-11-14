@@ -76,7 +76,8 @@ async function runTask(task) {
 
   try {
     const inbox = await sql`SELECT from_role,kind,body,created_at FROM agent_messages WHERE to_role=${role} AND (task_id=${task.id} OR task_id=${task.parent_task_id || task.id} OR task_id IS NULL) ORDER BY created_at DESC LIMIT 12`;
-    const siblingArtifacts = task.parent_task_id ? await sql`SELECT a.id,a.created_by,a.title,a.content FROM agent_artifacts a JOIN agent_tasks c ON c.id=a.task_id WHERE c.parent_task_id=${task.parent_task_id} ORDER BY a.created_at LIMIT 20` : [];\n    const prompt = [
+    const siblingArtifacts = task.parent_task_id ? await sql`SELECT a.id,a.created_by,a.title,a.content FROM agent_artifacts a JOIN agent_tasks c ON c.id=a.task_id WHERE c.parent_task_id=${task.parent_task_id} ORDER BY a.created_at LIMIT 20` : [];
+    const prompt = [
       `Task: ${task.title}`,
       `Objective: ${task.objective}`,
       `Expected output: ${task.expected_output}`,
