@@ -89,10 +89,10 @@ Set conservative staging-only limits. The worker reserves a worst-case estimate 
 First enqueue a harmless task, then start exactly one coordinator worker in a controlled terminal/session. The worker's `--once` mode exits after one claim cycle, so enqueue must happen first.
 
 ```sh
-node scripts/agent-hq-bus.mjs enqueue coordinator "Staging smoke test" "Verify the staging queue and report that no external actions are available."
 set -a
 . /etc/ppf-agent-hq/coordinator.env
 set +a
+node scripts/agent-hq-bus.mjs enqueue coordinator "Staging smoke test" "Verify the staging queue and report that no external actions are available."
 node scripts/agent-hq-worker.mjs --once
 node scripts/agent-hq-bus.mjs status
 ```
