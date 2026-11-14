@@ -1,6 +1,16 @@
 name: Agent HQ checks
 
 on:
+  push:
+    branches: ["agent-hq-runtime-skeleton"]
+    paths:
+      - "scripts/agent-hq-*.mjs"
+      - "tests/agent-hq*.mjs"
+      - "drizzle/0003_agent_hq.sql"
+      - "drizzle/0004_agent_budget.sql"
+      - "docs/agent-hq/**"
+      - "package.json"
+      - ".github/workflows/agent-hq-checks.yml"
   pull_request:
     paths:
       - "scripts/agent-hq-*.mjs"
