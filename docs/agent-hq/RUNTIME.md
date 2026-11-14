@@ -31,7 +31,7 @@ npm run agent-hq -- recover
 - `fail` verifies lease ownership, records a status message and requeues the task until its attempt limit; exhausted tasks go to `dead_letter`.
 - `recover` requeues expired leases or dead-letters tasks whose attempts are exhausted.
 
-A worker must heartbeat at least once per minute during long work. The CLI is a manual transport/operations utility; it does not schedule heartbeats, call a model, or launch worker processes. Do not treat it as production-ready orchestration.
+A worker must heartbeat at least once per minute during long work. The CLI is a manual transport/operations utility; it does not schedule heartbeats, call a model, or launch worker processes. Do not treat it as production-ready orchestration.\n\n## Integration tests\n\nAfter applying the migration to a disposable PostgreSQL test database, set `AGENT_HQ_TEST_DATABASE_URL` to that database and run `npm run agent-hq:test`. The test refuses to use the same URL as `DATABASE_URL`; it creates uniquely named test tasks and deletes them afterward. Never point it at production.
 
 ## Security and autonomy boundaries
 - Each worker identity may renew, complete or fail only a task whose lease it owns.
