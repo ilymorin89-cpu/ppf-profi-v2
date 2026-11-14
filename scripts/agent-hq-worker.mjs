@@ -61,27 +61,43 @@ async function claim() {
 
 async function runTask(task) {
   const estimatedInputTokens = Math.ceil((task.objective.length + task.title.length + task.expected_output.length + JSON.stringify(task.acceptance_criteria || []).length + 40000) / 4);
-  const [run] = await sql.begin(async tx => {
-    const [budget] = await tx`SELECT * FROM agent_budget_config WHERE id=1 FOR UPDATE`;
-    if (!budget || !budget.enabled || budget.daily_cap_microusd <= 0 || budget.monthly_cap_microusd <= 0 || budget.per_run_cap_microusd <= 0) {
-      throw new Error("Agent budget is disabled or has zero caps; refusing model call");
+  let run;
+  try {
+    [run] = await sql.begin(async tx => {
+      const [budget] = await tx`SELECT * FROM agent_budget_config WHERE id=1 FOR UPDATE`;
+      if (!budget || !budget.enabled || budget.daily_cap_microusd <= 0 || budget.monthly_cap_microusd <= 0 || budget.per_run_cap_microusd <= 0) {
+        throw new Error("Agent budget is disabled or has zero caps; refusing model call");
+      }
+      const estimate = Math.ceil((estimatedInputTokens * maxModelTurns * Number(budget.input_price_per_million_microusd) + maxOutputTokens * maxModelTurns * Number(budget.output_price_per_million_microusd)) / 1000000);
+      if (estimate <= 0 || estimate > Number(budget.per_run_cap_microusd) || (Number(task.budget_limit_microusd) > 0 && estimate > Number(task.budget_limit_microusd))) {
+        throw new Error("Estimated request exceeds per-run or task budget");
+      }
+      const [totals] = await tx`SELECT
+        COALESCE(SUM(cost_microusd) FILTER (WHERE started_at >= date_trunc('day',now())),0) AS daily,
+        COALESCE(SUM(cost_microusd) FILTER (WHERE started_at >= date_trunc('month',now())),0) AS monthly
+        FROM agent_runs`;
+      if (Number(totals.daily) + estimate > Number(budget.daily_cap_microusd) || Number(totals.monthly) + estimate > Number(budget.monthly_cap_microusd)) {
+        throw new Error("Daily or monthly agent budget exhausted; refusing model call");
+      }
+      const [created] = await tx`INSERT INTO agent_runs
+        (task_id,role,worker_id,provider,model,status,cost_microusd)
+        VALUES (${task.id},${role},${workerId},'openai',${model},'running',${estimate}) RETURNING id`;
+      return created;
+    });
+  
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    if (/budget|cap|exceeds per-run/i.test(reason)) {
+      await sql.begin(async tx => {
+        await tx`UPDATE agent_tasks SET status='blocked',lease_owner=NULL,lease_until=NULL,updated_at=now()
+          WHERE id=${task.id} AND lease_owner=${workerId}`;
+        await tx`INSERT INTO agent_messages
+          (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
+          VALUES (${task.id},${randomUUID()},${role},'coordinator','status',${reason.slice(0,4000)},${randomUUID()})`;
+      });
     }
-    const estimate = Math.ceil((estimatedInputTokens * maxModelTurns * Number(budget.input_price_per_million_microusd) + maxOutputTokens * maxModelTurns * Number(budget.output_price_per_million_microusd)) / 1000000);
-    if (estimate <= 0 || estimate > Number(budget.per_run_cap_microusd) || (Number(task.budget_limit_microusd) > 0 && estimate > Number(task.budget_limit_microusd))) {
-      throw new Error("Estimated request exceeds per-run or task budget");
-    }
-    const [totals] = await tx`SELECT
-      COALESCE(SUM(cost_microusd) FILTER (WHERE started_at >= date_trunc('day',now())),0) AS daily,
-      COALESCE(SUM(cost_microusd) FILTER (WHERE started_at >= date_trunc('month',now())),0) AS monthly
-      FROM agent_runs`;
-    if (Number(totals.daily) + estimate > Number(budget.daily_cap_microusd) || Number(totals.monthly) + estimate > Number(budget.monthly_cap_microusd)) {
-      throw new Error("Daily or monthly agent budget exhausted; refusing model call");
-    }
-    const [created] = await tx`INSERT INTO agent_runs
-      (task_id,role,worker_id,provider,model,status,cost_microusd)
-      VALUES (${task.id},${role},${workerId},'openai',${model},'running',${estimate}) RETURNING id`;
-    return created;
-  });
+    throw error;
+  }
   const heartbeat = setInterval(async () => {
     try {
       const [lease] = await sql`UPDATE agent_tasks SET status='running',
