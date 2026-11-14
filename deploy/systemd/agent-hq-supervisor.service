@@ -1,0 +1,26 @@
+[Unit]
+Description=PPF PROFI Agent HQ supervisor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ppf-agent
+Group=ppf-agent
+WorkingDirectory=/opt/ppf-agent-hq
+EnvironmentFile=/etc/ppf-agent-hq/supervisor.env
+ExecStart=/usr/bin/node /opt/ppf-agent-hq/scripts/agent-hq-supervisor.mjs
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=300
+StartLimitBurst=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+LockPersonality=true
+RestrictSUIDSGID=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
