@@ -114,6 +114,30 @@ async function main() {
     console.log(JSON.stringify(task, null, 2));
     return;
   }
+  if (command === "status") {
+    const [tasks] = await sql`SELECT
+      COUNT(*) FILTER (WHERE status='queued') AS queued,
+      COUNT(*) FILTER (WHERE status IN ('claimed','running')) AS active,
+      COUNT(*) FILTER (WHERE status='review') AS review,
+      COUNT(*) FILTER (WHERE status='done') AS done,
+      COUNT(*) FILTER (WHERE status IN ('blocked','dead_letter','cancelled')) AS blocked_or_dead
+      FROM agent_tasks`;
+    const [spend] = await sql`SELECT
+      COALESCE(SUM(cost_microusd) FILTER (WHERE started_at >= date_trunc('day',now())),0) AS daily_microusd,
+      COALESCE(SUM(cost_microusd) FILTER (WHERE started_at >= date_trunc('month',now())),0) AS monthly_microusd
+      FROM agent_runs`;
+    const [budget] = await sql`SELECT enabled,daily_cap_microusd,monthly_cap_microusd,per_run_cap_microusd
+      FROM agent_budget_config WHERE id=1`;
+    const [approvals] = await sql`SELECT COUNT(*) AS pending FROM agent_approvals WHERE status='pending'`;
+    console.log(JSON.stringify({ tasks, spend, budget: budget || null, pendingApprovals: approvals.pending }, null, 2));
+    return;
+  }
+  if (command === "approvals") {
+    const rows = await sql`SELECT id,task_id,action,requested_by,payload,created_at
+      FROM agent_approvals WHERE status='pending' ORDER BY created_at ASC LIMIT 100`;
+    console.log(JSON.stringify(rows, null, 2));
+    return;
+  }
   if (command === "recover") {
     const rows = await sql`UPDATE agent_tasks SET
       status=CASE WHEN attempts < max_attempts THEN 'queued' ELSE 'dead_letter' END,
