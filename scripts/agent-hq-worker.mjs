@@ -75,12 +75,12 @@ async function runTask(task) {
   heartbeat.unref?.();
 
   try {
-    const prompt = [
+    const inbox = await sql`SELECT from_role,kind,body,created_at FROM agent_messages WHERE to_role=${role} AND (task_id=${task.id} OR task_id IS NULL) ORDER BY created_at DESC LIMIT 12`;\n    const prompt = [
       `Task: ${task.title}`,
       `Objective: ${task.objective}`,
       `Expected output: ${task.expected_output}`,
       `Acceptance criteria: ${JSON.stringify(task.acceptance_criteria || [])}`,
-      `Attempt: ${task.attempts} of ${task.max_attempts}`,
+      `Attempt: ${task.attempts} of ${task.max_attempts}`,\n      `Recent inter-agent messages: ${JSON.stringify(inbox)}`,
       "",
       "Return a concise, evidence-backed result. Clearly label facts, assumptions, unknowns, blockers and next action. Do not claim to have accessed systems, changed files, published content, contacted customers or spent money unless an authorized tool actually did so. You have no tools in this worker process; if another role must act, explain the handoff needed."
     ].join("\n");
