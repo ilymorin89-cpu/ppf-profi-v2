@@ -129,6 +129,20 @@ async function runTask(task) {
         strict: true
       },
       {
+        type: "function", name: "request_approval",
+        description: "Create an approval request for a restricted external or production action. This only requests permission; it does not perform the action.",
+        parameters: {
+          type: "object", additionalProperties: false,
+          properties: {
+            action: { type: "string", enum: ["publish_site","deploy_production","send_external_message","launch_ad","spend_money","database_migration","delete_data","other"] },
+            reason: { type: "string" },
+            payload: { type: "object", additionalProperties: true }
+          },
+          required: ["action","reason","payload"]
+        },
+        strict: true
+      },
+      {
         type: "function", name: "delegate_task",
         description: "Create a bounded specialist task. Only coordinator may use this. Delegate only work needed to achieve the parent objective.",
         parameters: {
@@ -184,6 +198,19 @@ async function runTask(task) {
             VALUES (${task.id},${randomUUID()},${role},${args.to_role},${args.kind},${args.body.slice(0,8000)},${randomUUID()})
             RETURNING id,to_role,kind`;
           result = message;
+        } else if (call.name === "request_approval") {
+          const actions = ["publish_site","deploy_production","send_external_message","launch_ad","spend_money","database_migration","delete_data","other"];
+          if (!actions.includes(args.action) || typeof args.reason !== "string" || !args.reason.trim() || !args.payload || typeof args.payload !== "object" || Array.isArray(args.payload)) {
+            throw new Error("Invalid request_approval arguments");
+          }
+          const [approval] = await sql`INSERT INTO agent_approvals
+            (task_id,action,requested_by,payload,status)
+            VALUES (${task.id},${args.action},${role},${JSON.stringify({ reason: args.reason.slice(0,3000), ...args.payload })}::jsonb,'pending')
+            RETURNING id,task_id,action,status,created_at`;
+          await sql`INSERT INTO agent_messages
+            (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
+            VALUES (${task.id},${randomUUID()},${role},'coordinator','approval_request',${JSON.stringify(approval)},${randomUUID()})`;
+          result = approval;
         } else if (call.name === "delegate_task") {
           if (role !== "coordinator") throw new Error("Only coordinator may delegate tasks");
           if (!allowedRoles.includes(args.role) || args.role === "coordinator" || typeof args.title !== "string" || typeof args.objective !== "string") {
