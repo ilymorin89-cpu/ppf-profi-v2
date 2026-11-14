@@ -9,7 +9,8 @@ const databaseUrl = process.env.DATABASE_URL;
 const maxOutputTokens = Number(process.env.AGENT_MAX_OUTPUT_TOKENS || 1200);
 const pollMs = Number(process.env.AGENT_POLL_MS || 5000);
 
-const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security"];\nif (!role || !databaseUrl || !apiKey || !model || !allowedRoles.includes(role)) {
+const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security"];
+if (!role || !databaseUrl || !apiKey || !model || !allowedRoles.includes(role)) {
   console.error("Required: AGENT_ROLE, DATABASE_URL, OPENAI_API_KEY, AGENT_MODEL");
   process.exit(1);
 }
@@ -37,7 +38,8 @@ function outputText(response) {
       if (part.type === "output_text" && part.text) parts.push(part.text);
     }
   }
-  return parts.join("\n").trim();
+  return parts.join("
+").trim();
 }
 
 async function claim() {
@@ -107,7 +109,8 @@ async function runTask(task) {
       `Parent task specialist artifacts for review: ${JSON.stringify(siblingArtifacts)}`,
       "",
       "Return a concise, evidence-backed result. Clearly label facts, assumptions, unknowns, blockers and next action. Do not claim to have accessed systems, changed files, published content, contacted customers or spent money unless an authorized tool actually did so. You have no tools in this worker process; if another role must act, explain the handoff needed."
-    ].join("\n");
+    ].join("
+");
     const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security"];
     const tools = [
       {
