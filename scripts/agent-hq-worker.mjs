@@ -9,7 +9,7 @@ const databaseUrl = process.env.DATABASE_URL;
 const maxOutputTokens = Number(process.env.AGENT_MAX_OUTPUT_TOKENS || 1200);
 const pollMs = Number(process.env.AGENT_POLL_MS || 5000);
 
-if (!role || !databaseUrl || !apiKey || !model) {
+const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security"];\nif (!role || !databaseUrl || !apiKey || !model || !allowedRoles.includes(role)) {
   console.error("Required: AGENT_ROLE, DATABASE_URL, OPENAI_API_KEY, AGENT_MODEL");
   process.exit(1);
 }
