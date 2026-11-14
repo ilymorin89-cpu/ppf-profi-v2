@@ -9,6 +9,7 @@ on:
       - "drizzle/0003_agent_hq.sql"
       - "drizzle/0004_agent_budget.sql"
       - "docs/agent-hq/**"
+      - "deploy/systemd/**"
       - "package.json"
       - ".github/workflows/agent-hq-checks.yml"
   pull_request:
@@ -18,6 +19,7 @@ on:
       - "drizzle/0003_agent_hq.sql"
       - "drizzle/0004_agent_budget.sql"
       - "docs/agent-hq/**"
+      - "deploy/systemd/**"
       - "package.json"
       - ".github/workflows/agent-hq-checks.yml"
 
