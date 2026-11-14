@@ -6,7 +6,7 @@ const workerId = process.env.AGENT_WORKER_ID || `${role || "worker"}-${process.p
 const apiKey = process.env.OPENAI_API_KEY;
 const model = process.env.AGENT_MODEL;
 const databaseUrl = process.env.DATABASE_URL;
-const maxOutputTokens = Number(process.env.AGENT_MAX_OUTPUT_TOKENS || 1200);
+const maxOutputTokens = Number(process.env.AGENT_MAX_OUTPUT_TOKENS || 1200);\nconst maxModelTurns = 4;
 const pollMs = Number(process.env.AGENT_POLL_MS || 5000);
 
 const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security"];
@@ -60,13 +60,13 @@ async function claim() {
 }
 
 async function runTask(task) {
-  const estimatedInputTokens = Math.ceil((task.objective.length + task.title.length + task.expected_output.length + JSON.stringify(task.acceptance_criteria || []).length + 2500) / 4);
+  const estimatedInputTokens = Math.ceil((task.objective.length + task.title.length + task.expected_output.length + JSON.stringify(task.acceptance_criteria || []).length + 40000) / 4);
   const [run] = await sql.begin(async tx => {
     const [budget] = await tx`SELECT * FROM agent_budget_config WHERE id=1 FOR UPDATE`;
     if (!budget || !budget.enabled || budget.daily_cap_microusd <= 0 || budget.monthly_cap_microusd <= 0 || budget.per_run_cap_microusd <= 0) {
       throw new Error("Agent budget is disabled or has zero caps; refusing model call");
     }
-    const estimate = Math.ceil((estimatedInputTokens * Number(budget.input_price_per_million_microusd) + maxOutputTokens * Number(budget.output_price_per_million_microusd)) / 1000000);
+    const estimate = Math.ceil((estimatedInputTokens * maxModelTurns * Number(budget.input_price_per_million_microusd) + maxOutputTokens * maxModelTurns * Number(budget.output_price_per_million_microusd)) / 1000000);
     if (estimate <= 0 || estimate > Number(budget.per_run_cap_microusd) || (Number(task.budget_limit_microusd) > 0 && estimate > Number(task.budget_limit_microusd))) {
       throw new Error("Estimated request exceeds per-run or task budget");
     }
@@ -97,8 +97,8 @@ async function runTask(task) {
   heartbeat.unref?.();
 
   try {
-    const inbox = await sql`SELECT from_role,kind,body,created_at FROM agent_messages WHERE to_role=${role} AND (task_id=${task.id} OR task_id=${task.parent_task_id || task.id} OR task_id IS NULL) ORDER BY created_at DESC LIMIT 12`;
-    const siblingArtifacts = task.parent_task_id ? await sql`SELECT a.id,a.created_by,a.title,a.content FROM agent_artifacts a JOIN agent_tasks c ON c.id=a.task_id WHERE c.parent_task_id=${task.parent_task_id} ORDER BY a.created_at LIMIT 20` : [];
+    const inbox = await sql`SELECT from_role,kind,left(body,1500) AS body,created_at FROM agent_messages WHERE to_role=${role} AND (task_id=${task.id} OR task_id=${task.parent_task_id || task.id} OR task_id IS NULL) ORDER BY created_at DESC LIMIT 12`;
+    const siblingArtifacts = task.parent_task_id ? await sql`SELECT a.id,a.created_by,a.title,left(a.content,3000) AS content FROM agent_artifacts a JOIN agent_tasks c ON c.id=a.task_id WHERE c.parent_task_id=${task.parent_task_id} ORDER BY a.created_at LIMIT 20` : [];
     const prompt = [
       `Task: ${task.title}`,
       `Objective: ${task.objective}`,
@@ -148,7 +148,7 @@ async function runTask(task) {
     let data;
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
-    for (let turn = 0; turn < 7; turn++) {
+    for (let turn = 0; turn < maxModelTurns; turn++) {
       const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
         headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
