@@ -1,0 +1,32 @@
+name: Agent HQ checks
+
+on:
+  pull_request:
+    paths:
+      - "scripts/agent-hq-*.mjs"
+      - "tests/agent-hq*.mjs"
+      - "drizzle/0003_agent_hq.sql"
+      - "drizzle/0004_agent_budget.sql"
+      - "docs/agent-hq/**"
+      - "package.json"
+      - ".github/workflows/agent-hq-checks.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Check Agent HQ JavaScript syntax
+        run: |
+          node --check scripts/agent-hq-bus.mjs
+          node --check scripts/agent-hq-worker.mjs
+          node --check scripts/agent-hq-supervisor.mjs
+          node --check tests/agent-hq.integration.test.mjs
