@@ -54,12 +54,10 @@ After applying the migration to a disposable PostgreSQL test database, set `AGEN
 - Apply least-privilege tool permissions per role; QA must be independent from the worker being reviewed.
 
 ## Verification status
-Static code review only. No database connection was made, no migration was applied, no live task was created, no tests were run against PostgreSQL, and no worker process was launched. The public website and production database were not changed.
+The GitHub Actions workflow now provisions a disposable PostgreSQL 16 service, applies the two Agent HQ migrations, checks JavaScript syntax and runs the integration suite. The suite covers fail-closed budget defaults, concurrent exclusive claims, lease ownership, artifact completion, retry exhaustion and lease recovery. Check the PR's latest Actions run before treating the suite as passed. No production database connection or migration was made, no live task was created, and no worker process was launched. The public website and production database were not changed.
 
 ## Remaining implementation
-1. Add provider adapter and per-run cost/token accounting with hard limits.
-2. Add persistent worker processes, scheduler/coordinator and automated lease heartbeat.
-3. Add QA objection/revision loop, evidence validation and approval queue.
-4. Add integration tests for concurrent claims, ownership, idempotency, retry exhaustion and lease expiry.
-5. Add a protected admin view for task state, messages, artifacts, approvals and spend.
-6. Deploy worker service separately from the public Next.js website after staging validation.
+1. Validate the CI run and expand tests for budget reservation races, approval integrity and supervisor QA lifecycle.
+2. Add a protected owner/admin view for task state, messages, artifacts, approvals and spend.
+3. Add least-privilege website, analytics and GitHub adapters; keep publish, deploy, ads, external messages, spend and destructive database actions approval-gated.
+4. Deploy persistent worker and supervisor processes separately from the public Next.js website only after staging validation and explicit production approval.
