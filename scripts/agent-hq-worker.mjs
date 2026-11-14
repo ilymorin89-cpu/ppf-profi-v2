@@ -39,8 +39,7 @@ function outputText(response) {
       if (part.type === "output_text" && part.text) parts.push(part.text);
     }
   }
-  return parts.join("
-").trim();
+  return parts.join("\\n").trim();
 }
 
 async function claim() {
@@ -110,8 +109,7 @@ async function runTask(task) {
       `Parent task specialist artifacts for review: ${JSON.stringify(siblingArtifacts)}`,
       "",
       "Return a concise, evidence-backed result. Clearly label facts, assumptions, unknowns, blockers and next action. Do not claim to have accessed systems, changed files, published content, contacted customers or spent money unless an authorized tool actually did so. You have no tools in this worker process; if another role must act, explain the handoff needed."
-    ].join("
-");
+    ].join("\\n");
     const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security"];
     const tools = [
       {
@@ -230,7 +228,11 @@ async function runTask(task) {
       }
       responseInput = [...(data.output || []), ...outputs];
     }
-    const result = outputText(data || {});
+    let result = outputText(data || {});
+    if (!result && role === "coordinator") {
+      const children = await sql`SELECT id,assigned_role,title,status FROM agent_tasks WHERE parent_task_id=${task.id} ORDER BY created_at`;
+      if (children.length) result = `Delegated ${children.length} specialist task(s). The supervisor will wait for their completion and independent QA before closing this parent task.\n${JSON.stringify(children)}`;
+    }
     if (!result) throw new Error("Model returned no text output");
     const usage = { input_tokens: totalInputTokens, output_tokens: totalOutputTokens };
     const [budget] = await sql`SELECT input_price_per_million_microusd,output_price_per_million_microusd FROM agent_budget_config WHERE id=1`;
