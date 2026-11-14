@@ -41,8 +41,8 @@ async function supervise() {
       }
       if (qa.status === "done") {
         const [qaArtifact] = await tx`SELECT content FROM agent_artifacts WHERE task_id=${qa.id} ORDER BY created_at DESC LIMIT 1`;
-        const verdict = (qaArtifact?.content || "").toUpperCase();
-        if (!verdict.includes("PASS") || verdict.includes("REVISE")) {
+        const verdict = (qaArtifact?.content || "").match(/VERDICT\\s*:\\s*(PASS|REVISE)/i)?.[1]?.toUpperCase();
+        if (verdict !== "PASS") {
           await tx`UPDATE agent_tasks SET status='blocked',updated_at=now() WHERE id=${parent.id}`;
           await tx`INSERT INTO agent_messages
             (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
