@@ -14,7 +14,8 @@
     "indexnow": "node scripts/indexnow.mjs",
     "agent-hq": "node scripts/agent-hq-bus.mjs",
     "agent-hq:test": "node --test tests/agent-hq.integration.test.mjs",
-    "agent-hq:worker": "node scripts/agent-hq-worker.mjs"
+    "agent-hq:worker": "node scripts/agent-hq-worker.mjs",
+    "agent-hq:supervisor": "node scripts/agent-hq-supervisor.mjs"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",
