@@ -1,10 +1,10 @@
 # Agent HQ runtime skeleton
 
-This branch adds a PostgreSQL-backed task/message transport and a basic task lifecycle CLI. It is still not an autonomous LLM runtime and is not deployed.
+This branch adds a PostgreSQL-backed task/message transport, lifecycle CLI and a first model-backed role worker. It is not deployed or running as a service.
 
 ## Files
 - `drizzle/0003_agent_hq.sql`: durable tables for tasks, messages, runs, artifacts and approvals.
-- `scripts/agent-hq-bus.mjs`: enqueue tasks, exchange role-to-role messages, inspect inboxes, claim tasks, renew leases, complete/fail tasks and recover expired leases.
+- `scripts/agent-hq-bus.mjs`: enqueue tasks, exchange role-to-role messages, inspect inboxes, claim tasks, renew leases, complete/fail tasks and recover expired leases.\n- `scripts/agent-hq-worker.mjs`: independent role process that claims tasks, calls the OpenAI Responses API, renews its lease, stores results and sends a result/status message to the coordinator.
 - `package.json`: `npm run agent-hq -- <command>` convenience script.
 
 ## Safe setup
@@ -31,7 +31,7 @@ npm run agent-hq -- recover
 - `fail` verifies lease ownership, records a status message and requeues the task until its attempt limit; exhausted tasks go to `dead_letter`.
 - `recover` requeues expired leases or dead-letters tasks whose attempts are exhausted.
 
-A worker must heartbeat at least once per minute during long work. The CLI is a manual transport/operations utility; it does not schedule heartbeats, call a model, or launch worker processes. Do not treat it as production-ready orchestration.\n\n## Integration tests\n\nAfter applying the migration to a disposable PostgreSQL test database, set `AGENT_HQ_TEST_DATABASE_URL` to that database and run `npm run agent-hq:test`. The test refuses to use the same URL as `DATABASE_URL`; it creates uniquely named test tasks and deletes them afterward. Never point it at production.
+The model-backed worker renews its lease every 45 seconds and sends results to the coordinator inbox. Run one separate process per role/worker identity. It currently has no website, shell, GitHub, ad-platform or messaging-provider tools; its only external action is a model API request. `AGENT_MAX_OUTPUT_TOKENS` defaults to 1200 and is capped at 8192. Model/API spend is not yet priced or hard-capped in currency, so do not launch unattended workers until provider billing limits are set. The CLI remains a manual transport/operations utility.\n\n## Integration tests\n\nAfter applying the migration to a disposable PostgreSQL test database, set `AGENT_HQ_TEST_DATABASE_URL` to that database and run `npm run agent-hq:test`. The test refuses to use the same URL as `DATABASE_URL`; it creates uniquely named test tasks and deletes them afterward. Never point it at production.
 
 ## Security and autonomy boundaries
 - Each worker identity may renew, complete or fail only a task whose lease it owns.
