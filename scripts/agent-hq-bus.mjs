@@ -9,39 +9,50 @@ if (!url) {
 const sql = postgres(url, { max: 1, idle_timeout: 20 });
 const [command, ...args] = process.argv.slice(2);
 
+function required(value, label) {
+  if (!value || !String(value).trim()) throw new Error(`Missing ${label}`);
+  return String(value).trim();
+}
+function taskId(value) {
+  const id = Number(value);
+  if (!Number.isSafeInteger(id) || id < 1) throw new Error("taskId must be a positive integer");
+  return id;
+}
+
 async function main() {
   if (command === "enqueue") {
     const [role, title, objective] = args;
-    if (!role || !title || !objective) throw new Error("Usage: enqueue <role> <title> <objective>");
+    required(role, "role"); required(title, "title"); required(objective, "objective");
     const [task] = await sql`INSERT INTO agent_tasks (assigned_role,title,objective,expected_output,created_by)
-      VALUES (${role},${title},${objective},'Evidence-backed result and next action','owner') RETURNING id,status,assigned_role,title`;
+      VALUES (${role},${title},${objective},'Evidence-backed result and next action','owner')
+      RETURNING id,status,assigned_role,title,created_at`;
     console.log(JSON.stringify(task, null, 2));
     return;
   }
   if (command === "send") {
-    const [from, to, taskId, kind, ...bodyParts] = args;
+    const [from, to, rawTaskId, kind, ...bodyParts] = args;
     const body = bodyParts.join(" ");
-    if (!from || !to || !kind || !body) throw new Error("Usage: send <fromRole> <toRole> <taskId|-> <kind> <message>");
+    required(from, "fromRole"); required(to, "toRole"); required(kind, "kind"); required(body, "message");
     const allowed = ["request","result","question","objection","handoff","approval_request","status"];
     if (!allowed.includes(kind)) throw new Error("Unsupported message kind");
+    const id = rawTaskId === "-" ? null : taskId(rawTaskId);
     const [message] = await sql`INSERT INTO agent_messages
       (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
-      VALUES (${taskId === "-" ? null : Number(taskId)},${randomUUID()},${from},${to},${kind},${body},${randomUUID()})
+      VALUES (${id},${randomUUID()},${from},${to},${kind},${body},${randomUUID()})
       RETURNING id,task_id,from_role,to_role,kind,body,created_at`;
     console.log(JSON.stringify(message, null, 2));
     return;
   }
   if (command === "inbox") {
-    const [role] = args;
-    if (!role) throw new Error("Usage: inbox <role>");
+    const role = required(args[0], "role");
     const rows = await sql`SELECT id,task_id,from_role,to_role,kind,body,evidence,created_at
       FROM agent_messages WHERE to_role=${role} ORDER BY created_at DESC LIMIT 50`;
     console.log(JSON.stringify(rows, null, 2));
     return;
   }
   if (command === "claim") {
-    const [role, workerId] = args;
-    if (!role || !workerId) throw new Error("Usage: claim <role> <workerId>");
+    const role = required(args[0], "role");
+    const workerId = required(args[1], "workerId");
     const rows = await sql.begin(async tx => tx`
       WITH candidate AS (
         SELECT id FROM agent_tasks
@@ -52,13 +63,78 @@ async function main() {
       UPDATE agent_tasks t SET status='claimed', lease_owner=${workerId},
         lease_until=now()+interval '3 minutes', attempts=t.attempts+1, updated_at=now()
       FROM candidate WHERE t.id=candidate.id
-      RETURNING t.id,t.title,t.objective,t.expected_output,t.acceptance_criteria,t.attempts,t.max_attempts
-    `);
+      RETURNING t.id,t.title,t.objective,t.expected_output,t.acceptance_criteria,t.attempts,t.max_attempts,t.lease_until`);
     console.log(JSON.stringify(rows[0] ?? null, null, 2));
     return;
   }
-  console.log("Agent HQ bus CLI\nCommands: enqueue, send, inbox, claim");
-  console.log("This is a transport/queue utility, not an LLM agent runtime.");
+  if (command === "heartbeat") {
+    const workerId = required(args[0], "workerId");
+    const id = taskId(args[1]);
+    const [task] = await sql`UPDATE agent_tasks SET status='running',
+      lease_until=now()+interval '3 minutes', updated_at=now()
+      WHERE id=${id} AND lease_owner=${workerId} AND status IN ('claimed','running')
+      RETURNING id,status,lease_until`;
+    if (!task) throw new Error("Lease not owned by this worker or task is no longer active");
+    console.log(JSON.stringify(task, null, 2));
+    return;
+  }
+  if (command === "complete") {
+    const workerId = required(args[0], "workerId");
+    const id = taskId(args[1]);
+    const result = required(args.slice(2).join(" "), "result");
+    const completed = await sql.begin(async tx => {
+      const [task] = await tx`UPDATE agent_tasks SET status='done',completed_at=now(),
+        lease_owner=NULL,lease_until=NULL,updated_at=now()
+        WHERE id=${id} AND lease_owner=${workerId} AND status IN ('claimed','running')
+        RETURNING id,assigned_role,title`;
+      if (!task) throw new Error("Lease not owned by this worker or task is no longer active");
+      const [artifact] = await tx`INSERT INTO agent_artifacts
+        (task_id,created_by,artifact_type,title,content)
+        VALUES (${id},${task.assigned_role},'result',${task.title},${result})
+        RETURNING id,task_id,artifact_type,title,created_at`;
+      return { task, artifact };
+    });
+    console.log(JSON.stringify(completed, null, 2));
+    return;
+  }
+  if (command === "fail") {
+    const workerId = required(args[0], "workerId");
+    const id = taskId(args[1]);
+    const reason = required(args.slice(2).join(" "), "failure reason");
+    const [task] = await sql`UPDATE agent_tasks SET
+      status=CASE WHEN attempts < max_attempts THEN 'queued' ELSE 'dead_letter' END,
+      lease_owner=NULL,lease_until=NULL,updated_at=now()
+      WHERE id=${id} AND lease_owner=${workerId} AND status IN ('claimed','running')
+      RETURNING id,status,attempts,max_attempts`;
+    if (!task) throw new Error("Lease not owned by this worker or task is no longer active");
+    await sql`INSERT INTO agent_messages
+      (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
+      SELECT ${id},${randomUUID()},assigned_role,'coordinator','status',${reason},${randomUUID()}
+      FROM agent_tasks WHERE id=${id}`;
+    console.log(JSON.stringify(task, null, 2));
+    return;
+  }
+  if (command === "recover") {
+    const rows = await sql`UPDATE agent_tasks SET
+      status=CASE WHEN attempts < max_attempts THEN 'queued' ELSE 'dead_letter' END,
+      lease_owner=NULL,lease_until=NULL,updated_at=now()
+      WHERE status IN ('claimed','running') AND lease_until < now()
+      RETURNING id,assigned_role,status,attempts,max_attempts`;
+    console.log(JSON.stringify({ recovered: rows.length, tasks: rows }, null, 2));
+    return;
+  }
+  console.log(`Agent HQ bus CLI
+Commands:
+  enqueue <role> <title> <objective>
+  send <fromRole> <toRole> <taskId|-> <kind> <message>
+  inbox <role>
+  claim <role> <workerId>
+  heartbeat <workerId> <taskId>
+  complete <workerId> <taskId> <result>
+  fail <workerId> <taskId> <reason>
+  recover
+
+This is a PostgreSQL task/message transport. It does not call an LLM or run workers by itself.`);
 }
 try { await main(); } catch (error) { console.error(error instanceof Error ? error.message : error); process.exitCode=1; }
 finally { await sql.end({ timeout: 5 }); }
