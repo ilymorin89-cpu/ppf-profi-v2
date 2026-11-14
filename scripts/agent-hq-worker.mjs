@@ -246,7 +246,7 @@ try {
   const once = process.argv.includes("--once");
   while (!stopping) {
     const task = await claim();
-    if (task) await runTask(task);
+    if (task) {\n      try { await runTask(task); }\n      catch (error) { console.error("Task setup failed; lease will expire and be recovered:", error instanceof Error ? error.message : error); }\n    }
     else if (once) break;
     else await new Promise(resolve => setTimeout(resolve, pollMs));
     if (once) break;
