@@ -175,10 +175,12 @@ async function runTask(task) {
     if (!result) throw new Error("Model returned no text output");
     const usage = data.usage || {};
     await sql.begin(async tx => {
-      const [owned] = await tx`UPDATE agent_tasks SET status='done',completed_at=now(),
+      const [owned] = await tx`UPDATE agent_tasks SET
+        status=CASE WHEN ${role}='coordinator' AND EXISTS (SELECT 1 FROM agent_tasks child WHERE child.parent_task_id=${task.id}) THEN 'review' ELSE 'done' END,
+        completed_at=CASE WHEN ${role}='coordinator' AND EXISTS (SELECT 1 FROM agent_tasks child WHERE child.parent_task_id=${task.id}) THEN NULL ELSE now() END,
         lease_owner=NULL,lease_until=NULL,updated_at=now()
         WHERE id=${task.id} AND lease_owner=${workerId} AND status IN ('claimed','running')
-        RETURNING id,title`;
+        RETURNING id,title,status`;
       if (!owned) throw new Error("Lease lost before completion; result not committed");
       await tx`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content,evidence)
         VALUES (${task.id},${role},'result',${task.title},${result},'[]'::jsonb)`;
