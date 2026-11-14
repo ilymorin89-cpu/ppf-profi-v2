@@ -123,6 +123,27 @@ UPDATE agent_budget_config SET enabled = FALSE, updated_at = now() WHERE id = 1;
 
 Keep staging data for diagnosis or remove it only through an explicitly reviewed cleanup procedure.
 
+## 8. Install systemd units
+
+The repository includes hardened unit templates in `deploy/systemd/`. After checking the paths and service account on the host:
+
+```sh
+sudo install -o root -g root -m 0644 deploy/systemd/agent-hq-worker@.service /etc/systemd/system/
+sudo install -o root -g root -m 0644 deploy/systemd/agent-hq-supervisor.service /etc/systemd/system/
+sudo systemctl daemon-reload
+```
+
+Create one environment file per role at `/etc/ppf-agent-hq/<role>.env`, including the matching `AGENT_ROLE`. Then enable only the roles needed for the staging test, for example:
+
+```sh
+sudo systemctl enable --now agent-hq-worker@coordinator
+sudo systemctl enable --now agent-hq-worker@seo
+sudo systemctl enable --now agent-hq-worker@qa_security
+sudo systemctl enable --now agent-hq-supervisor
+```
+
+Do not enable all roles by default. Add specialists only when a test requires them. Review logs with `journalctl -u agent-hq-worker@coordinator -f` and `journalctl -u agent-hq-supervisor -f`. To stop staging, stop and disable each enabled worker instance and the supervisor before disabling the budget.
+
 ## Not included yet
 
 - No production deployment, production migration, or production secrets.
