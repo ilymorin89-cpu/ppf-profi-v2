@@ -1,35 +1,51 @@
 # Agent HQ runtime skeleton
 
-This branch adds the first executable transport layer. It is not yet an autonomous LLM runtime and is not deployed.
+This branch adds a PostgreSQL-backed task/message transport and a basic task lifecycle CLI. It is still not an autonomous LLM runtime and is not deployed.
 
 ## Files
 - `drizzle/0003_agent_hq.sql`: durable tables for tasks, messages, runs, artifacts and approvals.
-- `scripts/agent-hq-bus.mjs`: CLI to enqueue tasks, send role-to-role messages, inspect an inbox and claim queued tasks with PostgreSQL `FOR UPDATE SKIP LOCKED`.
+- `scripts/agent-hq-bus.mjs`: enqueue tasks, exchange role-to-role messages, inspect inboxes, claim tasks, renew leases, complete/fail tasks and recover expired leases.
 - `package.json`: `npm run agent-hq -- <command>` convenience script.
 
 ## Safe setup
-1. Back up the PostgreSQL database.
-2. Apply `drizzle/0003_agent_hq.sql` manually in a non-production/staging database first. Do not run it against production until reviewed and approved.
-3. Set `DATABASE_URL` only in the worker's server environment. Never put it in Git, chat messages or logs.
-4. Install project dependencies, then run commands below.
+1. Back up PostgreSQL.
+2. Apply `drizzle/0003_agent_hq.sql` in a staging database first. Do not apply it to production until staging validation and a separate deployment decision.
+3. Set `DATABASE_URL` only in the server-side worker environment. Never commit it or paste it into chat.
+4. Install project dependencies and run the commands below.
 
 ## Commands
 ```bash
 npm run agent-hq -- enqueue seo 'Audit crawlability' 'Check robots, sitemap and key URLs; return evidence.'
-npm run agent-hq -- send seo web_engineer 1 request 'Please inspect the 503 response for this URL.'
+npm run agent-hq -- send seo web_engineer 1 request 'Please inspect the crawl response for this URL.'
 npm run agent-hq -- inbox web_engineer
 npm run agent-hq -- claim seo seo-worker-01
+npm run agent-hq -- heartbeat seo-worker-01 1
+npm run agent-hq -- complete seo-worker-01 1 'Findings with evidence and recommended next action'
+npm run agent-hq -- fail seo-worker-01 1 'Provider timeout'
+npm run agent-hq -- recover
 ```
 
-`claim` returns one task and marks it claimed for a three-minute lease. This initial CLI does not yet heartbeat, complete tasks, run model inference, or recover expired leases automatically. Those are the next runtime steps; do not use it as a production worker yet.
+- `claim` uses `FOR UPDATE SKIP LOCKED` and grants a three-minute lease.
+- `heartbeat` renews the lease and moves the task to running.
+- `complete` verifies lease ownership, marks the task done and saves a result artifact atomically.
+- `fail` verifies lease ownership, records a status message and requeues the task until its attempt limit; exhausted tasks go to `dead_letter`.
+- `recover` requeues expired leases or dead-letters tasks whose attempts are exhausted.
+
+A worker must heartbeat at least once per minute during long work. The CLI is a manual transport/operations utility; it does not schedule heartbeats, call a model, or launch worker processes. Do not treat it as production-ready orchestration.
+
+## Security and autonomy boundaries
+- Each worker identity may renew, complete or fail only a task whose lease it owns.
+- No worker receives database credentials in prompts or messages.
+- External publishing, advertising spend, customer outreach, destructive database changes and production deployment must remain behind explicit approval records.
+- Apply least-privilege tool permissions per role; QA must be independent from the worker being reviewed.
 
 ## Verification status
-Static review only. No database connection was made, no migration was applied, no live task was created, and no worker process was launched. These actions require a staging database and explicit deployment approval.
+Static code review only. No database connection was made, no migration was applied, no live task was created, no tests were run against PostgreSQL, and no worker process was launched. The public website and production database were not changed.
 
-## Next increments
-1. Add lease renewal, completion/failure transitions, retry recovery and dead-letter processing.
-2. Add provider adapter (OpenAI or another selected provider) with strict per-role tool allowlists and per-run cost caps.
-3. Add role-specific worker processes and coordinator loop.
-4. Add QA objection/revision loop and owner approval queue.
-5. Add automated tests for concurrent claims, idempotency, retries and lease expiry.
-6. Deploy separately from the public Next.js website after staging validation.
+## Remaining implementation
+1. Add provider adapter and per-run cost/token accounting with hard limits.
+2. Add persistent worker processes, scheduler/coordinator and automated lease heartbeat.
+3. Add QA objection/revision loop, evidence validation and approval queue.
+4. Add integration tests for concurrent claims, ownership, idempotency, retry exhaustion and lease expiry.
+5. Add a protected admin view for task state, messages, artifacts, approvals and spend.
+6. Deploy worker service separately from the public Next.js website after staging validation.
