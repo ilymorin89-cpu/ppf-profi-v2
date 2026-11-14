@@ -58,8 +58,28 @@ async function claim() {
 }
 
 async function runTask(task) {
-  const [run] = await sql`INSERT INTO agent_runs (task_id,role,worker_id,provider,model,status)
-    VALUES (${task.id},${role},${workerId},'openai',${model},'running') RETURNING id`;
+  const estimatedInputTokens = Math.ceil((task.objective.length + task.title.length + task.expected_output.length + JSON.stringify(task.acceptance_criteria || []).length + 2500) / 4);
+  const [run] = await sql.begin(async tx => {
+    const [budget] = await tx`SELECT * FROM agent_budget_config WHERE id=1 FOR UPDATE`;
+    if (!budget || !budget.enabled || budget.daily_cap_microusd <= 0 || budget.monthly_cap_microusd <= 0 || budget.per_run_cap_microusd <= 0) {
+      throw new Error("Agent budget is disabled or has zero caps; refusing model call");
+    }
+    const estimate = Math.ceil((estimatedInputTokens * Number(budget.input_price_per_million_microusd) + maxOutputTokens * Number(budget.output_price_per_million_microusd)) / 1000000);
+    if (estimate <= 0 || estimate > Number(budget.per_run_cap_microusd) || (Number(task.budget_limit_microusd) > 0 && estimate > Number(task.budget_limit_microusd))) {
+      throw new Error("Estimated request exceeds per-run or task budget");
+    }
+    const [totals] = await tx`SELECT
+      COALESCE(SUM(cost_microusd) FILTER (WHERE started_at >= date_trunc('day',now())),0) AS daily,
+      COALESCE(SUM(cost_microusd) FILTER (WHERE started_at >= date_trunc('month',now())),0) AS monthly
+      FROM agent_runs`;
+    if (Number(totals.daily) + estimate > Number(budget.daily_cap_microusd) || Number(totals.monthly) + estimate > Number(budget.monthly_cap_microusd)) {
+      throw new Error("Daily or monthly agent budget exhausted; refusing model call");
+    }
+    const [created] = await tx`INSERT INTO agent_runs
+      (task_id,role,worker_id,provider,model,status,cost_microusd)
+      VALUES (${task.id},${role},${workerId},'openai',${model},'running',${estimate}) RETURNING id`;
+    return created;
+  });
   const heartbeat = setInterval(async () => {
     try {
       const [lease] = await sql`UPDATE agent_tasks SET status='running',
@@ -189,7 +209,7 @@ async function runTask(task) {
       await tx`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content,evidence)
         VALUES (${task.id},${role},'result',${task.title},${result},'[]'::jsonb)`;
       await tx`UPDATE agent_runs SET status='succeeded',input_tokens=${usage.input_tokens || 0},
-        output_tokens=${usage.output_tokens || 0},finished_at=now() WHERE id=${run.id}`;
+        output_tokens=${usage.output_tokens || 0},cost_microusd=${actualCost},finished_at=now() WHERE id=${run.id}`;
       await tx`INSERT INTO agent_messages
         (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
         VALUES (${task.id},${randomUUID()},${role},'coordinator','result',${result.slice(0,12000)},${randomUUID()})`;
