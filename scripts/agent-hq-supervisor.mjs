@@ -9,6 +9,10 @@ const once = process.argv.includes("--once");
 let stopping = false;
 
 async function supervise() {
+  await sql`UPDATE agent_tasks SET
+    status=CASE WHEN attempts < max_attempts THEN 'queued' ELSE 'dead_letter' END,
+    lease_owner=NULL,lease_until=NULL,updated_at=now()
+    WHERE status IN ('claimed','running') AND lease_until < now()`;
   const parents = await sql`SELECT id,title FROM agent_tasks WHERE assigned_role='coordinator' AND status='review'
     ORDER BY created_at LIMIT 25`;
   for (const parent of parents) {
