@@ -13,7 +13,7 @@ async function supervise() {
     status=CASE WHEN attempts < max_attempts THEN 'queued' ELSE 'dead_letter' END,
     lease_owner=NULL,lease_until=NULL,updated_at=now()
     WHERE status IN ('claimed','running') AND lease_until < now()`;
-  const parents = await sql`SELECT id,title FROM agent_tasks WHERE assigned_role='coordinator' AND status='review'
+  const parents = await sql`SELECT id,title,objective,acceptance_criteria FROM agent_tasks WHERE assigned_role='coordinator' AND status='review'
     ORDER BY created_at LIMIT 25`;
   for (const parent of parents) {
     await sql.begin(async tx => {
@@ -38,7 +38,7 @@ async function supervise() {
         await tx`INSERT INTO agent_tasks
           (parent_task_id,assigned_role,title,objective,expected_output,acceptance_criteria,priority,created_by)
           VALUES (${parent.id},'qa_security',${`Independent QA: ${parent.title}`},
-            ${`Independently review all specialist outputs for parent task ${parent.id}. Check factual support, completeness, contradictions, risks and whether acceptance criteria are met. Send direct objections to coordinator using send_message. Return a verdict: PASS or REVISE, list blockers and cite artifact IDs. Do not approve unsupported claims.`},
+            ${`Parent objective: ${parent.objective}\nParent acceptance criteria: ${JSON.stringify(parent.acceptance_criteria || [])}\nIndependently review all specialist outputs for parent task ${parent.id}. Check factual support, completeness, contradictions, risks and whether each acceptance criterion is met. Send direct objections to coordinator using send_message. Return a verdict: PASS or REVISE, list blockers and cite artifact IDs. Do not approve unsupported claims.`},
             'Independent verdict, blockers and artifact references','["Review every specialist artifact","Identify unsupported claims and missing evidence","Return PASS or REVISE verdict"]'::jsonb,20,'supervisor')
           ON CONFLICT DO NOTHING`;
         return;
