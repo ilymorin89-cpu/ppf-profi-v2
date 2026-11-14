@@ -84,23 +84,94 @@ async function runTask(task) {
       "",
       "Return a concise, evidence-backed result. Clearly label facts, assumptions, unknowns, blockers and next action. Do not claim to have accessed systems, changed files, published content, contacted customers or spent money unless an authorized tool actually did so. You have no tools in this worker process; if another role must act, explain the handoff needed."
     ].join("\n");
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model,
-        instructions: `You are the ${role} specialist agent for PPF PROFI. ${instructions}`,
-        input: prompt,
-        max_output_tokens: maxOutputTokens
-      }),
-      signal: AbortSignal.timeout(120_000)
-    });
-    if (!response.ok) {
-      const detail = (await response.text()).slice(0, 1200);
-      throw new Error(`OpenAI API ${response.status}: ${detail}`);
+    const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security"];
+    const tools = [
+      {
+        type: "function", name: "send_message",
+        description: "Send a direct message to another specialist agent. Use this to request evidence, challenge a finding, or hand off work.",
+        parameters: {
+          type: "object", additionalProperties: false,
+          properties: {
+            to_role: { type: "string", enum: allowedRoles },
+            kind: { type: "string", enum: ["request","question","objection","handoff","status"] },
+            body: { type: "string" }
+          },
+          required: ["to_role","kind","body"]
+        },
+        strict: true
+      },
+      {
+        type: "function", name: "delegate_task",
+        description: "Create a bounded specialist task. Only coordinator may use this. Delegate only work needed to achieve the parent objective.",
+        parameters: {
+          type: "object", additionalProperties: false,
+          properties: {
+            role: { type: "string", enum: allowedRoles.filter(item => item !== "coordinator") },
+            title: { type: "string" },
+            objective: { type: "string" },
+            acceptance_criteria: { type: "array", items: { type: "string" } },
+            priority: { type: "integer" }
+          },
+          required: ["role","title","objective","acceptance_criteria","priority"]
+        },
+        strict: true
+      }
+    ];
+    let responseInput = prompt;
+    let data;
+    for (let turn = 0; turn < 7; turn++) {
+      const response = await fetch("https://api.openai.com/v1/responses", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model,
+          instructions: `You are the ${role} specialist agent for PPF PROFI. ${instructions} Use tools for direct agent-to-agent communication. Never delegate unrelated work. QA should independently challenge evidence and message coordinator with objections.`,
+          input: responseInput,
+          tools,
+          max_output_tokens: maxOutputTokens
+        }),
+        signal: AbortSignal.timeout(120_000)
+      });
+      if (!response.ok) {
+        const detail = (await response.text()).slice(0, 1200);
+        throw new Error(`OpenAI API ${response.status}: ${detail}`);
+      }
+      data = await response.json();
+      const calls = (data.output || []).filter(item => item.type === "function_call");
+      if (!calls.length) break;
+      const outputs = [];
+      for (const call of calls) {
+        const args = JSON.parse(call.arguments || "{}");
+        let result;
+        if (call.name === "send_message") {
+          if (!allowedRoles.includes(args.to_role) || !["request","question","objection","handoff","status"].includes(args.kind) || typeof args.body !== "string" || !args.body.trim()) {
+            throw new Error("Invalid send_message arguments");
+          }
+          const [message] = await sql`INSERT INTO agent_messages
+            (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
+            VALUES (${task.id},${randomUUID()},${role},${args.to_role},${args.kind},${args.body.slice(0,8000)},${randomUUID()})
+            RETURNING id,to_role,kind`;
+          result = message;
+        } else if (call.name === "delegate_task") {
+          if (role !== "coordinator") throw new Error("Only coordinator may delegate tasks");
+          if (!allowedRoles.includes(args.role) || args.role === "coordinator" || typeof args.title !== "string" || typeof args.objective !== "string") {
+            throw new Error("Invalid delegate_task arguments");
+          }
+          const [child] = await sql`INSERT INTO agent_tasks
+            (parent_task_id,assigned_role,title,objective,expected_output,acceptance_criteria,priority,created_by)
+            VALUES (${task.id},${args.role},${args.title.slice(0,240)},${args.objective.slice(0,8000)},
+              'Evidence-backed result with findings and next action',${JSON.stringify(args.acceptance_criteria || [])}::jsonb,
+              ${Math.max(1,Math.min(1000,Number(args.priority) || 100))},'coordinator')
+            RETURNING id,assigned_role,title,status`;
+          result = child;
+        } else {
+          throw new Error(`Unsupported tool: ${call.name}`);
+        }
+        outputs.push({ type: "function_call_output", call_id: call.call_id, output: JSON.stringify(result) });
+      }
+      responseInput = [...(data.output || []), ...outputs];
     }
-    const data = await response.json();
-    const result = outputText(data);
+    const result = outputText(data || {});
     if (!result) throw new Error("Model returned no text output");
     const usage = data.usage || {};
     await sql.begin(async tx => {
