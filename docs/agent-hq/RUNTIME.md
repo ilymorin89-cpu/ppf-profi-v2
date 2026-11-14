@@ -28,14 +28,18 @@ npm run agent-hq -- claim seo seo-worker-01
 npm run agent-hq -- heartbeat seo-worker-01 1
 npm run agent-hq -- complete seo-worker-01 1 'Findings with evidence and recommended next action'
 npm run agent-hq -- fail seo-worker-01 1 'Provider timeout'
-npm run agent-hq -- recover\nnpm run agent-hq -- status\nnpm run agent-hq -- approvals
+npm run agent-hq -- recover
+npm run agent-hq -- status
+npm run agent-hq -- approvals
 ```
 
 - `claim` uses `FOR UPDATE SKIP LOCKED` and grants a three-minute lease.
 - `heartbeat` renews the lease and moves the task to running.
 - `complete` verifies lease ownership, marks the task done and saves a result artifact atomically.
 - `fail` verifies lease ownership, records a status message and requeues the task until its attempt limit; exhausted tasks go to `dead_letter`.
-- `recover` requeues expired leases or dead-letters tasks whose attempts are exhausted.\n- `status` reports task counts, recorded spend, configured caps and pending approvals.\n- `approvals` lists pending approval requests without approving them.
+- `recover` requeues expired leases or dead-letters tasks whose attempts are exhausted.
+- `status` reports task counts, recorded spend, configured caps and pending approvals.
+- `approvals` lists pending approval requests without approving them.
 
 The model-backed worker renews its lease every 45 seconds and sends results to the coordinator inbox. Run one separate process per role/worker identity, plus one supervisor process. Coordinator tasks with delegated children remain in review; the supervisor waits for specialist work, creates a QA task, provides sibling artifacts to QA, then consolidates results. A blocked or failed specialist blocks the parent for manual coordinator intervention. QA must return an explicit `VERDICT: PASS`; `REVISE`, missing verdicts or unclear output block parent completion and notify coordinator. It currently has no website, shell, GitHub, ad-platform or messaging-provider tools; its only external action is a model API request. `AGENT_MAX_OUTPUT_TOKENS` defaults to 1200 and is capped at 8192. Before launch, configure the exact selected model's input/output prices and approved caps in `agent_budget_config`; the migration defaults to disabled and workers refuse model calls until valid caps are enabled. Worker reservations are conservative: they reserve estimated input plus the full output-token allowance before each call, serialize budget checks, and reconcile successful runs to reported usage. Provider-side billing limits are still recommended as a second barrier. The CLI remains a manual transport/operations utility.
 
