@@ -64,3 +64,5 @@ jobs:
           node --check tests/agent-hq.integration.test.mjs
       - name: Run PostgreSQL integration tests
         run: npm run agent-hq:test
+      - name: Verify systemd unit syntax
+        run: systemd-analyze verify deploy/systemd/agent-hq-worker@.service deploy/systemd/agent-hq-supervisor.service
