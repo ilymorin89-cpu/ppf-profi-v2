@@ -3,13 +3,13 @@
 This branch adds a PostgreSQL-backed task/message transport, lifecycle CLI and a first model-backed role worker. It is not deployed or running as a service.
 
 ## Files
-- `drizzle/0003_agent_hq.sql`: durable tables for tasks, messages, runs, artifacts and approvals.
+- `drizzle/0003_agent_hq.sql`: durable tables for tasks, messages, runs, artifacts and approvals.\n- `drizzle/0004_agent_budget.sql`: fail-closed global daily, monthly and per-run spend limits plus model token pricing.
 - `scripts/agent-hq-bus.mjs`: enqueue tasks, exchange role-to-role messages, inspect inboxes, claim tasks, renew leases, complete/fail tasks and recover expired leases.\n- `scripts/agent-hq-worker.mjs`: independent role process that claims tasks, calls the OpenAI Responses API, renews its lease, stores results and sends result/status messages. Workers can message other roles directly; only coordinator can create child tasks.\n- `scripts/agent-hq-supervisor.mjs`: watches coordinator parent tasks, waits for specialist children, creates an independent QA task and consolidates completed artifacts.
 - `package.json`: `npm run agent-hq -- <command>` convenience script.
 
 ## Safe setup
 1. Back up PostgreSQL.
-2. Apply `drizzle/0003_agent_hq.sql` in a staging database first. Do not apply it to production until staging validation and a separate deployment decision.
+2. Apply `drizzle/0003_agent_hq.sql` and `drizzle/0004_agent_budget.sql` in a staging database first. Do not apply them to production until staging validation and a separate deployment decision.\n3. Configure `agent_budget_config` in staging with explicit model pricing and caps. Values are micro-USD: 1 USD = 1,000,000 micro-USD. Example only (replace prices/caps with the actual selected model price and approved spend):\n   `UPDATE agent_budget_config SET enabled=TRUE, daily_cap_microusd=5000000, monthly_cap_microusd=50000000, per_run_cap_microusd=500000, input_price_per_million_microusd=<input_USD_per_1M_tokens*1000000>, output_price_per_million_microusd=<output_USD_per_1M_tokens*1000000>, updated_at=now() WHERE id=1;`\n   Keep `enabled=FALSE` until these values are verified.
 3. Set `DATABASE_URL` only in the server-side worker environment. Never commit it or paste it into chat.
 4. Install project dependencies and run the commands below.
 
