@@ -3,13 +3,19 @@
 This branch adds a PostgreSQL-backed task/message transport, lifecycle CLI and a first model-backed role worker. It is not deployed or running as a service.
 
 ## Files
-- `drizzle/0003_agent_hq.sql`: durable tables for tasks, messages, runs, artifacts and approvals.\n- `drizzle/0004_agent_budget.sql`: fail-closed global daily, monthly and per-run spend limits plus model token pricing.
-- `scripts/agent-hq-bus.mjs`: enqueue tasks, exchange role-to-role messages, inspect inboxes, claim tasks, renew leases, complete/fail tasks and recover expired leases.\n- `scripts/agent-hq-worker.mjs`: independent role process that claims tasks, calls the OpenAI Responses API, renews its lease, stores results and sends result/status messages. Workers can message other roles directly; only coordinator can create child tasks.\n- `scripts/agent-hq-supervisor.mjs`: watches coordinator parent tasks, waits for specialist children, creates an independent QA task and consolidates completed artifacts.
+- `drizzle/0003_agent_hq.sql`: durable tables for tasks, messages, runs, artifacts and approvals.
+- `drizzle/0004_agent_budget.sql`: fail-closed global daily, monthly and per-run spend limits plus model token pricing.
+- `scripts/agent-hq-bus.mjs`: enqueue tasks, exchange role-to-role messages, inspect inboxes, claim tasks, renew leases, complete/fail tasks and recover expired leases.
+- `scripts/agent-hq-worker.mjs`: independent role process that claims tasks, calls the OpenAI Responses API, renews its lease, stores results and sends result/status messages. Workers can message other roles directly; only coordinator can create child tasks.
+- `scripts/agent-hq-supervisor.mjs`: watches coordinator parent tasks, waits for specialist children, creates an independent QA task and consolidates completed artifacts.
 - `package.json`: `npm run agent-hq -- <command>` convenience script.
 
 ## Safe setup
 1. Back up PostgreSQL.
-2. Apply `drizzle/0003_agent_hq.sql` and `drizzle/0004_agent_budget.sql` in a staging database first. Do not apply them to production until staging validation and a separate deployment decision.\n3. Configure `agent_budget_config` in staging with explicit model pricing and caps. Values are micro-USD: 1 USD = 1,000,000 micro-USD. Example only (replace prices/caps with the actual selected model price and approved spend):\n   `UPDATE agent_budget_config SET enabled=TRUE, daily_cap_microusd=5000000, monthly_cap_microusd=50000000, per_run_cap_microusd=500000, input_price_per_million_microusd=<input_USD_per_1M_tokens*1000000>, output_price_per_million_microusd=<output_USD_per_1M_tokens*1000000>, updated_at=now() WHERE id=1;`\n   Keep `enabled=FALSE` until these values are verified.
+2. Apply `drizzle/0003_agent_hq.sql` and `drizzle/0004_agent_budget.sql` in a staging database first. Do not apply them to production until staging validation and a separate deployment decision.
+3. Configure `agent_budget_config` in staging with explicit model pricing and caps. Values are micro-USD: 1 USD = 1,000,000 micro-USD. Example only (replace prices/caps with the actual selected model price and approved spend):
+   `UPDATE agent_budget_config SET enabled=TRUE, daily_cap_microusd=5000000, monthly_cap_microusd=50000000, per_run_cap_microusd=500000, input_price_per_million_microusd=<input_USD_per_1M_tokens*1000000>, output_price_per_million_microusd=<output_USD_per_1M_tokens*1000000>, updated_at=now() WHERE id=1;`
+   Keep `enabled=FALSE` until these values are verified.
 3. Set `DATABASE_URL` only in the server-side worker environment. Never commit it or paste it into chat.
 4. Install project dependencies and run the commands below.
 
@@ -31,7 +37,11 @@ npm run agent-hq -- recover
 - `fail` verifies lease ownership, records a status message and requeues the task until its attempt limit; exhausted tasks go to `dead_letter`.
 - `recover` requeues expired leases or dead-letters tasks whose attempts are exhausted.
 
-The model-backed worker renews its lease every 45 seconds and sends results to the coordinator inbox. Run one separate process per role/worker identity, plus one supervisor process. Coordinator tasks with delegated children remain in review; the supervisor waits for specialist work, creates a QA task, provides sibling artifacts to QA, then consolidates results. A blocked or failed specialist blocks the parent for manual coordinator intervention. QA must return an explicit `VERDICT: PASS`; `REVISE`, missing verdicts or unclear output block parent completion and notify coordinator. It currently has no website, shell, GitHub, ad-platform or messaging-provider tools; its only external action is a model API request. `AGENT_MAX_OUTPUT_TOKENS` defaults to 1200 and is capped at 8192. Model/API spend is not yet priced or hard-capped in currency, so do not launch unattended workers until provider billing limits are set. The CLI remains a manual transport/operations utility.\n\n## Integration tests\n\nAfter applying the migration to a disposable PostgreSQL test database, set `AGENT_HQ_TEST_DATABASE_URL` to that database and run `npm run agent-hq:test`. The test refuses to use the same URL as `DATABASE_URL`; it creates uniquely named test tasks and deletes them afterward. Never point it at production.
+The model-backed worker renews its lease every 45 seconds and sends results to the coordinator inbox. Run one separate process per role/worker identity, plus one supervisor process. Coordinator tasks with delegated children remain in review; the supervisor waits for specialist work, creates a QA task, provides sibling artifacts to QA, then consolidates results. A blocked or failed specialist blocks the parent for manual coordinator intervention. QA must return an explicit `VERDICT: PASS`; `REVISE`, missing verdicts or unclear output block parent completion and notify coordinator. It currently has no website, shell, GitHub, ad-platform or messaging-provider tools; its only external action is a model API request. `AGENT_MAX_OUTPUT_TOKENS` defaults to 1200 and is capped at 8192. Model/API spend is not yet priced or hard-capped in currency, so do not launch unattended workers until provider billing limits are set. The CLI remains a manual transport/operations utility.
+
+## Integration tests
+
+After applying the migration to a disposable PostgreSQL test database, set `AGENT_HQ_TEST_DATABASE_URL` to that database and run `npm run agent-hq:test`. The test refuses to use the same URL as `DATABASE_URL`; it creates uniquely named test tasks and deletes them afterward. Never point it at production.
 
 ## Security and autonomy boundaries
 - Each worker identity may renew, complete or fail only a task whose lease it owns.
