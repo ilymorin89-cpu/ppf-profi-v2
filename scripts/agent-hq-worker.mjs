@@ -273,6 +273,10 @@ async function runTask(task) {
 }
 
 try {
+  const [startupBudget] = await sql`SELECT enabled,daily_cap_microusd,monthly_cap_microusd,per_run_cap_microusd FROM agent_budget_config WHERE id=1`;
+  if (!startupBudget || !startupBudget.enabled || Number(startupBudget.daily_cap_microusd) <= 0 || Number(startupBudget.monthly_cap_microusd) <= 0 || Number(startupBudget.per_run_cap_microusd) <= 0) {
+    throw new Error("Agent budget is disabled or has zero caps; worker will not claim tasks");
+  }
   const once = process.argv.includes("--once");
   while (!stopping) {
     const task = await claim();
