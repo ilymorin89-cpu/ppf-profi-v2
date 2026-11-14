@@ -143,6 +143,8 @@ async function runTask(task) {
     ];
     let responseInput = prompt;
     let data;
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
     for (let turn = 0; turn < 7; turn++) {
       const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
@@ -161,6 +163,8 @@ async function runTask(task) {
         throw new Error(`OpenAI API ${response.status}: ${detail}`);
       }
       data = await response.json();
+      totalInputTokens += Number(data.usage?.input_tokens || 0);
+      totalOutputTokens += Number(data.usage?.output_tokens || 0);
       const calls = (data.output || []).filter(item => item.type === "function_call");
       if (!calls.length) break;
       const outputs = [];
@@ -197,7 +201,9 @@ async function runTask(task) {
     }
     const result = outputText(data || {});
     if (!result) throw new Error("Model returned no text output");
-    const usage = data.usage || {};
+    const usage = { input_tokens: totalInputTokens, output_tokens: totalOutputTokens };
+    const [budget] = await sql`SELECT input_price_per_million_microusd,output_price_per_million_microusd FROM agent_budget_config WHERE id=1`;
+    const actualCost = Math.ceil((usage.input_tokens * Number(budget.input_price_per_million_microusd) + usage.output_tokens * Number(budget.output_price_per_million_microusd)) / 1000000);
     await sql.begin(async tx => {
       const [owned] = await tx`UPDATE agent_tasks SET
         status=CASE WHEN ${role}='coordinator' AND EXISTS (SELECT 1 FROM agent_tasks child WHERE child.parent_task_id=${task.id}) THEN 'review' ELSE 'done' END,
