@@ -51,7 +51,7 @@ async function claim() {
       UPDATE agent_tasks t SET status='claimed',lease_owner=${workerId},
         lease_until=now()+interval '3 minutes',attempts=t.attempts+1,updated_at=now()
       FROM candidate WHERE t.id=candidate.id
-      RETURNING t.id,t.title,t.objective,t.expected_output,t.acceptance_criteria,t.attempts,t.max_attempts,t.budget_limit_microusd
+      RETURNING t.id,t.parent_task_id,t.title,t.objective,t.expected_output,t.acceptance_criteria,t.attempts,t.max_attempts,t.budget_limit_microusd
     `;
     return task || null;
   });
@@ -75,12 +75,12 @@ async function runTask(task) {
   heartbeat.unref?.();
 
   try {
-    const inbox = await sql`SELECT from_role,kind,body,created_at FROM agent_messages WHERE to_role=${role} AND (task_id=${task.id} OR task_id IS NULL) ORDER BY created_at DESC LIMIT 12`;\n    const prompt = [
+    const inbox = await sql`SELECT from_role,kind,body,created_at FROM agent_messages WHERE to_role=${role} AND (task_id=${task.id} OR task_id=${task.parent_task_id || task.id} OR task_id IS NULL) ORDER BY created_at DESC LIMIT 12`;\n    const siblingArtifacts = task.parent_task_id ? await sql`SELECT a.id,a.created_by,a.title,a.content FROM agent_artifacts a JOIN agent_tasks c ON c.id=a.task_id WHERE c.parent_task_id=${task.parent_task_id} ORDER BY a.created_at LIMIT 20` : [];\n    const prompt = [
       `Task: ${task.title}`,
       `Objective: ${task.objective}`,
       `Expected output: ${task.expected_output}`,
       `Acceptance criteria: ${JSON.stringify(task.acceptance_criteria || [])}`,
-      `Attempt: ${task.attempts} of ${task.max_attempts}`,\n      `Recent inter-agent messages: ${JSON.stringify(inbox)}`,
+      `Attempt: ${task.attempts} of ${task.max_attempts}`,\n      `Recent inter-agent messages: ${JSON.stringify(inbox)}`,\n      `Parent task specialist artifacts for review: ${JSON.stringify(siblingArtifacts)}`,
       "",
       "Return a concise, evidence-backed result. Clearly label facts, assumptions, unknowns, blockers and next action. Do not claim to have accessed systems, changed files, published content, contacted customers or spent money unless an authorized tool actually did so. You have no tools in this worker process; if another role must act, explain the handoff needed."
     ].join("\n");
