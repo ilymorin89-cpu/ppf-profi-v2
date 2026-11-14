@@ -18,6 +18,16 @@ test("Agent HQ queue lifecycle (requires isolated migrated test database)", asyn
       RETURNING id`;
     taskId = task.id;
 
+    await t.test("budget config is fail-closed by default", async () => {
+      const [budget] = await sql`SELECT enabled,daily_cap_microusd,monthly_cap_microusd,per_run_cap_microusd
+        FROM agent_budget_config WHERE id=1`;
+      assert.ok(budget, "0004_agent_budget.sql must be applied to the test database");
+      assert.equal(budget.enabled, false);
+      assert.equal(Number(budget.daily_cap_microusd), 0);
+      assert.equal(Number(budget.monthly_cap_microusd), 0);
+      assert.equal(Number(budget.per_run_cap_microusd), 0);
+    });
+
     await t.test("parallel workers cannot claim the same task", async () => {
       const claim = worker => sql.begin(tx => tx`
         WITH candidate AS (
