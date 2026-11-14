@@ -39,7 +39,7 @@ function outputText(response) {
       if (part.type === "output_text" && part.text) parts.push(part.text);
     }
   }
-  return parts.join("\\n").trim();
+  return parts.join("\n").trim();
 }
 
 async function claim() {
@@ -109,7 +109,7 @@ async function runTask(task) {
       `Parent task specialist artifacts for review: ${JSON.stringify(siblingArtifacts)}`,
       "",
       "Return a concise, evidence-backed result. Clearly label facts, assumptions, unknowns, blockers and next action. Do not claim to have accessed systems, changed files, published content, contacted customers or spent money unless an authorized tool actually did so. You have no tools in this worker process; if another role must act, explain the handoff needed."
-    ].join("\\n");
+    ].join("\n");
     const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security"];
     const tools = [
       {
