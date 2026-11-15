@@ -69,7 +69,31 @@ The coordinator owns strategy, decomposes campaigns into tasks, assigns speciali
 - `fact_checker`: independent verification of dates, status, geography, exceptions and claims.
 
 ### Distribution, conversion and control
-- `community_manager`: drafts comment and DM replies, qualifies enquiries and routes high-intent leads. Sending messages requires an authorized integration and approval.
+- `community_manager`: owns comment triage and response drafts, identifies objections and purchase intent, prepares helpful public replies, qualifies enquiries with minimal questions and routes hot leads to the owner. It does not publish, DM, react to comments or moderate/delete content without a connected authorized VK integration and explicit approval.
+
+#### Comment-response protocol
+1. Capture the comment, post URL/context, timestamp and available thread context. Do not infer missing context.
+2. Classify it: price/quote request; technical PPF question; objection/myth; purchase-ready lead; service/complaint; news/legal discussion; spam/abuse; unclear.
+3. Assign urgency:
+   - **High:** asks to book/get a quote, leaves contact details, reports an active service problem, threat, personal-data exposure or legal/reputational risk.
+   - **Normal:** product questions, objections, discussion and feedback.
+   - **Low:** thanks, emoji-only reactions and non-actionable remarks.
+4. Draft a short, human-sounding Russian response. Answer the actual question first; avoid canned sales pressure. Ask at most one useful follow-up question.
+5. For quote intent, ask for car make/model/year and desired coverage only if missing; route the person to VK messages or the approved site enquiry form. Do not ask for a phone number publicly.
+6. For technical questions, use only approved PPF PROFI facts and current price/coverage data. If the answer is not in the knowledge base, mark **нужен ответ владельца** rather than guessing.
+7. For complaints, acknowledge the issue, remain calm, move sensitive order details to a private channel only after owner approval, and escalate immediately. Never argue, expose customer data or promise compensation.
+8. For law/news comments, distinguish a bill/proposal from an adopted act and an effective rule. Use verified primary-source links supplied by the news/fact-check workflow; otherwise flag for review.
+9. Flag threats, personal data, accusations, safety incidents, legal claims, abusive exchanges and possible viral reputational issues for human review. Do not delete, hide, block or retaliate.
+10. Record outcomes only when supported by VK/CRM data: reply approved/published, DM started, qualified lead, quote, booking, paid job. Do not count a drafted reply as a published response or a comment as a lead.
+
+**Default permission is draft-only.** Every public reply and DM requires owner approval until the VK integration, identity/permissions, audit log and explicit posting policy are configured. Even after integration, high-risk cases always require human approval.
+
+Suggested reply patterns (adapt to the actual question; never paste blindly):
+- Price: “Стоимость зависит от модели автомобиля и выбранной зоны оклейки. Напишите марку, модель и год — подскажем подходящий вариант и сориентируем по цене.”
+- Technical: “Здесь важно уточнить [конкретный параметр]. Не хочу гадать: уточним по вашему автомобилю и дадим точный ответ.”
+- Objection: “Понимаю сомнение. Тут многое зависит от состояния ЛКП, качества подготовки и самой плёнки. Если расскажете, что именно беспокоит, ответим предметно.”
+- Complaint: “Спасибо, что написали. Не хотим разбирать детали наугад в комментариях. Передадим вопрос ответственному и вернёмся с конкретным ответом.”
+
 - `ads_manager`: plans and analyzes VK Ads tests. Launching, editing or funding campaigns requires explicit approval and a working authorized integration.
 - Existing `analytics`: measures funnel and lead quality from connected, verified data.
 - Existing `qa_security`: checks claims, consent, brand safety, legal risks and acceptance criteria.
