@@ -8,6 +8,7 @@ services:
       - "8080:8080"
     environment:
       PORT: "8080"
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL:-}
     restart: unless-stopped
 
   coordinator:
