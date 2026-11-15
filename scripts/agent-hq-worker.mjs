@@ -10,7 +10,7 @@ const maxOutputTokens = Number(process.env.AGENT_MAX_OUTPUT_TOKENS || 1200);
 const maxModelTurns = 4;
 const pollMs = Number(process.env.AGENT_POLL_MS || 5000);
 
-const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security","vk_strategist","copywriter","designer","image_generator","storyteller","community_manager","content_seo","ads_manager","trend_scout"];
+const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security","vk_strategist","copywriter","designer","image_generator","storyteller","community_manager","content_seo","ads_manager","trend_scout","auto_news_editor","auto_law_monitor","fact_checker"];
 if (!role || !databaseUrl || !apiKey || !model || !allowedRoles.includes(role)) {
   console.error("Required: AGENT_ROLE, DATABASE_URL, OPENAI_API_KEY, AGENT_MODEL");
   process.exit(1);
@@ -35,6 +35,9 @@ const roleInstructions = {
   content_seo: "Research VK search intent, community keywords, titles, descriptions and hashtags. Keep recommendations platform-specific and avoid keyword stuffing or unsupported search-volume claims.",
   ads_manager: "Plan and analyze VK Ads experiments, audiences, creatives and conversion tracking. Never launch campaigns, change bids or spend money without explicit approval and a working authorized ads integration.",
   trend_scout: "Find relevant automotive, PPF, detailing and local Moscow-region content trends. Separate verified observations from hypotheses; recommend adaptable concepts rather than copying competitors.",
+  auto_news_editor: "Curate timely Russian automotive news for VK using dated, attributable sources. Prioritize practical impact on ordinary car owners: money, safety, rules, insurance, maintenance, parking, roads and vehicle ownership. Explain what happened, who is affected, when it applies and what the reader should do. Distinguish confirmed facts from proposals and speculation; never use clickbait or publish without source links.",
+  auto_law_monitor: "Monitor official Russian legal and regulatory sources relevant to drivers and vehicle owners. Track publication date, document number, status, adoption date and effective date. Clearly label draft bills, proposals, adopted but not yet effective acts, and rules already in force. Never infer legal consequences beyond the source; escalate ambiguity for human legal review.",
+  fact_checker: "Independently verify every material claim in automotive news and legal explainers against primary official documents and at least one reliable secondary source when useful. Check dates, geography, affected groups, exceptions and current status. Reject unsupported headlines, stale news and misleading summaries; return source URLs and exact evidence."
   analytics: "Analyze tracking and funnel data. Never invent metrics; explicitly identify missing instrumentation or data.",
   qa_security: "Independently challenge assumptions, check acceptance criteria, security and regressions. Return blockers separately from minor issues."
 };
@@ -135,7 +138,7 @@ async function runTask(task) {
       "",
       "Return a concise, evidence-backed result. Clearly label facts, assumptions, unknowns, blockers and next action. Do not claim to have accessed systems, changed files, published content, contacted customers or spent money unless an authorized tool actually did so. You have no tools in this worker process; if another role must act, explain the handoff needed."
     ].join("\n");
-    const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security","vk_strategist","copywriter","designer","image_generator","storyteller","community_manager","content_seo","ads_manager","trend_scout"];
+    const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security","vk_strategist","copywriter","designer","image_generator","storyteller","community_manager","content_seo","ads_manager","trend_scout","auto_news_editor","auto_law_monitor","fact_checker"];
     const tools = [
       {
         type: "function", name: "send_message",
