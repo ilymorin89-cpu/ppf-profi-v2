@@ -59,7 +59,7 @@ Required variables:
 - `DATABASE_URL`: staging-only PostgreSQL URL.
 - `OPENAI_API_KEY`: secret for this workload.
 - `AGENT_MODEL`: exact model identifier approved for staging.
-- `AGENT_ROLE`: one of `coordinator`, `web_engineer`, `seo`, `geo`, `growth`, `analytics`, `qa_security`.
+- `AGENT_ROLE`: one of `coordinator`, `web_engineer`, `seo`, `geo`, `growth`, `analytics`, `qa_security`, `vk_strategist`, `copywriter`, `designer`, `image_generator`, `storyteller`, `community_manager`, `content_seo`, `ads_manager`, `trend_scout`, `auto_news_editor`, `auto_law_monitor`, `fact_checker`.
 - Optional: `AGENT_MAX_OUTPUT_TOKENS`, `AGENT_POLL_MS`, `AGENT_WORKER_ID`.
 
 Do not paste secrets into chat, commit them, or reuse production credentials. Use the host's secret manager if available.
