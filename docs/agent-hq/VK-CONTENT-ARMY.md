@@ -71,6 +71,11 @@ The coordinator owns strategy, decomposes campaigns into tasks, assigns speciali
 ### Distribution, conversion and control
 - `community_manager`: owns comment triage and response drafts, identifies objections and purchase intent, prepares helpful public replies, qualifies enquiries with minimal questions and routes hot leads to the owner. It does not publish, DM, react to comments or moderate/delete content without a connected authorized VK integration and explicit approval.
 
+- `ads_manager`: plans and analyzes VK Ads tests. Launching, editing or funding campaigns requires explicit approval and a working authorized integration.
+- Existing `analytics`: measures funnel and lead quality from connected, verified data.
+- Existing `qa_security`: checks claims, consent, brand safety, legal risks and acceptance criteria.
+- Existing `growth`: owns measurable experiments and conversion improvements.
+
 #### Comment-response protocol
 1. Capture the comment, post URL/context, timestamp and available thread context. Do not infer missing context.
 2. Classify it: price/quote request; technical PPF question; objection/myth; purchase-ready lead; service/complaint; news/legal discussion; spam/abuse; unclear.
@@ -94,10 +99,6 @@ Suggested reply patterns (adapt to the actual question; never paste blindly):
 - Objection: “Понимаю сомнение. Тут многое зависит от состояния ЛКП, качества подготовки и самой плёнки. Если расскажете, что именно беспокоит, ответим предметно.”
 - Complaint: “Спасибо, что написали. Не хотим разбирать детали наугад в комментариях. Передадим вопрос ответственному и вернёмся с конкретным ответом.”
 
-- `ads_manager`: plans and analyzes VK Ads tests. Launching, editing or funding campaigns requires explicit approval and a working authorized integration.
-- Existing `analytics`: measures funnel and lead quality from connected, verified data.
-- Existing `qa_security`: checks claims, consent, brand safety, legal risks and acceptance criteria.
-- Existing `growth`: owns measurable experiments and conversion improvements.
 
 ## News sourcing and editorial safety
 
