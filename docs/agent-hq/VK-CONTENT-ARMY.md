@@ -194,3 +194,34 @@ Every report must state data source, date range, attribution limitations and mis
 ## Technical status and next integrations
 
 The worker role registry supports the static-content and automotive-news specialist roles, but workers are not yet connected to VK APIs, image-generation tools, legal/news feeds, analytics, CRM lead events or publication tools. No video-production roles are included in this scope. Do not represent the team as operational until these integrations, isolated Agent HQ database access, budget configuration, worker deployment and end-to-end tests are completed.
+
+## VK comment integration — implementation gate
+
+The first VK integration should be **read comments → prepare a reply draft → request owner approval**. It must not publish replies automatically.
+
+### Required owner-side setup
+- Identify the exact PPF PROFI VK community and record its numeric community ID (not a personal profile ID).
+- Create a dedicated community access token in VK community settings with only the permissions required for reading wall/comment events. Do not reuse a personal account token.
+- Configure VK Callback API for the community and enable only the events required for the pilot, starting with `wall_reply_new` and, if needed, `wall_reply_edit` / `wall_reply_delete`.
+- Configure the callback confirmation code and secret key in the VK dashboard. Store both as server environment variables; never commit them or paste them into chat.
+- Provide a publicly reachable HTTPS callback endpoint on the isolated Agent HQ service. Do not point VK callbacks at the production website process unless separately reviewed.
+
+### Required engineering safeguards
+- Verify callback secret and confirmation handshake before accepting events.
+- Validate the community ID and event type; reject unexpected payloads.
+- Deduplicate events using a stable event/comment identifier so VK retries cannot create duplicate tasks or replies.
+- Persist the raw event and normalized comment metadata to the isolated Agent HQ database; restrict retention and avoid storing unnecessary personal data.
+- Enqueue a bounded `community_manager` task with post/comment context. The model must return a draft, classification, urgency, risk flags and missing facts.
+- Send the draft to the owner through the approved internal approval channel. No VK write methods are enabled in this phase.
+- Log approval decisions and any later publishing action. Keep a kill switch that disables callback processing and all VK writes.
+- Test duplicate delivery, invalid secret, malformed payload, deleted/edited comments, rate limits, API errors and restart recovery before enabling production callbacks.
+
+### Environment configuration (names only; values remain on the server)
+- `VK_GROUP_ID`
+- `VK_COMMUNITY_TOKEN`
+- `VK_CALLBACK_SECRET`
+- `VK_CONFIRMATION_CODE`
+- `VK_API_VERSION`
+- `VK_CALLBACK_ENABLED=false` by default
+
+Do not activate the callback until the community ID, token scopes, HTTPS endpoint, isolated database, approval channel and end-to-end tests are verified. Do not enable reply publishing as part of the first integration.
