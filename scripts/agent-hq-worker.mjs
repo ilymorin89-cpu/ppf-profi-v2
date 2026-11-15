@@ -10,7 +10,7 @@ const maxOutputTokens = Number(process.env.AGENT_MAX_OUTPUT_TOKENS || 1200);
 const maxModelTurns = 4;
 const pollMs = Number(process.env.AGENT_POLL_MS || 5000);
 
-const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security","vk_strategist","copywriter","reels_creator","video_producer","designer","storyteller","community_manager","content_seo","ads_manager","trend_scout"];
+const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security","vk_strategist","copywriter","designer","image_generator","storyteller","community_manager","content_seo","ads_manager","trend_scout"];
 if (!role || !databaseUrl || !apiKey || !model || !allowedRoles.includes(role)) {
   console.error("Required: AGENT_ROLE, DATABASE_URL, OPENAI_API_KEY, AGENT_MODEL");
   process.exit(1);
@@ -28,14 +28,13 @@ const roleInstructions = {
   growth: "Focus on qualified PPF PROFI leads and conversion. Prefer measurable experiments over vanity metrics.",
   vk_strategist: "Own the VK content strategy for PPF PROFI. Build audience segments, weekly themes, content pillars and measurable campaigns. Optimize for qualified Moscow and Moscow-region PPF leads, not reach alone.",
   copywriter: "Write original VK posts, offers, carousels and lead-oriented copy in the PPF PROFI brand voice. Use clear benefits, proof and calls to action; never invent prices, warranties, customer stories or technical claims.",
-  reels_creator: "Create short vertical-video concepts and scripts for VK Clips: hook in first seconds, shot list, voiceover, on-screen captions and CTA. Use real workshop footage when available; never imply footage exists if it was not supplied.",
-  video_producer: "Turn approved scripts and available footage into precise editing briefs: sequence, duration, framing, captions, sound, cover and export specs. Do not claim to render or publish video without tools.",
-  designer: "Prepare visual concepts and production briefs for VK covers, carousels, infographics and post graphics. Respect PPF PROFI brand consistency; do not fabricate logos, certifications, reviews or before/after results.",
+  designer: "Prepare static visual layouts and design briefs for VK posts, covers, carousels, infographics and advertising creatives. Respect PPF PROFI brand consistency; do not fabricate logos, certifications, reviews or before/after results.",
+  image_generator: "Create or specify original static image assets for VK posts, covers, carousels, infographics and ads. Use supplied reference assets and approved brand elements; never present generated cars, people, workshops or results as real PPF PROFI customer work. If no image-generation tool is available, return a precise image prompt and asset brief rather than claiming an image was generated.",
   storyteller: "Transform verified workshop processes, customer questions and real cases into honest stories. Request missing facts and consent before using customer names, faces, plates or vehicle details.",
   community_manager: "Draft helpful replies to VK comments and direct messages, qualify leads with minimal questions and route purchase intent to the owner. Do not send external messages or promise availability without an authorized integration and approval.",
   content_seo: "Research VK search intent, community keywords, titles, descriptions and hashtags. Keep recommendations platform-specific and avoid keyword stuffing or unsupported search-volume claims.",
   ads_manager: "Plan and analyze VK Ads experiments, audiences, creatives and conversion tracking. Never launch campaigns, change bids or spend money without explicit approval and a working authorized ads integration.",
-  trend_scout: "Find relevant automotive, PPF, detailing and local Moscow-region content trends. Separate verified observations from hypotheses; recommend adaptable concepts rather than copying competitors."
+  trend_scout: "Find relevant automotive, PPF, detailing and local Moscow-region content trends. Separate verified observations from hypotheses; recommend adaptable concepts rather than copying competitors.",
   analytics: "Analyze tracking and funnel data. Never invent metrics; explicitly identify missing instrumentation or data.",
   qa_security: "Independently challenge assumptions, check acceptance criteria, security and regressions. Return blockers separately from minor issues."
 };
@@ -136,7 +135,7 @@ async function runTask(task) {
       "",
       "Return a concise, evidence-backed result. Clearly label facts, assumptions, unknowns, blockers and next action. Do not claim to have accessed systems, changed files, published content, contacted customers or spent money unless an authorized tool actually did so. You have no tools in this worker process; if another role must act, explain the handoff needed."
     ].join("\n");
-    const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security","vk_strategist","copywriter","reels_creator","video_producer","designer","storyteller","community_manager","content_seo","ads_manager","trend_scout"];
+    const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security","vk_strategist","copywriter","designer","image_generator","storyteller","community_manager","content_seo","ads_manager","trend_scout"];
     const tools = [
       {
         type: "function", name: "send_message",
