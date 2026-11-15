@@ -2,11 +2,55 @@
 
 ## Purpose
 
-Build a coordinated static-content operation for PPF PROFI focused on qualified enquiries for paint protection film (PPF), wrapping and detailing in Moscow and the Moscow region. The team optimizes for qualified leads and paid jobs, not vanity metrics.
+Build a coordinated VK content operation for PPF PROFI focused on qualified enquiries for paint protection film (PPF), wrapping and detailing in Moscow and the Moscow region. The team optimizes for qualified leads and paid jobs, not vanity metrics.
 
-**Initial scope:** VK posts, static image generation, infographics, carousels, covers, advertising creatives, copywriting, community response drafts and analytics. Video clips, video editing and video generation are deliberately out of scope until the business is profitable enough to fund that expansion.
+**Initial scope:** VK posts, static image generation, infographics, carousels, covers, advertising creatives, copywriting, community response drafts, automotive news and explainers of confirmed rules. Video clips, video editing and video generation are deliberately out of scope until the business is profitable enough to fund that expansion.
 
-This is an agent-role design and operating protocol. It does not itself connect VK, publish content, read analytics, create image files or spend advertising money.
+This is an agent-role design and operating protocol. It does not itself connect VK, publish content, read analytics, create image files, monitor legal feeds or spend advertising money.
+
+## Editorial strategy decision: one community, not a separate news network
+
+**Approved as a limited experiment:** add a recurring automotive news / driver-rules editorial series inside the existing PPF PROFI VK community.
+
+**Not approved at this stage:** launching several independent news groups or building a standalone general automotive media brand.
+
+Why:
+- A new group needs its own audience, moderation, publishing cadence and promotion budget.
+- A broad news feed can attract readers who have no interest in PPF and dilute the commercial purpose of PPF PROFI.
+- A recurring series lets us test whether useful automotive news attracts the right local car-owner audience without splitting followers or budget.
+- News should build trust and reach; PPF-related posts and real work examples should convert that attention into enquiries.
+
+### Four-week validation experiment
+
+Publish 2–3 carefully selected news / rules explainers per week inside the existing community, alongside useful PPF posts and real work evidence. Do not flood the feed.
+
+Prioritize stories with direct reader impact:
+1. Money: vehicle taxes, insurance, fuel, toll roads, parking, fines and ownership costs.
+2. Rules and documents: adopted changes to traffic rules, registration, inspections and driver documents.
+3. Safety: seasonal tyres, road restrictions, recalls and practical safety guidance.
+4. Ownership and maintenance: repairs, warranties, paint/body protection, washing and common costly mistakes.
+5. Moscow and Moscow region: local parking, roads, restrictions and transport changes.
+6. Market: meaningful changes in vehicle prices, availability and models, only when supported by reliable data.
+
+Each post should answer:
+- What happened?
+- Is it already law, adopted but not yet effective, a draft, a proposal or merely a discussion?
+- Who exactly is affected?
+- From what date and in which territory?
+- What practical action, if any, should a driver take?
+- Why is this relevant to a Moscow / Moscow-region car owner?
+
+### Success criteria
+
+Compare the four-week period with the preceding baseline and with PPF service posts. Track:
+- reach among the target geography where VK data allows;
+- saves, shares and meaningful comments per 1,000 reached;
+- community visits and follower growth;
+- clicks to ppfprofi.ru and VK messages;
+- qualified PPF enquiries and paid jobs attributed to the content;
+- negative signals: hides, unsubscribes, irrelevant comments and low-intent traffic.
+
+Continue the news series only if it improves relevant reach / trust without materially reducing qualified enquiry rate or overwhelming the feed. Do not judge it by raw views alone. A separate news community is a later option only if the experiment proves a distinct audience and a sustainable acquisition path.
 
 ## Roles
 
@@ -20,6 +64,9 @@ The coordinator owns strategy, decomposes campaigns into tasks, assigns speciali
 - `storyteller`: truthful workshop stories and case studies based on verified facts and consent.
 - `content_seo`: VK search intent, community keywords, titles, descriptions and hashtags.
 - `trend_scout`: relevant automotive / PPF / detailing trends and competitor observations.
+- `auto_news_editor`: timely automotive news and reader-focused explainers.
+- `auto_law_monitor`: official legal/regulatory monitoring and status/date tracking.
+- `fact_checker`: independent verification of dates, status, geography, exceptions and claims.
 
 ### Distribution, conversion and control
 - `community_manager`: drafts comment and DM replies, qualifies enquiries and routes high-intent leads. Sending messages requires an authorized integration and approval.
@@ -28,17 +75,35 @@ The coordinator owns strategy, decomposes campaigns into tasks, assigns speciali
 - Existing `qa_security`: checks claims, consent, brand safety, legal risks and acceptance criteria.
 - Existing `growth`: owns measurable experiments and conversion improvements.
 
+## News sourcing and editorial safety
+
+Preferred source order:
+1. Primary official sources: publication of legal acts, Government, State Duma, relevant ministries, Госавтоинспекция / МВД, regional and Moscow authorities, official court decisions and regulators.
+2. Reliable newsrooms and specialist automotive media for context, quotes and discovery.
+3. Social posts, forums and anonymous channels may be leads for investigation only, never sole evidence for a legal claim.
+
+For every legal post, retain:
+- official source URL and document number / title;
+- publication and adoption dates;
+- effective date (or explicit statement that it is not yet in force);
+- current status: proposal / draft / introduced / adopted / published / in force / repealed;
+- territory and affected categories;
+- exceptions and uncertainties.
+
+Never write “the law changed” when the source only describes a proposal or bill. If the official source cannot be found or the status is unclear, do not publish the claim as fact. Use cautious wording and escalate to human review. This is editorial information, not individual legal advice.
+
 ## Production workflow
 
 1. Coordinator creates a campaign brief with objective, audience, geography, offer, proof assets, CTA, deadline, budget ceiling and success metric.
 2. Strategist and trend scout research the angle and audience.
-3. Copywriter and storyteller produce text drafts based on verified information.
-4. Designer prepares the visual layout; image generator creates static imagery or returns a precise prompt and asset brief if no generation tool is connected.
-5. Content SEO checks discoverability, title, description and keywords.
-6. Community manager prepares response templates and lead qualification flow.
-7. QA checks factual claims, spelling, consent, personal data, prohibited promises and brand consistency.
-8. Coordinator packages the approved content calendar and asks the owner to approve publication.
-9. Analytics reports reach, clicks, conversations, qualified leads, booked jobs, revenue and cost per qualified lead where data is available.
+3. For news: auto-law monitor / auto-news editor collect source links and status; fact checker independently verifies claims.
+4. Copywriter writes a clear explainer with practical impact and a non-misleading headline.
+5. Designer prepares a static visual; image generator creates imagery or returns a precise prompt if no generation tool is connected.
+6. Content SEO checks title, description and keywords.
+7. Community manager prepares response templates and lead qualification flow.
+8. QA checks facts, dates, spelling, consent, personal data, legal status and brand consistency.
+9. Coordinator packages the calendar and asks the owner to approve publication.
+10. Analytics reports reach, clicks, conversations, qualified leads, booked jobs, revenue and cost per qualified lead where data is available.
 
 ## Initial content pillars
 
@@ -48,6 +113,7 @@ The coordinator owns strategy, decomposes campaigns into tasks, assigns speciali
 - Vehicle-specific intent: model-focused examples and package explanations, with current approved prices only.
 - Objection handling: durability, maintenance, washing, repair, coverage and value.
 - Local trust: real workshop, team, location and service process.
+- Driver news: important automotive rules, costs, safety and ownership changes, explained accurately for local car owners.
 - Conversion: consultation, quote request and inspection CTA.
 
 ## Static content formats
@@ -58,19 +124,20 @@ The coordinator owns strategy, decomposes campaigns into tasks, assigns speciali
 - Infographic explaining coverage, care or common misconceptions.
 - Vehicle-specific static creative.
 - Real case post using owner-supplied photographs and verified details.
+- News explainer card / carousel with source and effective date.
 - VK community cover and reusable visual templates.
 - Stories using static images and short text updates.
 
 ## Suggested pilot cadence
 
-Start with a two-week pilot, not a high-volume content flood:
-- 3 educational / expert posts per week.
+- 2–3 selected automotive news / driver-rules explainers per week for four weeks.
+- 3 educational / expert PPF posts per week.
 - 2 static image creatives per week.
 - 1 verified case study per week, only when genuine material is available.
 - Static stories / updates on 3–5 days per week when there is a useful message or real workshop material.
 - One weekly performance review and content retro.
 
-The cadence is a test hypothesis. Adjust using qualified enquiries and production capacity. No video clips or video editing in this phase.
+This is a test hypothesis, not a permanent quota. Reduce cadence if quality or engagement falls. No video clips or video editing in this phase.
 
 ## Budget and permissions
 
@@ -94,12 +161,12 @@ Primary:
 4. Cost per qualified enquiry and contribution margin, when costs are connected.
 
 Secondary:
+- Relevant local reach, saves, shares and meaningful comments.
 - Click-through rate to ppfprofi.ru / VK messages.
-- Saves, shares and meaningful comments.
 - Follower growth only as a supporting indicator.
 
 Every report must state data source, date range, attribution limitations and missing instrumentation. Do not invent metrics.
 
 ## Technical status and next integrations
 
-The worker role registry supports the static-content specialist roles, but workers are not yet connected to VK APIs, image-generation tools, analytics, CRM lead events or publication tools. No video-production roles are included in this scope. Do not represent the team as operational until these integrations, isolated Agent HQ database access, budget configuration, worker deployment and end-to-end tests are completed.
+The worker role registry supports the static-content and automotive-news specialist roles, but workers are not yet connected to VK APIs, image-generation tools, legal/news feeds, analytics, CRM lead events or publication tools. No video-production roles are included in this scope. Do not represent the team as operational until these integrations, isolated Agent HQ database access, budget configuration, worker deployment and end-to-end tests are completed.
