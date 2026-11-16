@@ -13,8 +13,8 @@ Scope: isolated Agent HQ branch only. Production website, production database `d
 - [x] 07. Add an integration test for auditable, one-time approval decisions.
 - [x] 08. Add Docker Compose configuration validation to the CI workflow definition.
 - [ ] 09. Confirm the latest CI run includes the Compose validation step and passes.
-- [ ] 10. Add tests for tool-call exhaustion and citation aggregation across Responses API turns.
-- [ ] 11. Add idempotency protection for side-effecting agent tool calls across retries.
+- [x] 10. Add unit tests for tool-call exhaustion, approval payload parsing and citation filtering across Responses API turns.
+- [x] 11. Add deterministic idempotency for agent messages and deduplication for pending approvals.
 - [ ] 12. Test supervisor parent → specialist → QA → consolidated artifact lifecycle.
 - [ ] 13. Test approval request creation, listing, approval and rejection end-to-end.
 - [ ] 14. Validate model support for hosted web search using a controlled, non-production test.
