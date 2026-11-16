@@ -1,6 +1,6 @@
 import postgres from "postgres";
 import { createHash, randomUUID } from "node:crypto";
-import { mayExecuteToolCalls, parseApprovalPayload, uniqueCitations } from "./agent-hq-helpers.mjs";
+import { calculateRunCost, mayExecuteToolCalls, parseApprovalPayload, uniqueCitations } from "./agent-hq-helpers.mjs";
 
 const role = process.env.AGENT_ROLE;
 const workerId = process.env.AGENT_WORKER_ID || `${role || "worker"}-${process.pid}`;
@@ -330,9 +330,14 @@ async function runTask(task) {
     if (!result) throw new Error("Model returned no text output");
     const usage = { input_tokens: totalInputTokens, output_tokens: totalOutputTokens };
     const [budget] = await sql`SELECT input_price_per_million_microusd,output_price_per_million_microusd,web_search_price_microusd_per_call FROM agent_budget_config WHERE id=1`;
-    const tokenCost = Math.ceil((usage.input_tokens * Number(budget.input_price_per_million_microusd) + usage.output_tokens * Number(budget.output_price_per_million_microusd)) / 1000000);
-    const searchCost = totalWebSearchCalls * Number(budget.web_search_price_microusd_per_call);
-    const actualCost = tokenCost + searchCost;
+    const { totalCost: actualCost } = calculateRunCost({
+      inputTokens: usage.input_tokens,
+      outputTokens: usage.output_tokens,
+      inputPricePerMillion: budget.input_price_per_million_microusd,
+      outputPricePerMillion: budget.output_price_per_million_microusd,
+      webSearchCalls: totalWebSearchCalls,
+      webSearchPricePerCall: budget.web_search_price_microusd_per_call
+    });
     await sql.begin(async tx => {
       const [owned] = await tx`UPDATE agent_tasks SET
         status=CASE WHEN ${role}='coordinator' AND EXISTS (SELECT 1 FROM agent_tasks child WHERE child.parent_task_id=${task.id}) THEN 'review' ELSE 'done' END,
