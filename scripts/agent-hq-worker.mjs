@@ -9,6 +9,7 @@ const model = process.env.AGENT_MODEL;
 const databaseUrl = process.env.DATABASE_URL;
 const maxOutputTokens = Number(process.env.AGENT_MAX_OUTPUT_TOKENS || 1200);
 const maxModelTurns = 4;
+const webSearchEnabled = process.env.AGENT_WEB_SEARCH_ENABLED !== "false";
 const pollMs = Number(process.env.AGENT_POLL_MS || 5000);
 
 const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security","vk_strategist","copywriter","designer","image_generator","storyteller","community_manager","content_seo","ads_manager","trend_scout","auto_news_editor","auto_law_monitor","fact_checker"];
@@ -81,7 +82,12 @@ async function runTask(task) {
       if (!budget || !budget.enabled || budget.daily_cap_microusd <= 0 || budget.monthly_cap_microusd <= 0 || budget.per_run_cap_microusd <= 0) {
         throw new Error("Agent budget is disabled or has zero caps; refusing model call");
       }
-      const estimate = Math.ceil((estimatedInputTokens * maxModelTurns * Number(budget.input_price_per_million_microusd) + maxOutputTokens * maxModelTurns * Number(budget.output_price_per_million_microusd)) / 1000000);
+      if (webSearchEnabled && Number(budget.web_search_price_microusd_per_call) <= 0) {
+        throw new Error("Hosted web-search price is not configured; refusing model call");
+      }
+      const tokenEstimate = Math.ceil((estimatedInputTokens * maxModelTurns * Number(budget.input_price_per_million_microusd) + maxOutputTokens * maxModelTurns * Number(budget.output_price_per_million_microusd)) / 1000000);
+      const searchEstimate = webSearchEnabled ? maxModelTurns * Number(budget.web_search_price_microusd_per_call) : 0;
+      const estimate = tokenEstimate + searchEstimate;
       if (estimate <= 0 || estimate > Number(budget.per_run_cap_microusd) || (Number(task.budget_limit_microusd) > 0 && estimate > Number(task.budget_limit_microusd))) {
         throw new Error("Estimated request exceeds per-run or task budget");
       }
@@ -149,7 +155,7 @@ async function runTask(task) {
       }] : []),
       // Hosted OpenAI web search gives research-capable roles live, cited sources.
       // It does not grant access to private systems or execute external actions.
-      ...(process.env.AGENT_WEB_SEARCH_ENABLED === "false" ? [] : [{ type: "web_search", search_context_size: "medium", external_web_access: true }]),
+      ...(webSearchEnabled ? [{ type: "web_search", search_context_size: "medium", external_web_access: true }] : []),
       {
         type: "function", name: "send_message",
         description: "Send a direct message to another specialist agent. Use this to request evidence, challenge a finding, or hand off work.",
