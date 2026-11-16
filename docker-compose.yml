@@ -104,7 +104,6 @@ services:
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
       AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
-      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-true}
     restart: unless-stopped
 
   analytics:
@@ -124,7 +123,6 @@ services:
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
       AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
-      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-true}
     restart: unless-stopped
 
   supervisor:
