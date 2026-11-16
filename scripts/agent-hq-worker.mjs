@@ -226,7 +226,7 @@ async function runTask(task) {
         let result;
         if (call.name === "github_read_file") {
           const path = String(args.path || "").replace(/^\\/+/, "");
-          if (!path || path.split("/").some(part => !part || part === "." || part === "..") || path.includes("\\\\") || path.length > 240) {
+          if (!path || path.split("/").some(part => !part || part === "." || part === "..") || path.includes("\\") || path.length > 240) {
             throw new Error("Invalid GitHub repository path");
           }
           const repository = process.env.AGENT_GITHUB_REPOSITORY;
