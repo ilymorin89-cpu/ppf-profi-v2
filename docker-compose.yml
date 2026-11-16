@@ -56,6 +56,54 @@ services:
       AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
     restart: unless-stopped
 
+  web_engineer:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    environment:
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-}
+      AGENT_ROLE: web_engineer
+      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
+      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-true}
+    restart: unless-stopped
+
+  seo:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    environment:
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-}
+      AGENT_ROLE: seo
+      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
+      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-true}
+    restart: unless-stopped
+
+  analytics:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    environment:
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-}
+      AGENT_ROLE: analytics
+      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
+      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-true}
+    restart: unless-stopped
+
   supervisor:
     build:
       context: .
