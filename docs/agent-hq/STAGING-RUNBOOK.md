@@ -49,7 +49,7 @@ SELECT enabled, daily_cap_microusd, monthly_cap_microusd,
 FROM agent_budget_config WHERE id = 1;
 ```
 
-Expected initial state: `enabled = false` and all caps/prices are zero. Do not enable workers until real model prices and owner-approved caps have been entered.
+Expected initial state: `enabled = false` and all caps/prices, including the web-search call price, are zero. Do not enable workers until real model prices and owner-approved caps have been entered.
 
 ## 3. Configure secrets
 
@@ -68,7 +68,7 @@ Do not paste secrets into chat, commit them, or reuse production credentials. Us
 
 ## 4. Enable a bounded staging budget
 
-Only after the exact model pricing and caps have been confirmed, update the singleton row in staging. Values are integer micro-USD; 1 USD = 1,000,000 micro-USD. The price columns are micro-USD per million tokens.
+Only after the exact model pricing and caps have been confirmed, update the singleton row in staging. Values are integer micro-USD; 1 USD = 1,000,000 micro-USD. The token price columns are micro-USD per million tokens. The hosted web-search call price is micro-USD per search call; configure it from the current provider price schedule before enabling web search.
 
 Example SQL template (replace every placeholder with an explicitly approved numeric value; do not execute with placeholders):
 
