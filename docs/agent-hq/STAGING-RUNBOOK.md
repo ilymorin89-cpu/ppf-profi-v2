@@ -37,6 +37,7 @@ Create a new database and a dedicated login for Agent HQ. Keep the migration own
 ```sh
 psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0003_agent_hq.sql
 psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0004_agent_budget.sql
+psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0005_agent_approval_idempotency.sql
 ```
 
 Use a separate staging database URL for runtime. Verify that the budget row exists and remains disabled:
@@ -60,7 +61,8 @@ Required variables:
 - `OPENAI_API_KEY`: secret for this workload.
 - `AGENT_MODEL`: exact model identifier approved for staging.
 - `AGENT_ROLE`: one of `coordinator`, `web_engineer`, `seo`, `geo`, `growth`, `analytics`, `qa_security`, `vk_strategist`, `copywriter`, `designer`, `image_generator`, `storyteller`, `community_manager`, `content_seo`, `ads_manager`, `trend_scout`, `auto_news_editor`, `auto_law_monitor`, `fact_checker`.
-- Optional: `AGENT_MAX_OUTPUT_TOKENS`, `AGENT_POLL_MS`, `AGENT_WORKER_ID`.
+- Optional: `AGENT_MAX_OUTPUT_TOKENS`, `AGENT_POLL_MS`, `AGENT_WORKER_ID`, `AGENT_WEB_SEARCH_ENABLED`.
+- Optional read-only repository inspection: `GITHUB_TOKEN` with only Contents: Read permission, `AGENT_GITHUB_REPOSITORY=owner/repo`, and `AGENT_GITHUB_REF` set to the reviewed branch. Never grant Contents: Write to the agent token.
 
 Do not paste secrets into chat, commit them, or reuse production credentials. Use the host's secret manager if available.
 
@@ -108,7 +110,7 @@ For a full delegated lifecycle, start the specialist workers with their own role
 - Confirm QA blocks a parent without an explicit `VERDICT: PASS`.
 - Confirm disabled/exhausted budgets prevent model calls and block tasks with a coordinator notification.
 - Confirm expired leases recover and retries stop at `max_attempts`.
-- Confirm pending approvals are only recorded; no worker can execute them.
+- Confirm pending approvals are only recorded; no worker can execute them. Owner decisions can be recorded through the bus CLI with `approve <id> <owner> [note]` or `reject <id> <owner> [note]`; these commands do not execute the requested action.
 - Inspect `node scripts/agent-hq-bus.mjs status` and host logs after every test.
 
 ## 7. Service management and rollback
