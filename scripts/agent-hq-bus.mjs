@@ -165,6 +165,9 @@ async function main() {
 Commands:
   enqueue <role> <title> <objective>
   send <fromRole> <toRole> <taskId|-> <kind> <message>
+  approvals
+  approve <approvalId> <decidedBy> [note]
+  reject <approvalId> <decidedBy> [note]
   inbox <role>
   claim <role> <workerId>
   heartbeat <workerId> <taskId>
