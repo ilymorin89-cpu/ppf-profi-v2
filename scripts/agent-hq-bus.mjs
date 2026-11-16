@@ -138,6 +138,20 @@ async function main() {
     console.log(JSON.stringify(rows, null, 2));
     return;
   }
+  if (command === "approve" || command === "reject") {
+    const [rawId, decidedBy, ...noteParts] = args;
+    const id = taskId(rawId);
+    const actor = required(decidedBy, "decidedBy");
+    const note = noteParts.join(" ").slice(0, 4000);
+    const status = command === "approve" ? "approved" : "rejected";
+    const [approval] = await sql`UPDATE agent_approvals
+      SET status=${status},decided_by=${actor},decision_note=${note || null},decided_at=now()
+      WHERE id=${id} AND status='pending'
+      RETURNING id,task_id,action,status,decided_by,decision_note,decided_at`;
+    if (!approval) throw new Error("Approval not found or already decided");
+    console.log(JSON.stringify(approval, null, 2));
+    return;
+  }
   if (command === "recover") {
     const rows = await sql`UPDATE agent_tasks SET
       status=CASE WHEN attempts < max_attempts THEN 'queued' ELSE 'dead_letter' END,
