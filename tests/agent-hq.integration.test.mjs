@@ -28,6 +28,24 @@ test("Agent HQ queue lifecycle (requires isolated migrated test database)", asyn
       assert.equal(Number(budget.per_run_cap_microusd), 0);
     });
 
+    await t.test("approval decisions are one-way and auditable", async () => {
+      const [pending] = await sql`INSERT INTO agent_approvals
+        (task_id,action,requested_by,payload,status)
+        VALUES (${taskId},'other','test','{"reason":"test"}'::jsonb,'pending')
+        RETURNING id`;
+      const [approved] = await sql`UPDATE agent_approvals
+        SET status='approved',decided_by='owner-test',decision_note='approved in integration test',decided_at=now()
+        WHERE id=${pending.id} AND status='pending'
+        RETURNING status,decided_by,decision_note,decided_at`;
+      assert.equal(approved.status, "approved");
+      assert.equal(approved.decided_by, "owner-test");
+      const [secondDecision] = await sql`UPDATE agent_approvals
+        SET status='rejected',decided_by='owner-test',decided_at=now()
+        WHERE id=${pending.id} AND status='pending' RETURNING id`;
+      assert.equal(secondDecision, undefined);
+      await sql`DELETE FROM agent_approvals WHERE id=${pending.id}`;
+    });
+
     await t.test("parallel workers cannot claim the same task", async () => {
       const claim = worker => sql.begin(tx => tx`
         WITH candidate AS (
