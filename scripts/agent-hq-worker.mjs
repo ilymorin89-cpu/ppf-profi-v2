@@ -321,7 +321,7 @@ async function runTask(task) {
     let result = outputText(data || {});
     const deduplicatedCitations = uniqueCitations(citations);
     if (deduplicatedCitations.length) {
-      result += "\\n\\nSources checked by the agent:\\n" + deduplicatedCitations.map(item => "- " + (item.title ? item.title + ": " : "") + item.url).join("\\n");
+      result += "\n\nSources checked by the agent:\n" + deduplicatedCitations.map(item => "- " + (item.title ? item.title + ": " : "") + item.url).join("\n");
     }
     if (!result && role === "coordinator") {
       const children = await sql`SELECT id,assigned_role,title,status FROM agent_tasks WHERE parent_task_id=${task.id} ORDER BY created_at`;
