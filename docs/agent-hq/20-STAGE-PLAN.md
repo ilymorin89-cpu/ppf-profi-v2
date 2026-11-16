@@ -19,7 +19,7 @@ Scope: isolated Agent HQ branch only. Production website, production database `d
 - [ ] 13. Test approval request creation, listing, approval and rejection end-to-end.
 - [ ] 14. Validate model support for hosted web search using a controlled, non-production test.
 - [ ] 15. Reconcile token and hosted-search charges against provider billing; code now caps built-in tool calls at 5 per response × 4 model turns and reserves up to 20 search calls before execution.
-- [ ] 16. Review all worker roles, tool permissions, prompt-injection boundaries and data exposure.
+- [ ] 16. Complete full role/permission/data-exposure review; baseline prompt-injection defenses are now added for task text, messages, artifacts, web pages and repository files.
 - [ ] 17. Review database grants and ensure Agent HQ remains isolated from production data.
 - [ ] 18. Review dependency advisories and produce a lockfile-backed patch in an isolated branch.
 - [ ] 19. Run full CI, container build and disposable end-to-end acceptance tests.
