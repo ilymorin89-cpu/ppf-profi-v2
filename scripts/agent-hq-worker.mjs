@@ -136,7 +136,7 @@ async function runTask(task) {
       `Recent inter-agent messages: ${JSON.stringify(inbox)}`,
       `Parent task specialist artifacts for review: ${JSON.stringify(siblingArtifacts)}`,
       "",
-      "Return a concise, evidence-backed result. Clearly label facts, assumptions, unknowns, blockers and next action. Do not claim to have accessed systems, changed files, published content, contacted customers or spent money unless an authorized tool actually did so. You have no tools in this worker process; if another role must act, explain the handoff needed."
+      "Return a concise, evidence-backed result. Clearly label facts, assumptions, unknowns, blockers and next action. Do not claim to have accessed systems, changed files, published content, contacted customers or spent money unless an authorized tool actually did so. Use only the tools explicitly provided in this request. You may search the web, read the configured GitHub repository, message other agents, request approval, or delegate if permitted by your role. You cannot write repository files, deploy, publish, spend money, or contact customers."
     ].join("\n");
     const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security","vk_strategist","copywriter","designer","image_generator","storyteller","community_manager","content_seo","ads_manager","trend_scout","auto_news_editor","auto_law_monitor","fact_checker"];
     const tools = [
