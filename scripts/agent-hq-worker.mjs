@@ -140,6 +140,12 @@ async function runTask(task) {
     ].join("\n");
     const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security","vk_strategist","copywriter","designer","image_generator","storyteller","community_manager","content_seo","ads_manager","trend_scout","auto_news_editor","auto_law_monitor","fact_checker"];
     const tools = [
+      ...(process.env.GITHUB_TOKEN && process.env.AGENT_GITHUB_REPOSITORY ? [{
+        type: "function", name: "github_read_file",
+        description: "Read a text file from the configured GitHub repository and branch. Read-only. Never use this to claim code was changed.",
+        parameters: { type: "object", additionalProperties: false, properties: { path: { type: "string" } }, required: ["path"] },
+        strict: true
+      }] : []),
       // Hosted OpenAI web search gives research-capable roles live, cited sources.
       // It does not grant access to private systems or execute external actions.
       ...(process.env.AGENT_WEB_SEARCH_ENABLED === "false" ? [] : [{ type: "web_search", search_context_size: "medium", external_web_access: true }]),
@@ -218,7 +224,23 @@ async function runTask(task) {
       for (const call of calls) {
         const args = JSON.parse(call.arguments || "{}");
         let result;
-        if (call.name === "send_message") {
+        if (call.name === "github_read_file") {
+          const path = String(args.path || "").replace(/^\\/+/, "");
+          if (!path || path.split("/").some(part => !part || part === "." || part === "..") || path.includes("\\\\") || path.length > 240) {
+            throw new Error("Invalid GitHub repository path");
+          }
+          const repository = process.env.AGENT_GITHUB_REPOSITORY;
+          if (!/^[A-Za-z0-9_.-]+\\/[A-Za-z0-9_.-]+$/.test(repository || "")) throw new Error("Invalid AGENT_GITHUB_REPOSITORY");
+          const ref = process.env.AGENT_GITHUB_REF || "main";
+          const endpoint = "https://api.github.com/repos/" + repository + "/contents/" + path.split("/").map(encodeURIComponent).join("/") + "?ref=" + encodeURIComponent(ref);
+          const gh = await fetch(endpoint, { headers: { Authorization: "Bearer " + process.env.GITHUB_TOKEN, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" }, signal: AbortSignal.timeout(20000) });
+          if (!gh.ok) throw new Error("GitHub read failed: HTTP " + gh.status);
+          const file = await gh.json();
+          if (file.type !== "file" || typeof file.content !== "string" || file.encoding !== "base64") throw new Error("GitHub path is not a supported text file");
+          const decoded = Buffer.from(file.content.replace(/\\s/g, ""), "base64");
+          if (decoded.length > 30000 || decoded.includes(0)) throw new Error("GitHub file exceeds 30 KB or is binary");
+          result = { repository, ref, path, sha: file.sha, content: decoded.toString("utf8") };
+        } else if (call.name === "send_message") {
           if (!allowedRoles.includes(args.to_role) || !["request","question","objection","handoff","status"].includes(args.kind) || typeof args.body !== "string" || !args.body.trim()) {
             throw new Error("Invalid send_message arguments");
           }
