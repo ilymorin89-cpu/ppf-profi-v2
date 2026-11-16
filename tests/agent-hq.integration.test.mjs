@@ -145,3 +145,93 @@ test("Agent HQ queue lifecycle (requires isolated migrated test database)", asyn
     await sql.end({ timeout: 5 });
   }
 });
+
+
+test("Agent HQ supervisor and approval lifecycle (disposable database only)", async t => {
+  assert.ok(databaseUrl, "Set AGENT_HQ_TEST_DATABASE_URL to a disposable PostgreSQL database.");
+  assert.notEqual(databaseUrl, process.env.DATABASE_URL, "Test database must not equal DATABASE_URL.");
+  const sql = postgres(databaseUrl, { max: 4, idle_timeout: 5 });
+  const marker = randomUUID();
+  let parentId;
+  try {
+    await t.test("coordinator → specialist → QA PASS → consolidated artifact", async () => {
+      const [parent] = await sql`INSERT INTO agent_tasks
+        (assigned_role,title,objective,expected_output,acceptance_criteria,created_by,status)
+        VALUES ('coordinator',${"Lifecycle " + marker},'Test parent objective','Consolidated artifact',
+          '["specialist result is included","QA must PASS"]'::jsonb,'integration-test','review')
+        RETURNING id`;
+      parentId = parent.id;
+      const [specialist] = await sql`INSERT INTO agent_tasks
+        (parent_task_id,assigned_role,title,objective,expected_output,created_by,status)
+        VALUES (${parentId},'seo','Specialist result','Produce evidence','Artifact','integration-test','done')
+        RETURNING id`;
+      await sql`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
+        VALUES (${specialist.id},'seo','result','SEO findings','Verified finding from disposable test')`;
+
+      const [qa] = await sql`INSERT INTO agent_tasks
+        (parent_task_id,assigned_role,title,objective,expected_output,acceptance_criteria,priority,created_by)
+        VALUES (${parentId},'qa_security','Independent QA','Review specialist artifact','Verdict',
+          '["Review every specialist artifact"]'::jsonb,20,'supervisor')
+        RETURNING id`;
+      const [qaPending] = await sql`SELECT id,status FROM agent_tasks WHERE id=${qa.id}`;
+      assert.equal(qaPending.status, "queued");
+
+      await sql`UPDATE agent_tasks SET status='done',completed_at=now() WHERE id=${qa.id}`;
+      await sql`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
+        VALUES (${qa.id},'qa_security','review','QA verdict','VERDICT: PASS\\nAll acceptance criteria met')`;
+
+      const [qaArtifact] = await sql`SELECT content FROM agent_artifacts WHERE task_id=${qa.id}`;
+      assert.match(qaArtifact.content, /VERDICT:\\s*PASS/i);
+      const artifacts = await sql`SELECT a.id,a.created_by,a.title,a.content
+        FROM agent_artifacts a JOIN agent_tasks c ON c.id=a.task_id
+        WHERE c.parent_task_id=${parentId} ORDER BY a.created_at`;
+      const summary = artifacts.map(a => `[Artifact ${a.id} | ${a.created_by} | ${a.title}]\\n${a.content}`).join("\\n\\n");
+      await sql`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
+        VALUES (${parentId},'supervisor','consolidated','Lifecycle result',${summary})`;
+      await sql`UPDATE agent_tasks SET status='done',completed_at=now() WHERE id=${parentId}`;
+      const [finalParent] = await sql`SELECT status FROM agent_tasks WHERE id=${parentId}`;
+      const [finalArtifact] = await sql`SELECT content FROM agent_artifacts WHERE task_id=${parentId} AND artifact_type='consolidated'`;
+      assert.equal(finalParent.status, "done");
+      assert.match(finalArtifact.content, /Verified finding from disposable test/);
+      assert.match(finalArtifact.content, /VERDICT: PASS/);
+    });
+
+    await t.test("QA without PASS blocks parent; approvals can be listed and decided once", async () => {
+      const [parent] = await sql`INSERT INTO agent_tasks
+        (assigned_role,title,objective,expected_output,created_by,status)
+        VALUES ('coordinator',${"Blocked lifecycle " + marker},'Test rejection','Blocked','integration-test','review')
+        RETURNING id`;
+      const [qa] = await sql`INSERT INTO agent_tasks
+        (parent_task_id,assigned_role,title,objective,expected_output,created_by,status)
+        VALUES (${parent.id},'qa_security','QA reject','Review','Verdict','integration-test','done')
+        RETURNING id`;
+      await sql`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
+        VALUES (${qa.id},'qa_security','review','QA verdict','VERDICT: REVISE\\nMissing evidence')`;
+      const [qaArtifact] = await sql`SELECT content FROM agent_artifacts WHERE task_id=${qa.id}`;
+      const verdict = qaArtifact.content.match(/VERDICT\\s*:\\s*(PASS|REVISE)/i)?.[1]?.toUpperCase();
+      if (verdict !== "PASS") await sql`UPDATE agent_tasks SET status='blocked' WHERE id=${parent.id}`;
+      const [blocked] = await sql`SELECT status FROM agent_tasks WHERE id=${parent.id}`;
+      assert.equal(blocked.status, "blocked");
+
+      const [pending] = await sql`INSERT INTO agent_approvals
+        (task_id,action,requested_by,payload,status)
+        VALUES (${parent.id},'spend_money','integration-test','{"reason":"test only"}'::jsonb,'pending')
+        RETURNING id`;
+      const listed = await sql`SELECT id,action,status FROM agent_approvals WHERE status='pending' AND id=${pending.id}`;
+      assert.equal(listed.length, 1);
+      const [approved] = await sql`UPDATE agent_approvals SET status='approved',decided_by='test-owner',
+        decision_note='integration approval record only',decided_at=now()
+        WHERE id=${pending.id} AND status='pending' RETURNING status,decided_by`;
+      assert.equal(approved.status, "approved");
+      assert.equal(approved.decided_by, "test-owner");
+      const [secondDecision] = await sql`UPDATE agent_approvals SET status='rejected'
+        WHERE id=${pending.id} AND status='pending' RETURNING id`;
+      assert.equal(secondDecision, undefined);
+      await sql`DELETE FROM agent_approvals WHERE id=${pending.id}`;
+      await sql`DELETE FROM agent_tasks WHERE id=${parent.id}`;
+    });
+  } finally {
+    if (parentId) await sql`DELETE FROM agent_tasks WHERE id=${parentId}`;
+    await sql.end({ timeout: 5 });
+  }
+});
