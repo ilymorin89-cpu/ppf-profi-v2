@@ -38,6 +38,7 @@ Create a new database and a dedicated login for Agent HQ. Keep the migration own
 psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0003_agent_hq.sql
 psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0004_agent_budget.sql
 psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0005_agent_approval_idempotency.sql
+psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0006_agent_web_search_budget.sql
 ```
 
 Use a separate staging database URL for runtime. Verify that the budget row exists and remains disabled:
@@ -45,7 +46,8 @@ Use a separate staging database URL for runtime. Verify that the budget row exis
 ```sql
 SELECT enabled, daily_cap_microusd, monthly_cap_microusd,
        per_run_cap_microusd, input_price_per_million_microusd,
-       output_price_per_million_microusd
+       output_price_per_million_microusd,
+       web_search_price_microusd_per_call
 FROM agent_budget_config WHERE id = 1;
 ```
 
@@ -80,6 +82,7 @@ SET enabled = TRUE,
     per_run_cap_microusd = <approved_per_run_cap>,
     input_price_per_million_microusd = <verified_input_price>,
     output_price_per_million_microusd = <verified_output_price>,
+    web_search_price_microusd_per_call = <verified_search_price_per_call>,
     updated_at = now()
 WHERE id = 1;
 ```
