@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import postgres from "postgres";
 import { randomUUID } from "node:crypto";
-import { mayExecuteToolCalls, parseApprovalPayload, uniqueCitations } from "../scripts/agent-hq-helpers.mjs";
+import { calculateRunCost, mayExecuteToolCalls, parseApprovalPayload, uniqueCitations } from "../scripts/agent-hq-helpers.mjs";
 
 test("Agent HQ worker safety helpers", async () => {
   assert.deepEqual(parseApprovalPayload('{"mode":"review"}'), { mode: "review" });
@@ -14,6 +14,15 @@ test("Agent HQ worker safety helpers", async () => {
   assert.equal(mayExecuteToolCalls(3, 4), false);
   assert.equal(mayExecuteToolCalls(-1, 4), false);
   assert.equal(mayExecuteToolCalls(0, 0), false);
+  assert.deepEqual(calculateRunCost({
+    inputTokens: 1000000, outputTokens: 500000,
+    inputPricePerMillion: 2, outputPricePerMillion: 4,
+    webSearchCalls: 3, webSearchPricePerCall: 10000
+  }), { tokenCost: 4, searchCost: 30000, totalCost: 30004 });
+  assert.throws(() => calculateRunCost({
+    inputTokens: -1, outputTokens: 0, inputPricePerMillion: 1,
+    outputPricePerMillion: 1, webSearchCalls: 0, webSearchPricePerCall: 0
+  }), /finite non-negative/);
   assert.deepEqual(uniqueCitations([
     { url: "https://example.com/a", title: "A" },
     { url: "https://example.com/a", title: "duplicate" },
