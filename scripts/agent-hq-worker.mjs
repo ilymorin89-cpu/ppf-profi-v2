@@ -140,6 +140,9 @@ async function runTask(task) {
     ].join("\n");
     const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security","vk_strategist","copywriter","designer","image_generator","storyteller","community_manager","content_seo","ads_manager","trend_scout","auto_news_editor","auto_law_monitor","fact_checker"];
     const tools = [
+      // Hosted OpenAI web search gives research-capable roles live, cited sources.
+      // It does not grant access to private systems or execute external actions.
+      ...(process.env.AGENT_WEB_SEARCH_ENABLED === "false" ? [] : [{ type: "web_search", search_context_size: "medium", external_web_access: true }]),
       {
         type: "function", name: "send_message",
         description: "Send a direct message to another specialist agent. Use this to request evidence, challenge a finding, or hand off work.",
@@ -257,6 +260,21 @@ async function runTask(task) {
       responseInput = [...(data.output || []), ...outputs];
     }
     let result = outputText(data || {});
+    const citations = [];
+    for (const item of data?.output || []) {
+      if (item.type !== "message") continue;
+      for (const part of item.content || []) {
+        for (const annotation of part.annotations || []) {
+          if (annotation.type === "url_citation" && annotation.url) {
+            citations.push({ url: annotation.url, title: annotation.title || null });
+          }
+        }
+      }
+    }
+    const uniqueCitations = [...new Map(citations.map(item => [item.url, item])).values()];
+    if (uniqueCitations.length) {
+      result += "\\n\\nSources checked by the agent:\\n" + uniqueCitations.map(item => "- " + (item.title ? item.title + ": " : "") + item.url).join("\\n");
+    }
     if (!result && role === "coordinator") {
       const children = await sql`SELECT id,assigned_role,title,status FROM agent_tasks WHERE parent_task_id=${task.id} ORDER BY created_at`;
       if (children.length) result = `Delegated ${children.length} specialist task(s). The supervisor will wait for their completion and independent QA before closing this parent task.\n${JSON.stringify(children)}`;
