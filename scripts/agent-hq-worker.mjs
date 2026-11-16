@@ -1,5 +1,5 @@
 import postgres from "postgres";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mayExecuteToolCalls, parseApprovalPayload, uniqueCitations } from "./agent-hq-helpers.mjs";
 
 const role = process.env.AGENT_ROLE;
@@ -255,9 +255,13 @@ async function runTask(task) {
           if (!allowedRoles.includes(args.to_role) || !["request","question","objection","handoff","status"].includes(args.kind) || typeof args.body !== "string" || !args.body.trim()) {
             throw new Error("Invalid send_message arguments");
           }
+          const body = args.body.slice(0,8000);
+          const idempotencyKey = "agent-" + createHash("sha256")
+            .update(JSON.stringify([task.id, role, args.to_role, args.kind, body])).digest("hex");
           const [message] = await sql`INSERT INTO agent_messages
             (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
-            VALUES (${task.id},${randomUUID()},${role},${args.to_role},${args.kind},${args.body.slice(0,8000)},${randomUUID()})
+            VALUES (${task.id},${randomUUID()},${role},${args.to_role},${args.kind},${body},${idempotencyKey})
+            ON CONFLICT (idempotency_key) DO UPDATE SET idempotency_key=EXCLUDED.idempotency_key
             RETURNING id,to_role,kind`;
           result = message;
         } else if (call.name === "request_approval") {
@@ -266,13 +270,21 @@ async function runTask(task) {
             throw new Error("Invalid request_approval arguments");
           }
           const approvalPayload = parseApprovalPayload(args.payload);
-          const [approval] = await sql`INSERT INTO agent_approvals
+          let [approval] = await sql`INSERT INTO agent_approvals
             (task_id,action,requested_by,payload,status)
             VALUES (${task.id},${args.action},${role},${JSON.stringify({ reason: args.reason.slice(0,3000), payload: approvalPayload })}::jsonb,'pending')
+            ON CONFLICT (task_id,action) WHERE status='pending' DO NOTHING
             RETURNING id,task_id,action,status,created_at`;
+          if (!approval) {
+            [approval] = await sql`SELECT id,task_id,action,status,created_at FROM agent_approvals
+              WHERE task_id=${task.id} AND action=${args.action} AND status='pending' LIMIT 1`;
+          }
+          if (!approval) throw new Error("Approval request could not be persisted");
+          const approvalMessageKey = "approval-" + approval.id;
           await sql`INSERT INTO agent_messages
             (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
-            VALUES (${task.id},${randomUUID()},${role},'coordinator','approval_request',${JSON.stringify(approval)},${randomUUID()})`;
+            VALUES (${task.id},${randomUUID()},${role},'coordinator','approval_request',${JSON.stringify(approval)},${approvalMessageKey})
+            ON CONFLICT (idempotency_key) DO NOTHING`;
           result = approval;
         } else if (call.name === "delegate_task") {
           if (role !== "coordinator") throw new Error("Only coordinator may delegate tasks");
