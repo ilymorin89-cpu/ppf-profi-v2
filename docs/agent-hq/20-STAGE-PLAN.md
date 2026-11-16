@@ -12,7 +12,7 @@ Scope: isolated Agent HQ branch only. Production website, production database `d
 - [x] 06. Add owner-facing approve/reject commands with one-way pending-state transitions.
 - [x] 07. Add an integration test for auditable, one-time approval decisions.
 - [x] 08. Add Docker Compose configuration validation to the CI workflow definition.
-- [ ] 09. Confirm the latest CI run includes the Compose validation step and passes.
+- [x] 09. Confirm CI run #113 passed both jobs, including PostgreSQL migrations 0003–0006, integration tests, systemd validation, Docker Compose validation and website build.
 - [x] 10. Add unit tests for tool-call exhaustion, approval payload parsing and citation filtering across Responses API turns.
 - [x] 11. Add deterministic idempotency for agent messages and deduplication for pending approvals.
 - [ ] 12. Test supervisor parent → specialist → QA → consolidated artifact lifecycle.
@@ -28,7 +28,7 @@ Scope: isolated Agent HQ branch only. Production website, production database `d
 ## Current known blockers
 
 1. The configured dependency set includes Next.js 16.3.5 and React/React DOM 19.2.8. Next.js 16.3.5 is inside affected ranges for later 2026 advisories; the Next.js vendor release notes identify 16.4.5 as a security release and 16.4.6 as a later stable release. React's official advisory lists 19.2.8 as affected and 19.2.9 as patched. References: [Next.js releases](https://github.com/vercel/next.js/releases), [React GHSA-xqc2-xf4c-x3h3](https://github.com/react/react/security/advisories/GHSA-xqc2-xf4c-x3h3), [React 19.2.9 release](https://github.com/facebook/react/releases/tag/v19.2.9). Do not deploy this branch until the lockfile is updated and the full build/security checks pass.
-2. The latest CI run is still in progress; verify its final result and whether it executed the newly added Docker Compose validation step.
+2. CI run #113 passed. A staging runbook omission was found and corrected: migration 0006 is now applied and its web-search price column is included in verification and the budget template.
 3. Agent worker budget remains disabled with zero caps. Workers and supervisor must remain disabled.
 4. Web-search billing and configured model compatibility have not yet been verified with a controlled runtime test.
 5. Approval commands record an owner's decision only; they do not execute the requested external action.
