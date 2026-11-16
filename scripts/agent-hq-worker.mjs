@@ -198,6 +198,7 @@ async function runTask(task) {
     let data;
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
+    const citations = [];
     for (let turn = 0; turn < maxModelTurns; turn++) {
       const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
@@ -218,8 +219,17 @@ async function runTask(task) {
       data = await response.json();
       totalInputTokens += Number(data.usage?.input_tokens || 0);
       totalOutputTokens += Number(data.usage?.output_tokens || 0);
+      for (const item of data.output || []) {
+        if (item.type !== "message") continue;
+        for (const part of item.content || []) {
+          for (const annotation of part.annotations || []) {
+            if (annotation.type === "url_citation" && annotation.url) citations.push({ url: annotation.url, title: annotation.title || null });
+          }
+        }
+      }
       const calls = (data.output || []).filter(item => item.type === "function_call");
       if (!calls.length) break;
+      if (turn === maxModelTurns - 1) throw new Error("Tool-call turn limit reached before a final answer; no further tool actions were executed");
       const outputs = [];
       for (const call of calls) {
         const args = JSON.parse(call.arguments || "{}");
@@ -254,9 +264,16 @@ async function runTask(task) {
           if (!actions.includes(args.action) || typeof args.reason !== "string" || !args.reason.trim() || typeof args.payload !== "string") {
             throw new Error("Invalid request_approval arguments");
           }
+          let approvalPayload;
+          const rawPayload = args.payload.slice(0, 12000);
+          try {
+            approvalPayload = rawPayload.trim() ? JSON.parse(rawPayload) : {};
+          } catch {
+            approvalPayload = { text: rawPayload };
+          }
           const [approval] = await sql`INSERT INTO agent_approvals
             (task_id,action,requested_by,payload,status)
-            VALUES (${task.id},${args.action},${role},${JSON.stringify({ reason: args.reason.slice(0,3000), payload: JSON.parse(args.payload) })}::jsonb,'pending')
+            VALUES (${task.id},${args.action},${role},${JSON.stringify({ reason: args.reason.slice(0,3000), payload: approvalPayload })}::jsonb,'pending')
             RETURNING id,task_id,action,status,created_at`;
           await sql`INSERT INTO agent_messages
             (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
@@ -282,17 +299,6 @@ async function runTask(task) {
       responseInput = [...(data.output || []), ...outputs];
     }
     let result = outputText(data || {});
-    const citations = [];
-    for (const item of data?.output || []) {
-      if (item.type !== "message") continue;
-      for (const part of item.content || []) {
-        for (const annotation of part.annotations || []) {
-          if (annotation.type === "url_citation" && annotation.url) {
-            citations.push({ url: annotation.url, title: annotation.title || null });
-          }
-        }
-      }
-    }
     const uniqueCitations = [...new Map(citations.map(item => [item.url, item])).values()];
     if (uniqueCitations.length) {
       result += "\\n\\nSources checked by the agent:\\n" + uniqueCitations.map(item => "- " + (item.title ? item.title + ": " : "") + item.url).join("\\n");
