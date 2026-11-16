@@ -206,6 +206,7 @@ async function runTask(task) {
     let data;
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
+    let totalWebSearchCalls = 0;
     const citations = [];
     for (let turn = 0; turn < maxModelTurns; turn++) {
       const response = await fetch("https://api.openai.com/v1/responses", {
@@ -228,6 +229,10 @@ async function runTask(task) {
       data = await response.json();
       totalInputTokens += Number(data.usage?.input_tokens || 0);
       totalOutputTokens += Number(data.usage?.output_tokens || 0);
+      totalWebSearchCalls += (data.output || []).filter(item => item.type === "web_search_call").length;
+      if (totalWebSearchCalls > maxModelTurns * maxBuiltInToolCallsPerTurn) {
+        throw new Error("Hosted web-search call count exceeded the configured per-run reservation");
+      }
       for (const item of data.output || []) {
         if (item.type !== "message") continue;
         for (const part of item.content || []) {
@@ -324,8 +329,10 @@ async function runTask(task) {
     }
     if (!result) throw new Error("Model returned no text output");
     const usage = { input_tokens: totalInputTokens, output_tokens: totalOutputTokens };
-    const [budget] = await sql`SELECT input_price_per_million_microusd,output_price_per_million_microusd FROM agent_budget_config WHERE id=1`;
-    const actualCost = Math.ceil((usage.input_tokens * Number(budget.input_price_per_million_microusd) + usage.output_tokens * Number(budget.output_price_per_million_microusd)) / 1000000);
+    const [budget] = await sql`SELECT input_price_per_million_microusd,output_price_per_million_microusd,web_search_price_microusd_per_call FROM agent_budget_config WHERE id=1`;
+    const tokenCost = Math.ceil((usage.input_tokens * Number(budget.input_price_per_million_microusd) + usage.output_tokens * Number(budget.output_price_per_million_microusd)) / 1000000);
+    const searchCost = totalWebSearchCalls * Number(budget.web_search_price_microusd_per_call);
+    const actualCost = tokenCost + searchCost;
     await sql.begin(async tx => {
       const [owned] = await tx`UPDATE agent_tasks SET
         status=CASE WHEN ${role}='coordinator' AND EXISTS (SELECT 1 FROM agent_tasks child WHERE child.parent_task_id=${task.id}) THEN 'review' ELSE 'done' END,
@@ -342,7 +349,7 @@ async function runTask(task) {
         (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
         VALUES (${task.id},${randomUUID()},${role},'coordinator','result',${result.slice(0,12000)},${randomUUID()})`;
     });
-    console.log(JSON.stringify({ taskId: task.id, status: "done", inputTokens: usage.input_tokens || 0, outputTokens: usage.output_tokens || 0 }));
+    console.log(JSON.stringify({ taskId: task.id, status: "done", inputTokens: usage.input_tokens || 0, outputTokens: usage.output_tokens || 0, webSearchCalls: totalWebSearchCalls, costMicrousd: actualCost }));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await sql.begin(async tx => {
