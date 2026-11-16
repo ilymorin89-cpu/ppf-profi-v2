@@ -38,13 +38,14 @@ test("Agent HQ queue lifecycle (requires isolated migrated test database)", asyn
     taskId = task.id;
 
     await t.test("budget config is fail-closed by default", async () => {
-      const [budget] = await sql`SELECT enabled,daily_cap_microusd,monthly_cap_microusd,per_run_cap_microusd
+      const [budget] = await sql`SELECT enabled,daily_cap_microusd,monthly_cap_microusd,per_run_cap_microusd,web_search_price_microusd_per_call
         FROM agent_budget_config WHERE id=1`;
       assert.ok(budget, "0004_agent_budget.sql must be applied to the test database");
       assert.equal(budget.enabled, false);
       assert.equal(Number(budget.daily_cap_microusd), 0);
       assert.equal(Number(budget.monthly_cap_microusd), 0);
       assert.equal(Number(budget.per_run_cap_microusd), 0);
+      assert.equal(Number(budget.web_search_price_microusd_per_call), 0);
     });
 
     await t.test("approval decisions are one-way and auditable", async () => {
