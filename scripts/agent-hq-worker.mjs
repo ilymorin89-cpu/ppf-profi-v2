@@ -9,6 +9,7 @@ const model = process.env.AGENT_MODEL;
 const databaseUrl = process.env.DATABASE_URL;
 const maxOutputTokens = Number(process.env.AGENT_MAX_OUTPUT_TOKENS || 1200);
 const maxModelTurns = 4;
+const maxBuiltInToolCallsPerTurn = 5;
 const webSearchEnabled = process.env.AGENT_WEB_SEARCH_ENABLED !== "false";
 const pollMs = Number(process.env.AGENT_POLL_MS || 5000);
 
@@ -86,7 +87,7 @@ async function runTask(task) {
         throw new Error("Hosted web-search price is not configured; refusing model call");
       }
       const tokenEstimate = Math.ceil((estimatedInputTokens * maxModelTurns * Number(budget.input_price_per_million_microusd) + maxOutputTokens * maxModelTurns * Number(budget.output_price_per_million_microusd)) / 1000000);
-      const searchEstimate = webSearchEnabled ? maxModelTurns * Number(budget.web_search_price_microusd_per_call) : 0;
+      const searchEstimate = webSearchEnabled ? maxModelTurns * maxBuiltInToolCallsPerTurn * Number(budget.web_search_price_microusd_per_call) : 0;
       const estimate = tokenEstimate + searchEstimate;
       if (estimate <= 0 || estimate > Number(budget.per_run_cap_microusd) || (Number(task.budget_limit_microusd) > 0 && estimate > Number(task.budget_limit_microusd))) {
         throw new Error("Estimated request exceeds per-run or task budget");
@@ -215,7 +216,8 @@ async function runTask(task) {
           instructions: `You are the ${role} specialist agent for PPF PROFI. ${instructions} Use tools for direct agent-to-agent communication. Never delegate unrelated work. QA should independently challenge evidence and message coordinator with objections.`,
           input: responseInput,
           tools,
-          max_output_tokens: maxOutputTokens
+          max_output_tokens: maxOutputTokens,
+          max_tool_calls: maxBuiltInToolCallsPerTurn
         }),
         signal: AbortSignal.timeout(120_000)
       });
