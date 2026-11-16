@@ -2,7 +2,7 @@ name: Agent HQ checks
 
 on:
   push:
-    branches: ["agent-hq-runtime-skeleton", "feat/vk-content-army"]
+    branches: ["agent-hq-runtime-skeleton", "feat/vk-content-army", "agent-hq/enable-research-tools"]
     paths:
       - "scripts/agent-hq-*.mjs"
       - "tests/agent-hq*.mjs"
