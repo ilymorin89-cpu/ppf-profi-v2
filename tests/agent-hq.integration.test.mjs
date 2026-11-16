@@ -2,6 +2,25 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import postgres from "postgres";
 import { randomUUID } from "node:crypto";
+import { mayExecuteToolCalls, parseApprovalPayload, uniqueCitations } from "../scripts/agent-hq-helpers.mjs";
+
+test("Agent HQ worker safety helpers", async () => {
+  assert.deepEqual(parseApprovalPayload('{"mode":"review"}'), { mode: "review" });
+  assert.deepEqual(parseApprovalPayload("plain text approval context"), { text: "plain text approval context" });
+  assert.deepEqual(parseApprovalPayload(""), {});
+  assert.equal(parseApprovalPayload("x".repeat(13000)).text.length, 12000);
+  assert.equal(mayExecuteToolCalls(0, 4), true);
+  assert.equal(mayExecuteToolCalls(2, 4), true);
+  assert.equal(mayExecuteToolCalls(3, 4), false);
+  assert.equal(mayExecuteToolCalls(-1, 4), false);
+  assert.equal(mayExecuteToolCalls(0, 0), false);
+  assert.deepEqual(uniqueCitations([
+    { url: "https://example.com/a", title: "A" },
+    { url: "https://example.com/a", title: "duplicate" },
+    { url: "javascript:alert(1)", title: "unsafe" },
+    { url: "not-a-url" }
+  ]), [{ url: "https://example.com/a", title: "A" }]);
+});
 
 const databaseUrl = process.env.AGENT_HQ_TEST_DATABASE_URL;
 test("Agent HQ queue lifecycle (requires isolated migrated test database)", async t => {
