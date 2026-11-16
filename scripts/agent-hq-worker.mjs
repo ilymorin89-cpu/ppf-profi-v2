@@ -225,19 +225,19 @@ async function runTask(task) {
         const args = JSON.parse(call.arguments || "{}");
         let result;
         if (call.name === "github_read_file") {
-          const path = String(args.path || "").replace(/^\\/+/, "");
+          const path = String(args.path || "").replace(/^\/+/, "");
           if (!path || path.split("/").some(part => !part || part === "." || part === "..") || path.includes("\\") || path.length > 240) {
             throw new Error("Invalid GitHub repository path");
           }
           const repository = process.env.AGENT_GITHUB_REPOSITORY;
-          if (!/^[A-Za-z0-9_.-]+\\/[A-Za-z0-9_.-]+$/.test(repository || "")) throw new Error("Invalid AGENT_GITHUB_REPOSITORY");
+          if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository || "")) throw new Error("Invalid AGENT_GITHUB_REPOSITORY");
           const ref = process.env.AGENT_GITHUB_REF || "main";
           const endpoint = "https://api.github.com/repos/" + repository + "/contents/" + path.split("/").map(encodeURIComponent).join("/") + "?ref=" + encodeURIComponent(ref);
           const gh = await fetch(endpoint, { headers: { Authorization: "Bearer " + process.env.GITHUB_TOKEN, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" }, signal: AbortSignal.timeout(20000) });
           if (!gh.ok) throw new Error("GitHub read failed: HTTP " + gh.status);
           const file = await gh.json();
           if (file.type !== "file" || typeof file.content !== "string" || file.encoding !== "base64") throw new Error("GitHub path is not a supported text file");
-          const decoded = Buffer.from(file.content.replace(/\\s/g, ""), "base64");
+          const decoded = Buffer.from(file.content.replace(/\s/g, ""), "base64");
           if (decoded.length > 30000 || decoded.includes(0)) throw new Error("GitHub file exceeds 30 KB or is binary");
           result = { repository, ref, path, sha: file.sha, content: decoded.toString("utf8") };
         } else if (call.name === "send_message") {
