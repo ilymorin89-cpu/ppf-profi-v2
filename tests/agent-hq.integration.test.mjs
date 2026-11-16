@@ -52,6 +52,12 @@ test("Agent HQ queue lifecycle (requires isolated migrated test database)", asyn
         (task_id,action,requested_by,payload,status)
         VALUES (${taskId},'other','test','{"reason":"test"}'::jsonb,'pending')
         RETURNING id`;
+      const [duplicatePending] = await sql`INSERT INTO agent_approvals
+        (task_id,action,requested_by,payload,status)
+        VALUES (${taskId},'other','test','{"reason":"duplicate"}'::jsonb,'pending')
+        ON CONFLICT (task_id,action) WHERE status='pending' DO NOTHING
+        RETURNING id`;
+      assert.equal(duplicatePending, undefined);
       const [approved] = await sql`UPDATE agent_approvals
         SET status='approved',decided_by='owner-test',decision_note='approved in integration test',decided_at=now()
         WHERE id=${pending.id} AND status='pending'
