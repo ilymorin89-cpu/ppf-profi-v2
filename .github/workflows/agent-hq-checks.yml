@@ -66,6 +66,8 @@ jobs:
         run: npm run agent-hq:test
       - name: Verify systemd unit syntax
         run: systemd-analyze verify deploy/systemd/agent-hq-worker@.service deploy/systemd/agent-hq-supervisor.service
+      - name: Validate Docker Compose configuration
+        run: docker compose -f docker-compose.yml config --quiet
 
   website-build:
     runs-on: ubuntu-latest
