@@ -1,5 +1,6 @@
 import postgres from "postgres";
 import { randomUUID } from "node:crypto";
+import { mayExecuteToolCalls, parseApprovalPayload, uniqueCitations } from "./agent-hq-helpers.mjs";
 
 const role = process.env.AGENT_ROLE;
 const workerId = process.env.AGENT_WORKER_ID || `${role || "worker"}-${process.pid}`;
@@ -229,7 +230,7 @@ async function runTask(task) {
       }
       const calls = (data.output || []).filter(item => item.type === "function_call");
       if (!calls.length) break;
-      if (turn === maxModelTurns - 1) throw new Error("Tool-call turn limit reached before a final answer; no further tool actions were executed");
+      if (!mayExecuteToolCalls(turn, maxModelTurns)) throw new Error("Tool-call turn limit reached before a final answer; no further tool actions were executed");
       const outputs = [];
       for (const call of calls) {
         const args = JSON.parse(call.arguments || "{}");
@@ -264,13 +265,7 @@ async function runTask(task) {
           if (!actions.includes(args.action) || typeof args.reason !== "string" || !args.reason.trim() || typeof args.payload !== "string") {
             throw new Error("Invalid request_approval arguments");
           }
-          let approvalPayload;
-          const rawPayload = args.payload.slice(0, 12000);
-          try {
-            approvalPayload = rawPayload.trim() ? JSON.parse(rawPayload) : {};
-          } catch {
-            approvalPayload = { text: rawPayload };
-          }
+          const approvalPayload = parseApprovalPayload(args.payload);
           const [approval] = await sql`INSERT INTO agent_approvals
             (task_id,action,requested_by,payload,status)
             VALUES (${task.id},${args.action},${role},${JSON.stringify({ reason: args.reason.slice(0,3000), payload: approvalPayload })}::jsonb,'pending')
@@ -299,9 +294,9 @@ async function runTask(task) {
       responseInput = [...(data.output || []), ...outputs];
     }
     let result = outputText(data || {});
-    const uniqueCitations = [...new Map(citations.map(item => [item.url, item])).values()];
-    if (uniqueCitations.length) {
-      result += "\\n\\nSources checked by the agent:\\n" + uniqueCitations.map(item => "- " + (item.title ? item.title + ": " : "") + item.url).join("\\n");
+    const deduplicatedCitations = uniqueCitations(citations);
+    if (deduplicatedCitations.length) {
+      result += "\\n\\nSources checked by the agent:\\n" + deduplicatedCitations.map(item => "- " + (item.title ? item.title + ": " : "") + item.url).join("\\n");
     }
     if (!result && role === "coordinator") {
       const children = await sql`SELECT id,assigned_role,title,status FROM agent_tasks WHERE parent_task_id=${task.id} ORDER BY created_at`;
