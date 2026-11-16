@@ -22,3 +22,16 @@ export function uniqueCitations(citations) {
   }
   return [...byUrl.values()];
 }
+
+export function calculateRunCost({ inputTokens, outputTokens, inputPricePerMillion, outputPricePerMillion, webSearchCalls, webSearchPricePerCall }) {
+  const values = [inputTokens, outputTokens, inputPricePerMillion, outputPricePerMillion, webSearchCalls, webSearchPricePerCall];
+  if (values.some(value => !Number.isFinite(Number(value)) || Number(value) < 0)) {
+    throw new Error("Run cost inputs must be finite non-negative numbers");
+  }
+  const tokenCost = Math.ceil((
+    Number(inputTokens) * Number(inputPricePerMillion) +
+    Number(outputTokens) * Number(outputPricePerMillion)
+  ) / 1000000);
+  const searchCost = Number(webSearchCalls) * Number(webSearchPricePerCall);
+  return { tokenCost, searchCost, totalCost: tokenCost + searchCost };
+}
