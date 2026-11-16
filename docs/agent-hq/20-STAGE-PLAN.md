@@ -27,7 +27,7 @@ Scope: isolated Agent HQ branch only. Production website, production database `d
 
 ## Current known blockers
 
-1. The configured dependency set includes Next.js 16.3.5 and React/React DOM 19.2.8. Public vendor advisories list fixes beyond these versions. Do not deploy this branch until the lockfile is updated and the full build/security checks pass.
+1. The configured dependency set includes Next.js 16.3.5 and React/React DOM 19.2.8. Next.js 16.3.5 is inside affected ranges for later 2026 advisories; the Next.js vendor release notes identify 16.4.5 as a security release and 16.4.6 as a later stable release. React's official advisory lists 19.2.8 as affected and 19.2.9 as patched. References: [Next.js releases](https://github.com/vercel/next.js/releases), [React GHSA-xqc2-xf4c-x3h3](https://github.com/react/react/security/advisories/GHSA-xqc2-xf4c-x3h3), [React 19.2.9 release](https://github.com/facebook/react/releases/tag/v19.2.9). Do not deploy this branch until the lockfile is updated and the full build/security checks pass.
 2. The latest CI run is still in progress; verify its final result and whether it executed the newly added Docker Compose validation step.
 3. Agent worker budget remains disabled with zero caps. Workers and supervisor must remain disabled.
 4. Web-search billing and configured model compatibility have not yet been verified with a controlled runtime test.
