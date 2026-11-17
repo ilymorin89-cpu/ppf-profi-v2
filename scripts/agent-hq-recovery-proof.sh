@@ -3,10 +3,19 @@ set -euo pipefail
 
 # Disposable-CI-only recovery proof. Never point ADMIN_URL at a production cluster.
 : "${ADMIN_URL:?ADMIN_URL must target the disposable CI PostgreSQL service}"
-command -v pg_dump >/dev/null
-command -v pg_restore >/dev/null
+command -v psql >/dev/null
 command -v createdb >/dev/null
 command -v dropdb >/dev/null
+command -v docker >/dev/null
+
+# Match the PostgreSQL 16 server's major client version. The runner's default
+# pg_dump/pg_restore may be newer and emit settings unsupported by PostgreSQL 16.
+pg16_dump() {
+  docker run --rm --network host -v "$tmpdir:/backup" postgres:16 pg_dump "$@"
+}
+pg16_restore() {
+  docker run --rm --network host -v "$tmpdir:/backup" postgres:16 pg_restore "$@"
+}
 
 for name in agent_hq_recovery_baseline agent_hq_recovery_source agent_hq_recovery_restore agent_hq_recovery_rollback; do
   if [[ ! "$name" =~ ^agent_hq_recovery_[a-z]+$ ]]; then
@@ -35,8 +44,8 @@ psql "${ADMIN_URL%/*}/agent_hq_recovery_baseline" -v ON_ERROR_STOP=1 <<'SQL'
 CREATE TABLE recovery_marker (id integer PRIMARY KEY, marker text NOT NULL);
 INSERT INTO recovery_marker VALUES (1, 'pre-migration-baseline-preserved');
 SQL
-pg_dump --format=custom --file="$tmpdir/baseline.dump" "${ADMIN_URL%/*}/agent_hq_recovery_baseline"
-pg_restore --exit-on-error --dbname="${ADMIN_URL%/*}/agent_hq_recovery_rollback" "$tmpdir/baseline.dump"
+pg16_dump --format=custom --file=/backup/baseline.dump "${ADMIN_URL%/*}/agent_hq_recovery_baseline"
+pg16_restore --exit-on-error --dbname="${ADMIN_URL%/*}/agent_hq_recovery_rollback" /backup/baseline.dump
 BASELINE_MARKER="$(psql "${ADMIN_URL%/*}/agent_hq_recovery_rollback" -Atqc "SELECT marker FROM recovery_marker WHERE id=1")"
 test "$BASELINE_MARKER" = "pre-migration-baseline-preserved"
 if psql "${ADMIN_URL%/*}/agent_hq_recovery_rollback" -Atqc "SELECT to_regclass('public.agent_tasks') IS NOT NULL" | grep -qx t; then
@@ -66,9 +75,9 @@ psql "$SOURCE_URL" -v ON_ERROR_STOP=1 <<'SQL'
 CREATE TABLE recovery_payload (id integer PRIMARY KEY, payload text NOT NULL);
 INSERT INTO recovery_payload VALUES (42, 'agent-hq-backup-roundtrip-ok');
 SQL
-pg_dump --format=custom --file="$tmpdir/agent-hq.dump" "$SOURCE_URL"
+pg16_dump --format=custom --file=/backup/agent-hq.dump "$SOURCE_URL"
 RESTORE_URL="${ADMIN_URL%/*}/agent_hq_recovery_restore"
-pg_restore --exit-on-error --dbname="$RESTORE_URL" "$tmpdir/agent-hq.dump"
+pg16_restore --exit-on-error --dbname="$RESTORE_URL" /backup/agent-hq.dump
 
 RESTORED_PAYLOAD="$(psql "$RESTORE_URL" -Atqc "SELECT payload FROM recovery_payload WHERE id=42")"
 test "$RESTORED_PAYLOAD" = "agent-hq-backup-roundtrip-ok"
