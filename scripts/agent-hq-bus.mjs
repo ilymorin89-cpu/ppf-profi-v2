@@ -1,4 +1,5 @@
 import postgres from "postgres";
+import { readFileSync, statSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { requireAgentRole, resolveApproverIdentity } from "./agent-hq-helpers.mjs";
 
@@ -142,7 +143,19 @@ async function main() {
   if (command === "approve" || command === "reject") {
     const [rawId, ...noteParts] = args;
     const id = taskId(rawId);
-    const actor = resolveApproverIdentity({ uid: typeof process.getuid === "function" ? process.getuid() : undefined, allowedUids: process.env.AGENT_HQ_APPROVER_UIDS });
+    const uid = typeof process.getuid === "function" ? process.getuid() : undefined;
+    let allowedUids;
+    if (process.env.NODE_ENV === "test") {
+      allowedUids = process.env.AGENT_HQ_TEST_APPROVER_UIDS;
+    } else {
+      const allowlistPath = "/etc/ppf-agent-hq/approver-uids";
+      const metadata = statSync(allowlistPath);
+      if (metadata.uid !== 0 || (metadata.mode & 0o022) !== 0) {
+        throw new Error("Approver allowlist must be owned by root and not group/world writable");
+      }
+      allowedUids = readFileSync(allowlistPath, "utf8");
+    }
+    const actor = resolveApproverIdentity({ uid, allowedUids });
     const note = noteParts.join(" ").slice(0, 4000);
     const status = command === "approve" ? "approved" : "rejected";
     const [approval] = await sql`UPDATE agent_approvals
