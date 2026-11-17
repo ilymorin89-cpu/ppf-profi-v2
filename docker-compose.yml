@@ -15,7 +15,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_COORDINATOR:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
@@ -36,7 +36,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_COMMUNITY_MANAGER:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
@@ -57,7 +57,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_QA_SECURITY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
@@ -78,7 +78,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_WEB_ENGINEER:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
@@ -99,7 +99,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_SEO:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
@@ -120,7 +120,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_ANALYTICS:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
@@ -141,7 +141,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_GEO:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
@@ -162,7 +162,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_GROWTH:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
@@ -183,7 +183,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_VK_STRATEGIST:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
@@ -204,7 +204,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_COPYWRITER:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
@@ -225,7 +225,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_DESIGNER:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
@@ -246,7 +246,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_IMAGE_GENERATOR:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
@@ -267,7 +267,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_STORYTELLER:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
@@ -288,7 +288,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_CONTENT_SEO:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
@@ -309,7 +309,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_ADS_MANAGER:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
@@ -330,7 +330,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_TREND_SCOUT:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
@@ -351,7 +351,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_AUTO_NEWS_EDITOR:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
@@ -372,7 +372,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_AUTO_LAW_MONITOR:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
@@ -393,7 +393,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_FACT_CHECKER:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
@@ -414,9 +414,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ supervisor disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-supervisor.mjs"]
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ]; then echo 'Agent HQ supervisor disabled; test mode required'; exec sleep infinity; fi; exec node scripts/agent-hq-supervisor.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_SUPERVISOR:-}
       AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      NODE_ENV: ${NODE_ENV:-test}
       AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
     restart: unless-stopped
