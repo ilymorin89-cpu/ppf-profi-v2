@@ -1,5 +1,6 @@
 -- Disposable CI-only least-privilege harness. NEVER apply to a live database.
 -- The CI database owner is the only seeding/cleanup identity.
+-- Keep the DO block's opening and closing dollar-quote delimiters identical.
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='agent_seo') THEN CREATE ROLE agent_seo LOGIN PASSWORD 'ci_agent_seo' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS; END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='agent_qa_security') THEN CREATE ROLE agent_qa_security LOGIN PASSWORD 'ci_agent_qa' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS; END IF;
