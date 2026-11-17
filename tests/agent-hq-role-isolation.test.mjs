@@ -170,3 +170,73 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
     await Promise.all([admin.end(),seo.end(),qa.end(),coordinator.end(),supervisor.end()]);
   }
 });
+
+
+test("real SEO worker completes a task using its restricted PostgreSQL login and mocked model", {
+  skip: !adminUrl || !roleUrls.seo
+}, async () => {
+  const admin = postgres(adminUrl, { max: 2 });
+  const marker = randomUUID();
+  let taskId;
+  let previousBudget;
+  try {
+    [previousBudget] = await admin`SELECT * FROM agent_budget_config WHERE id=1`;
+    await admin`UPDATE agent_budget_config SET enabled=true,
+      daily_cap_microusd=100000000,monthly_cap_microusd=100000000,
+      per_run_cap_microusd=10000000,
+      input_price_per_million_microusd=1000,
+      output_price_per_million_microusd=1000,
+      web_search_price_microusd_per_call=0 WHERE id=1`;
+    const [task] = await admin`INSERT INTO agent_tasks
+      (assigned_role,title,objective,expected_output,created_by)
+      VALUES ('seo',${"RLS worker E2E " + marker},'Run real worker under SEO login',
+        'Evidence-backed result','integration-test') RETURNING id`;
+    taskId = task.id;
+    const child = spawnSync(process.execPath, [
+      "scripts/agent-hq-worker.mjs", "--once"
+    ], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        NODE_ENV: "test",
+        DATABASE_URL: roleUrls.seo,
+        AGENT_ROLE: "seo",
+        AGENT_WORKER_ID: "seo-rls-e2e",
+        OPENAI_API_KEY: "test-key-never-used",
+        AGENT_MODEL: "gpt-4.1-mini",
+        AGENT_WEB_SEARCH_ENABLED: "false",
+        AGENT_HQ_TEST_RESPONSES_JSON: JSON.stringify({
+          output: [{
+            type: "message",
+            content: [{ type: "output_text", text: "CI mocked evidence: worker completed under RLS." }]
+          }],
+          usage: { input_tokens: 0, output_tokens: 0 }
+        })
+      }
+    });
+    assert.equal(child.status, 0, child.stderr || child.stdout);
+    const [completed] = await admin`SELECT status,attempts FROM agent_tasks WHERE id=${taskId}`;
+    assert.equal(completed.status, "done");
+    assert.equal(completed.attempts, 1);
+    const artifacts = await admin`SELECT content FROM agent_artifacts
+      WHERE task_id=${taskId} AND created_by='seo'`;
+    assert.equal(artifacts.length, 1);
+    assert.match(artifacts[0].content, /CI mocked evidence/);
+    const runs = await admin`SELECT status FROM agent_runs WHERE task_id=${taskId}`;
+    assert.equal(runs.length, 1);
+    assert.equal(runs[0].status, "succeeded");
+  } finally {
+    if (taskId) await admin`DELETE FROM agent_tasks WHERE id=${taskId}`;
+    if (previousBudget) await admin`UPDATE agent_budget_config SET
+      enabled=${previousBudget.enabled},
+      daily_cap_microusd=${previousBudget.daily_cap_microusd},
+      monthly_cap_microusd=${previousBudget.monthly_cap_microusd},
+      per_run_cap_microusd=${previousBudget.per_run_cap_microusd},
+      input_price_per_million_microusd=${previousBudget.input_price_per_million_microusd},
+      output_price_per_million_microusd=${previousBudget.output_price_per_million_microusd},
+      web_search_price_microusd_per_call=${previousBudget.web_search_price_microusd_per_call}
+      WHERE id=1`;
+    await admin.end();
+  }
+});
