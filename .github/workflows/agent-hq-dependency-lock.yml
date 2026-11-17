@@ -45,7 +45,7 @@ jobs:
           npm ci --ignore-scripts --no-audit --no-fund
       - name: Apply non-breaking dependency security fixes
         run: |
-          npm audit fix --ignore-scripts --no-fund
+          npm audit fix --ignore-scripts --no-fund || echo 'Some advisories require manual review; severity gate below decides whether the candidate can proceed.'
           npm ci --ignore-scripts --no-audit --no-fund
       - name: Audit dependency tree (fail on high or critical advisories)
         run: npm audit --audit-level=high
