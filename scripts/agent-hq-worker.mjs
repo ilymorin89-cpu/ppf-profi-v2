@@ -115,23 +115,9 @@ async function runTask(task) {
     )`;
     if (!reserved) throw new Error("Trusted budget reservation returned no run");
     run = { id: reserved.run_id, reservationId: reserved.reservation_id };
-    await sql`SELECT set_config('agent.worker_id', ${workerId}, false)`;
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     if (/budget|cap|price configuration|reservation/i.test(reason)) {
-      await sql.begin(async tx => {
-        await tx`UPDATE agent_tasks SET status='blocked',lease_owner=NULL,lease_until=NULL,updated_at=now()
-          WHERE id=${task.id} AND lease_owner=${workerId}`;
-        await tx`INSERT INTO agent_messages
-          (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
-          VALUES (${task.id},${randomUUID()},${role},'coordinator','status',${reason.slice(0,4000)},${randomUUID()})`;
-      });
-    }
-    throw error;
-  }
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    if (/budget|cap|exceeds per-run/i.test(reason)) {
       await sql.begin(async tx => {
         await tx`UPDATE agent_tasks SET status='blocked',lease_owner=NULL,lease_until=NULL,updated_at=now()
           WHERE id=${task.id} AND lease_owner=${workerId}`;
@@ -356,7 +342,7 @@ async function runTask(task) {
     const settlementKey = "agent-settle-" + createHash("sha256")
       .update(JSON.stringify([run.id, totalInputTokens, totalOutputTokens, totalWebSearchCalls])).digest("hex");
     const [settled] = await sql`SELECT public.agent_budget_settle(
-      ${run.reservationId}, ${workerId}, ${totalInputTokens}, ${totalOutputTokens},
+      ${run.reservationId}, ${totalInputTokens}, ${totalOutputTokens},
       ${totalWebSearchCalls}, ${settlementKey}, NULL
     ) AS cost`;
     const actualCost = settled.cost;
@@ -383,7 +369,7 @@ async function runTask(task) {
         status=CASE WHEN attempts < max_attempts THEN 'queued' ELSE 'dead_letter' END,
         lease_owner=NULL,lease_until=NULL,updated_at=now()
         WHERE id=${task.id} AND lease_owner=${workerId}`;
-      await tx`SELECT public.agent_budget_mark_unknown(${run.reservationId}, ${workerId}, ${message.slice(0,500)}, ${'agent-unknown-' + run.id})`;
+      await tx`SELECT public.agent_budget_mark_unknown(${run.reservationId}, ${message.slice(0,500)}, ${'agent-unknown-' + run.id})`;
       await tx`INSERT INTO agent_messages
         (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
         VALUES (${task.id},${randomUUID()},${role},'coordinator','status',${message.slice(0,4000)},${randomUUID()})`;
