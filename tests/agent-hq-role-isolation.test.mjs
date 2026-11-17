@@ -955,6 +955,13 @@ test("Agent HQ budget function owner has only the column privileges required by 
   try {
     const [privileges]=await admin`SELECT
       has_table_privilege('agent_hq_budget_owner','public.agent_runs','SELECT') AS run_select,
+      has_table_privilege('agent_hq_budget_owner','public.agent_runs','INSERT') AS run_table_insert,
+      has_table_privilege('agent_hq_budget_owner','public.agent_runs','UPDATE') AS run_table_update,
+      has_table_privilege('agent_hq_budget_owner','public.agent_budget_reservations','UPDATE') AS reservation_table_update,
+      has_table_privilege('agent_hq_budget_owner','public.agent_budget_ledger','UPDATE') AS ledger_update,
+      has_table_privilege('agent_hq_budget_owner','public.agent_budget_ledger','DELETE') AS ledger_delete,
+      has_table_privilege('agent_hq_budget_owner','public.agent_budget_settlements','UPDATE') AS settlement_update,
+      has_table_privilege('agent_hq_budget_owner','public.agent_budget_settlements','DELETE') AS settlement_delete,
       has_column_privilege('agent_hq_budget_owner','public.agent_runs','id','SELECT') AS run_select_id,
       has_column_privilege('agent_hq_budget_owner','public.agent_runs','cost_microusd','SELECT') AS run_select_cost,
       has_column_privilege('agent_hq_budget_owner','public.agent_runs','task_id','INSERT') AS run_insert_task,
@@ -968,6 +975,13 @@ test("Agent HQ budget function owner has only the column privileges required by 
       has_column_privilege('agent_hq_budget_owner','public.agent_budget_reservations','worker_id','UPDATE') AS reservation_update_worker,
       has_column_privilege('agent_hq_budget_owner','public.agent_budget_reservations','reserved_microusd','UPDATE') AS reservation_update_amount`;
     assert.equal(privileges.run_select,false);
+    assert.equal(privileges.run_table_insert,false);
+    assert.equal(privileges.run_table_update,false);
+    assert.equal(privileges.reservation_table_update,false);
+    assert.equal(privileges.ledger_update,false);
+    assert.equal(privileges.ledger_delete,false);
+    assert.equal(privileges.settlement_update,false);
+    assert.equal(privileges.settlement_delete,false);
     assert.equal(privileges.run_select_id,true);
     assert.equal(privileges.run_select_cost,false);
     assert.equal(privileges.run_insert_task,true);
