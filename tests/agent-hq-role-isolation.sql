@@ -581,7 +581,6 @@ CREATE POLICY run_update_own_role ON agent_runs FOR UPDATE USING (
   session_user='agent_supervisor' OR role = COALESCE(public.agent_role_for_session(), '__denied__')
 );
 CREATE POLICY run_budget_owner_update ON agent_runs FOR UPDATE TO agent_hq_budget_owner_ci USING(true) WITH CHECK(true);
-CREATE POLICY run_budget_owner_update ON agent_runs FOR UPDATE TO agent_hq_budget_owner_ci USING(true) WITH CHECK(true);
 
 CREATE POLICY task_access_read_own ON agent_task_access FOR SELECT USING (
   session_user='agent_supervisor' OR principal=COALESCE(public.agent_role_for_session(), '__denied__')
