@@ -19,6 +19,26 @@ This branch adds a PostgreSQL-backed task/message transport, lifecycle CLI and a
 3. Set `DATABASE_URL` only in the server-side worker environment. Never commit it or paste it into chat.
 4. Install project dependencies and run the commands below.
 
+## One-command launch (recommended)
+
+For a disposable staging host, copy `.env.agent-hq.example` to `.env` and fill in the role-specific database URLs, model and secret locally. Do not commit `.env`. Every selected role must have a distinct PostgreSQL login; the launcher checks this before starting.
+
+```bash
+# Check configuration, database connectivity and budget without starting workers
+npm run agent-hq:launch -- check core
+
+# Start coordinator + SEO + QA + supervisor
+npm run agent-hq:launch -- start core
+
+# Start a broader research group
+npm run agent-hq:launch -- start research
+
+# Stop the selected group (does not require API keys or DB secrets)
+npm run agent-hq:launch -- stop core
+```
+
+Available groups: `core`, `research`, `all`. The launcher refuses to start if required settings are missing, PostgreSQL logins are reused, the database is unreachable, or the budget is disabled/zero. `check` reports a disabled budget without starting anything. The launcher does not create database users, apply migrations, enable the budget, or deploy the service. Workers remain off by default.
+
 ## Commands
 ```bash
 npm run agent-hq -- enqueue seo 'Audit crawlability' 'Check robots, sitemap and key URLs; return evidence.'
