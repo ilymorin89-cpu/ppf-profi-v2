@@ -2,6 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import postgres from "postgres";
 import { randomUUID } from "node:crypto";
+import { spawnSync } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const adminUrl = process.env.AGENT_HQ_TEST_DATABASE_URL;
 const roleUrls = {
@@ -51,8 +54,11 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
     assert.equal(ownTasks.length, 1, "SEO can read its own task");
     assert.equal(foreignTasks.length, 0, "SEO cannot read QA or coordinator tasks");
 
-    const foreignUpdate = await seo`UPDATE agent_tasks SET title='forged' WHERE id=${qaTask.id} RETURNING id`;
-    assert.equal(foreignUpdate.length, 0, "SEO cannot update another role's task");
+    await assert.rejects(
+      seo`UPDATE agent_tasks SET title='forged' WHERE id=${qaTask.id} RETURNING id`,
+      error => error.code === "42501",
+      "SEO cannot update another role's task"
+    );
     await assert.rejects(
       seo`UPDATE agent_tasks SET assigned_role='qa_security' WHERE id=${seoTask.id}`,
       error => error.code === "42501",
@@ -241,7 +247,7 @@ test("real SEO worker completes a task using its restricted PostgreSQL login and
     const child = spawnSync(process.execPath, [
       "scripts/agent-hq-worker.mjs", "--once"
     ], {
-      cwd: process.cwd(),
+      cwd: path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."),
       encoding: "utf8",
       env: {
         ...process.env,
