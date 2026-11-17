@@ -26,6 +26,13 @@ Scope: isolated Agent HQ branch only. Production website, production database `d
 - [x] 19a. Run final CI on latest head `16f4970cef186eea6f56e020629f460b16f83f3f`: push run `44074346705` and PR run `44074354457` both passed `syntax` and `website-build`. The syntax job built Docker image `ppf-agent-hq:ci`; logs confirm `npm ci --omit=dev` and image export completed. Expanded RLS and disabled-budget acceptance tests are included in the passing syntax job.
 - [ ] 20. Prepare a launch checklist and obtain explicit approval before any deployment, spend or worker activation.
 
+## 2026-11-17 role-isolation implementation update
+
+- The CI-only harness now uses separate PostgreSQL logins for SEO, QA, coordinator and supervisor; whole-table UPDATE grants were replaced by column-level grants, and scoped cross-task checks use fixed-purpose SECURITY DEFINER helpers.
+- The real coordinator, SEO, QA and supervisor code paths have been exercised in disposable PostgreSQL using deterministic mocked Responses API responses. No external API call or model spend was made.
+- The test harness is intentionally not a deployable migration: its helper ownership is the disposable CI DB owner, not the dedicated non-login least-privilege owner required for a real runtime.
+- The specialist roster beyond the four core identities, operator approval login, full DDL/sequence/unknown-login matrix and a production-grade deployable migration remain open.
+
 ## Current known blockers
 
 1. Dependency versions and lockfile are updated on the isolated branch to Next.js/eslint-config-next 16.4.6 and React/React DOM 19.3.1. Dedicated dependency/security validation run `44073968014` passed, and the latest acceptance workflows `44074346705` and `44074354457` passed. Four moderate npm advisories remain in deprecated `@esbuild-kit` dependencies; the breaking `npm audit fix --force` path was intentionally not used. Do not deploy until these advisories and remaining security blockers are resolved.
@@ -33,7 +40,7 @@ Scope: isolated Agent HQ branch only. Production website, production database `d
 3. Agent worker budget remains disabled with zero caps. Workers and supervisor must remain disabled.
 4. Web-search billing and configured model compatibility have not yet been verified with a controlled runtime test. No real OpenAI request was made; no API key was supplied in chat and no spend was authorized.
 5. Approval commands record a decision only; they do not execute the requested external action. Fixed in the current branch: `approve`/`reject` no longer accept caller-supplied actor names; they derive `uid:<number>` from the OS process UID and require that UID in `AGENT_HQ_APPROVER_UIDS`. Role-bearing CLI inputs are now allowlisted. This is only a trusted local-operator gate, not network authentication or a protected owner dashboard.
-6. Runtime workers still share the configured database connection identity. The passing RLS harness proves a proposed separate-login pattern only in disposable CI; role-specific production/staging credentials, a reviewed deployable migration, QA sibling-artifact access and complete coordinator/supervisor policies are not implemented. Do not connect live workers to the prototype harness or treat prompts as an access-control boundary.
+6. Runtime workers still share the configured database connection identity. The passing CI E2E proves the four core login paths against the CI-only RLS harness, including QA sibling-artifact access and coordinator/supervisor lifecycle. It does not provision live role credentials or create a deployable migration; production-grade helper ownership, remaining specialist identities, operator role and full permission matrix are incomplete. Do not connect live workers to the prototype harness or treat prompts as an access-control boundary.
 
 ## Safety invariants
 
@@ -45,9 +52,9 @@ Scope: isolated Agent HQ branch only. Production website, production database `d
 - Any later live test must use a disposable database and an explicit, tightly capped budget.
 
 
-- [ ] 21. Complete the table/column operation inventory for every worker and supervisor SQL path; see `POSTGRES-ROLE-PERMISSION-MATRIX.md`.
-- [ ] 22. Implement actual worker/supervisor role tests using distinct disposable PostgreSQL logins; replace reliance on isolated policy examples alone.
-- [ ] 23. Inject a deterministic/mock Responses API in E2E tests and run the actual coordinator -> specialists -> QA -> supervisor path with no provider spend.
-- [ ] 24. Add negative tests for column-level updates, forged identities, unknown logins, sequence/DDL privileges, unrelated-parent access and all task/message/artifact/run/approval tables.
-- [ ] 25. Select the final authorization implementation (RLS with narrow helper functions or fully encapsulated database procedures) only after the complete test matrix passes.
-- [ ] 26. Review and remove or justify any convenience launcher/configuration that does not fit the approved runtime architecture. Keep worker enablement false.
+- [x] 21. Document the table/column permission matrix and inventory worker/supervisor SQL paths in `POSTGRES-ROLE-PERMISSION-MATRIX.md`.
+- [x] 22. Add disposable-CI tests with separate PostgreSQL LOGINs for SEO, QA, coordinator and supervisor; execute real worker and supervisor code paths under those logins.
+- [x] 23. Add deterministic mocked Responses API turns and pass the actual coordinator -> SEO specialist -> QA -> supervisor consolidation E2E without provider HTTP calls or spend.
+- [ ] 24. Complete negative tests for all roles, unknown logins, DDL/sequence privileges, all column mutations and all bus/worker/supervisor operations. Current CI coverage is a core-role prototype; see the matrix document for exact limits.
+- [ ] 25. Select and implement the final production authorization model, including a dedicated non-login function owner and a reviewed deployable migration. The CI harness is not deployable.
+- [ ] 26. Review/remove or justify the convenience launcher/configuration after the production runtime architecture is finalized. Keep worker enablement false.
