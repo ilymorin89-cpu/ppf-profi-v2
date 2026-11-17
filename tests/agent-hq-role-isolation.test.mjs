@@ -144,8 +144,11 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
     assert.equal(String(seoRuns[0].id), String(seoRun.id));
     assert.equal(qaRuns.length, 1);
     assert.equal(String(qaRuns[0].id), String(qaRun.id));
-    const foreignRunUpdate = await seo`UPDATE agent_runs SET status='failed' WHERE id=${qaRun.id} RETURNING id`;
-    assert.equal(foreignRunUpdate.length, 0);
+    await assert.rejects(
+      seo`UPDATE agent_runs SET status='failed' WHERE id=${qaRun.id}`,
+      error => error.code === "42501",
+      "Runtime worker has no direct run accounting or lifecycle UPDATE privilege"
+    );
     await assert.rejects(
       seo`UPDATE agent_runs SET role='qa_security' WHERE id=${seoRun.id}`,
       error => error.code === "42501",
@@ -322,6 +325,44 @@ test("Agent HQ worker rejects a database LOGIN that does not match AGENT_ROLE", 
   assert.match(result.stderr, /must authenticate as PostgreSQL LOGIN "agent_qa_security"/i);
 });
 
+
+test("Agent HQ trusted budget tables and run accounting are inaccessible to workers", {
+  skip: !adminUrl || !roleUrls.seo
+}, async () => {
+  const admin=postgres(adminUrl,{max:1});
+  const seo=postgres(roleUrls.seo,{max:1});
+  let taskId;
+  try {
+    const [task]=await admin`INSERT INTO agent_tasks
+      (assigned_role,title,objective,expected_output,created_by)
+      VALUES ('seo','budget boundary ACL','test','test','integration-test') RETURNING id`;
+    taskId=task.id;
+    const [run]=await admin`INSERT INTO agent_runs(task_id,role,worker_id,provider,model,status)
+      VALUES (${taskId},'seo','seo-acl-test','test','test','running') RETURNING id`;
+    await assert.rejects(seo`INSERT INTO agent_runs(task_id,role,worker_id,provider,model,status,cost_microusd)
+      VALUES (${taskId},'seo','seo-acl-test','test','test','running',999999)`,e=>e.code==="42501");
+    await assert.rejects(seo`UPDATE agent_runs SET cost_microusd=1 WHERE id=${run.id}`,e=>e.code==="42501");
+    await assert.rejects(seo`UPDATE agent_runs SET input_tokens=1 WHERE id=${run.id}`,e=>e.code==="42501");
+    await assert.rejects(seo`UPDATE agent_runs SET output_tokens=1 WHERE id=${run.id}`,e=>e.code==="42501");
+    await assert.rejects(seo`UPDATE agent_runs SET status='succeeded' WHERE id=${run.id}`,e=>e.code==="42501");
+    await assert.rejects(seo`SELECT * FROM agent_budget_reservations`,e=>e.code==="42501");
+    await assert.rejects(seo`SELECT * FROM agent_budget_ledger`,e=>e.code==="42501");
+    await assert.rejects(seo`SELECT * FROM agent_budget_settlements`,e=>e.code==="42501");
+    const [owner]=await admin`SELECT rolcanlogin,rolsuper,rolcreatedb,rolcreaterole,rolinherit,rolbypassrls
+      FROM pg_roles WHERE rolname='agent_hq_budget_owner'`;
+    assert.ok(owner);
+    assert.deepEqual(owner,{rolcanlogin:false,rolsuper:false,rolcreatedb:false,rolcreaterole:false,rolinherit:false,rolbypassrls:false});
+    const [tableOwner]=await admin`SELECT r.rolname FROM pg_class c JOIN pg_roles r ON r.oid=c.relowner
+      WHERE c.relname='agent_budget_reservations'`;
+    assert.notEqual(tableOwner?.rolname,"agent_hq_budget_owner");
+    const [publicExec]=await admin`SELECT has_function_privilege('public',
+      'public.agent_budget_reserve(bigint,text,text,text,integer,integer,integer,integer,text)','EXECUTE') AS allowed`;
+    assert.equal(publicExec.allowed,false);
+  } finally {
+    if(taskId) await admin`DELETE FROM agent_tasks WHERE id=${taskId}`;
+    await Promise.all([seo.end(),admin.end()]);
+  }
+});
 
 test("Agent HQ SECURITY DEFINER helpers use a dedicated NOLOGIN non-BYPASSRLS owner", {
   skip: !adminUrl
