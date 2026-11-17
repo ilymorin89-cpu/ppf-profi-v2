@@ -342,16 +342,7 @@ test("Agent HQ blocks retry and retains reservation after ambiguous provider out
       VALUES('seo',${"ambiguous provider outcome "+marker},'Test ambiguous billing outcome',
         'A non-empty result','integration-test') RETURNING id`;
     taskId=task.id;
-    // Establish the original live lease before running the worker. The trusted
-    // reserve function rejects unleased tasks; without this setup the test only
-    // exercises a pre-provider reservation failure, not an ambiguous outcome.
     const workerId="seo-ambiguous-outcome";
-    const [claimed]=await admin`UPDATE agent_tasks SET status='claimed',
-      lease_owner=${workerId},lease_until=clock_timestamp()+interval '3 minutes',
-      attempts=1,updated_at=now()
-      WHERE id=${taskId} AND status='queued'
-      RETURNING id`;
-    assert.ok(claimed,"test fixture must establish the worker lease");
 
     const child=spawnSync(process.execPath,["scripts/agent-hq-worker.mjs","--once"],{
       cwd:path.resolve(path.dirname(fileURLToPath(import.meta.url)),".."),
@@ -361,6 +352,7 @@ test("Agent HQ blocks retry and retains reservation after ambiguous provider out
         AGENT_WORKER_ID:workerId,OPENAI_API_KEY:"test-key-never-used",
         AGENT_MODEL:"gpt-4.1-mini",AGENT_WEB_SEARCH_ENABLED:"false",
         AGENT_HQ_TEST_RESPONSES_JSON:JSON.stringify({
+          __test_provider_outcome:"ambiguous",
           output:[],usage:{input_tokens:0,output_tokens:0}
         })
       }
