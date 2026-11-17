@@ -20,6 +20,7 @@ psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f /workspace/tests/agent-
 
 echo "Asserting that the migration chain alone installed the runtime RLS boundary..."
 psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f /workspace/tests/agent-hq-role-isolation.sql
+psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f /workspace/tests/agent-hq-test-helpers.sql
 
 psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
 UPDATE agent_budget_config
