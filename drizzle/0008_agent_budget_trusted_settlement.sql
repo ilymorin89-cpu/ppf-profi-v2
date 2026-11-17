@@ -64,7 +64,34 @@ GRANT SELECT ON public.agent_tasks,public.agent_budget_config TO agent_hq_budget
 GRANT SELECT,INSERT,UPDATE ON public.agent_runs TO agent_hq_budget_owner;
 GRANT SELECT,INSERT,UPDATE ON public.agent_budget_reservations TO agent_hq_budget_owner;
 GRANT SELECT,INSERT ON public.agent_budget_ledger,public.agent_budget_settlements TO agent_hq_budget_owner;
-GRANT EXECUTE ON FUNCTION public.agent_role_for_session() TO agent_hq_budget_owner;
+CREATE OR REPLACE FUNCTION public.agent_budget_role_for_session()
+RETURNS TEXT LANGUAGE SQL STABLE SET search_path=pg_catalog
+AS $role_map$
+  SELECT CASE session_user
+    WHEN 'agent_web_engineer' THEN 'web_engineer'
+    WHEN 'agent_geo' THEN 'geo'
+    WHEN 'agent_growth' THEN 'growth'
+    WHEN 'agent_analytics' THEN 'analytics'
+    WHEN 'agent_vk_strategist' THEN 'vk_strategist'
+    WHEN 'agent_copywriter' THEN 'copywriter'
+    WHEN 'agent_designer' THEN 'designer'
+    WHEN 'agent_image_generator' THEN 'image_generator'
+    WHEN 'agent_storyteller' THEN 'storyteller'
+    WHEN 'agent_community_manager' THEN 'community_manager'
+    WHEN 'agent_content_seo' THEN 'content_seo'
+    WHEN 'agent_ads_manager' THEN 'ads_manager'
+    WHEN 'agent_trend_scout' THEN 'trend_scout'
+    WHEN 'agent_auto_news_editor' THEN 'auto_news_editor'
+    WHEN 'agent_auto_law_monitor' THEN 'auto_law_monitor'
+    WHEN 'agent_fact_checker' THEN 'fact_checker'
+    WHEN 'agent_seo' THEN 'seo'
+    WHEN 'agent_qa_security' THEN 'qa_security'
+    WHEN 'agent_coordinator' THEN 'coordinator'
+    ELSE NULL
+  END
+$role_map$;
+REVOKE ALL ON FUNCTION public.agent_budget_role_for_session() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.agent_budget_role_for_session() TO agent_hq_budget_owner;
 
 ALTER TABLE public.agent_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.agent_tasks FORCE ROW LEVEL SECURITY;
@@ -136,7 +163,7 @@ DECLARE
   v_run BIGINT;
   v_reservation BIGINT;
 BEGIN
-  v_role := public.agent_role_for_session();
+  v_role := public.agent_budget_role_for_session();
   IF v_role IS NULL OR p_worker_id IS NULL OR p_worker_id='' OR p_provider NOT IN ('openai','test_stub') OR p_model IS NULL OR p_model=''
      OR p_idempotency_key IS NULL OR length(p_idempotency_key) NOT BETWEEN 8 AND 160
      OR p_estimated_input_tokens NOT BETWEEN 1 AND 10000000
@@ -240,7 +267,7 @@ DECLARE
   v_existing public.agent_budget_settlements%ROWTYPE;
   v_cost BIGINT;
 BEGIN
-  v_role:=public.agent_role_for_session();
+  v_role:=public.agent_budget_role_for_session();
   IF v_role IS NULL OR p_input_tokens NOT BETWEEN 0 AND 100000000
      OR p_output_tokens NOT BETWEEN 0 AND 100000000 OR p_search_calls NOT BETWEEN 0 AND 512
      OR p_idempotency_key IS NULL OR length(p_idempotency_key) NOT BETWEEN 8 AND 160 THEN
@@ -292,7 +319,7 @@ SET search_path = pg_catalog, public
 AS $release$
 DECLARE v_role TEXT; v_res public.agent_budget_reservations%ROWTYPE;
 BEGIN
-  v_role:=public.agent_role_for_session();
+  v_role:=public.agent_budget_role_for_session();
   IF v_role IS NULL OR p_reason IS NULL OR length(p_reason) NOT BETWEEN 1 AND 500
      OR p_idempotency_key IS NULL OR length(p_idempotency_key) NOT BETWEEN 8 AND 160 THEN
     RAISE EXCEPTION 'invalid release request' USING ERRCODE='22023';
@@ -317,7 +344,7 @@ SET search_path = pg_catalog, public
 AS $unknown$
 DECLARE v_role TEXT; v_res public.agent_budget_reservations%ROWTYPE;
 BEGIN
-  v_role:=public.agent_role_for_session();
+  v_role:=public.agent_budget_role_for_session();
   IF v_role IS NULL OR p_reason IS NULL OR length(p_reason) NOT BETWEEN 1 AND 500
      OR p_event_key IS NULL OR length(p_event_key) NOT BETWEEN 8 AND 160 THEN
     RAISE EXCEPTION 'invalid unknown reservation request' USING ERRCODE='22023';
