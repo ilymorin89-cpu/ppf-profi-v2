@@ -11,7 +11,7 @@ if (!url) {
 }
 const sql = postgres(url, { max: 1, idle_timeout: 20 });
 let operatorSql;
-if (command === "approve" || command === "reject") {
+if (["approvals", "approve", "reject"].includes(command)) {
   const operatorUrl = process.env.AGENT_HQ_OPERATOR_DATABASE_URL;
   if (!operatorUrl) throw new Error("AGENT_HQ_OPERATOR_DATABASE_URL is required for approval decisions; shared DATABASE_URL is never used.");
   let mainUsername;
@@ -52,7 +52,7 @@ async function assertTaskRole(id) {
 }
 
 async function main() {
-  if (["enqueue", "status", "approvals", "recover"].includes(command)) {
+  if (["enqueue", "status", "recover"].includes(command)) {
     throw new Error('Command "' + command + '" is disabled until a dedicated least-privilege authorization path is implemented.');
   }
   if (command === "enqueue") {
@@ -180,7 +180,7 @@ async function main() {
     return;
   }
   if (command === "approvals") {
-    const rows = await sql`SELECT id,task_id,action,requested_by,payload,created_at
+    const rows = await operatorSql`SELECT id,task_id,action,requested_by,payload,created_at
       FROM agent_approvals WHERE status='pending' ORDER BY created_at ASC LIMIT 100`;
     console.log(JSON.stringify(rows, null, 2));
     return;
@@ -224,7 +224,7 @@ async function main() {
 Commands:
   enqueue <role> <title> <objective>
   send <fromRole> <toRole> <taskId|-> <kind> <message>
-  approvals (disabled pending least-privilege read path)
+  approvals (requires distinct agent_operator LOGIN)
   approve <approvalId> [note] (requires root-owned /etc/ppf-agent-hq/approver-uids)
   reject <approvalId> [note] (requires root-owned /etc/ppf-agent-hq/approver-uids)
   inbox <role>
@@ -234,7 +234,7 @@ Commands:
   fail <workerId> <taskId> <reason>
   recover (disabled pending least-privilege lifecycle function)
 
-Global enqueue/status/approvals/recover commands are fail-closed until separately authorized.
+Global enqueue/status/recover commands are fail-closed until separately authorized; approvals uses the isolated agent_operator LOGIN.
 This is a PostgreSQL task/message transport. It does not call an LLM or run workers by itself.`);
 }
 try { await main(); } catch (error) { console.error(error instanceof Error ? error.message : error); process.exitCode=1; }
