@@ -255,7 +255,7 @@ END
 $reserve$;
 
 CREATE OR REPLACE FUNCTION public.agent_budget_settle(
-  p_reservation_id BIGINT,p_input_tokens INTEGER,p_output_tokens INTEGER,
+  p_reservation_id BIGINT,p_worker_id TEXT,p_input_tokens INTEGER,p_output_tokens INTEGER,
   p_search_calls INTEGER,p_idempotency_key TEXT,p_provider_reference TEXT DEFAULT NULL
 ) RETURNS BIGINT
 LANGUAGE plpgsql SECURITY DEFINER
@@ -269,13 +269,13 @@ DECLARE
   v_cost BIGINT;
 BEGIN
   v_role:=public.agent_budget_role_for_session();
-  IF v_role IS NULL OR p_input_tokens NOT BETWEEN 0 AND 100000000
+  IF v_role IS NULL OR p_worker_id IS NULL OR p_worker_id='' OR p_input_tokens NOT BETWEEN 0 AND 100000000
      OR p_output_tokens NOT BETWEEN 0 AND 100000000 OR p_search_calls NOT BETWEEN 0 AND 512
      OR p_idempotency_key IS NULL OR length(p_idempotency_key) NOT BETWEEN 8 AND 160 THEN
     RAISE EXCEPTION 'invalid settlement request' USING ERRCODE='22023';
   END IF;
   SELECT * INTO v_res FROM public.agent_budget_reservations
-    WHERE id=p_reservation_id AND role=v_role FOR UPDATE;
+    WHERE id=p_reservation_id AND role=v_role AND worker_id=p_worker_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'reservation not owned by caller' USING ERRCODE='42501'; END IF;
   IF v_res.state='settled' THEN
     SELECT * INTO v_existing FROM public.agent_budget_settlements WHERE reservation_id=v_res.id;
@@ -320,7 +320,7 @@ END
 $settle$;
 
 CREATE OR REPLACE FUNCTION public.agent_budget_release(
-  p_reservation_id BIGINT,p_reason TEXT,p_idempotency_key TEXT
+  p_reservation_id BIGINT,p_worker_id TEXT,p_reason TEXT,p_idempotency_key TEXT
 ) RETURNS BOOLEAN
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog, public
@@ -328,11 +328,11 @@ AS $release$
 DECLARE v_role TEXT; v_res public.agent_budget_reservations%ROWTYPE;
 BEGIN
   v_role:=public.agent_budget_role_for_session();
-  IF v_role IS NULL OR p_reason IS NULL OR length(p_reason) NOT BETWEEN 1 AND 500
+  IF v_role IS NULL OR p_worker_id IS NULL OR p_worker_id='' OR p_reason IS NULL OR length(p_reason) NOT BETWEEN 1 AND 500
      OR p_idempotency_key IS NULL OR length(p_idempotency_key) NOT BETWEEN 8 AND 160 THEN
     RAISE EXCEPTION 'invalid release request' USING ERRCODE='22023';
   END IF;
-  SELECT * INTO v_res FROM public.agent_budget_reservations WHERE id=p_reservation_id AND role=v_role FOR UPDATE;
+  SELECT * INTO v_res FROM public.agent_budget_reservations WHERE id=p_reservation_id AND role=v_role AND worker_id=p_worker_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'reservation not owned by caller' USING ERRCODE='42501'; END IF;
   IF v_res.state='released' THEN
     IF EXISTS (SELECT 1 FROM public.agent_budget_ledger WHERE reservation_id=v_res.id AND event_key='release:'||p_idempotency_key) THEN RETURN true; END IF;
@@ -353,7 +353,7 @@ END
 $release$;
 
 CREATE OR REPLACE FUNCTION public.agent_budget_mark_unknown(
-  p_reservation_id BIGINT,p_reason TEXT,p_event_key TEXT
+  p_reservation_id BIGINT,p_worker_id TEXT,p_reason TEXT,p_event_key TEXT
 ) RETURNS BOOLEAN
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog, public
@@ -361,11 +361,11 @@ AS $unknown$
 DECLARE v_role TEXT; v_res public.agent_budget_reservations%ROWTYPE;
 BEGIN
   v_role:=public.agent_budget_role_for_session();
-  IF v_role IS NULL OR p_reason IS NULL OR length(p_reason) NOT BETWEEN 1 AND 500
+  IF v_role IS NULL OR p_worker_id IS NULL OR p_worker_id='' OR p_reason IS NULL OR length(p_reason) NOT BETWEEN 1 AND 500
      OR p_event_key IS NULL OR length(p_event_key) NOT BETWEEN 8 AND 160 THEN
     RAISE EXCEPTION 'invalid unknown reservation request' USING ERRCODE='22023';
   END IF;
-  SELECT * INTO v_res FROM public.agent_budget_reservations WHERE id=p_reservation_id AND role=v_role FOR UPDATE;
+  SELECT * INTO v_res FROM public.agent_budget_reservations WHERE id=p_reservation_id AND role=v_role AND worker_id=p_worker_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'reservation not owned by caller' USING ERRCODE='42501'; END IF;
   IF v_res.state='unknown' THEN
     IF EXISTS (SELECT 1 FROM public.agent_budget_ledger WHERE reservation_id=v_res.id AND event_key='unknown:'||p_event_key) THEN RETURN true; END IF;
@@ -476,17 +476,17 @@ END
 $reconcile$;
 
 ALTER FUNCTION public.agent_budget_reserve(BIGINT,TEXT,TEXT,TEXT,INTEGER,INTEGER,INTEGER,INTEGER,TEXT) OWNER TO agent_hq_budget_owner;
-ALTER FUNCTION public.agent_budget_settle(BIGINT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) OWNER TO agent_hq_budget_owner;
-ALTER FUNCTION public.agent_budget_release(BIGINT,TEXT,TEXT) OWNER TO agent_hq_budget_owner;
-ALTER FUNCTION public.agent_budget_mark_unknown(BIGINT,TEXT,TEXT) OWNER TO agent_hq_budget_owner;
+ALTER FUNCTION public.agent_budget_settle(BIGINT,TEXT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) OWNER TO agent_hq_budget_owner;
+ALTER FUNCTION public.agent_budget_release(BIGINT,TEXT,TEXT,TEXT) OWNER TO agent_hq_budget_owner;
+ALTER FUNCTION public.agent_budget_mark_unknown(BIGINT,TEXT,TEXT,TEXT) OWNER TO agent_hq_budget_owner;
 ALTER FUNCTION public.agent_budget_reconcile_usage(BIGINT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) OWNER TO agent_hq_budget_owner;
 ALTER FUNCTION public.agent_budget_reconcile_no_charge(BIGINT,TEXT,TEXT) OWNER TO agent_hq_budget_owner;
 REVOKE CREATE ON SCHEMA public FROM agent_hq_budget_owner;
 
 REVOKE ALL ON FUNCTION public.agent_budget_reserve(BIGINT,TEXT,TEXT,TEXT,INTEGER,INTEGER,INTEGER,INTEGER,TEXT) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.agent_budget_settle(BIGINT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.agent_budget_release(BIGINT,TEXT,TEXT) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.agent_budget_mark_unknown(BIGINT,TEXT,TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.agent_budget_settle(BIGINT,TEXT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.agent_budget_release(BIGINT,TEXT,TEXT,TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.agent_budget_mark_unknown(BIGINT,TEXT,TEXT,TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.agent_budget_reconcile_usage(BIGINT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.agent_budget_reconcile_no_charge(BIGINT,TEXT,TEXT) FROM PUBLIC;
 
@@ -504,9 +504,9 @@ BEGIN
     EXECUTE format('REVOKE INSERT (task_id,role,worker_id,provider,model,status,cost_microusd) ON public.agent_runs FROM %I',role_name);
     EXECUTE format('REVOKE UPDATE (status,input_tokens,output_tokens,cost_microusd,error,finished_at) ON public.agent_runs FROM %I',role_name);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_budget_reserve(BIGINT,TEXT,TEXT,TEXT,INTEGER,INTEGER,INTEGER,INTEGER,TEXT) TO %I',role_name);
-    EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_budget_settle(BIGINT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) TO %I',role_name);
-    EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_budget_release(BIGINT,TEXT,TEXT) TO %I',role_name);
-    EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_budget_mark_unknown(BIGINT,TEXT,TEXT) TO %I',role_name);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_budget_settle(BIGINT,TEXT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) TO %I',role_name);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_budget_release(BIGINT,TEXT,TEXT,TEXT) TO %I',role_name);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_budget_mark_unknown(BIGINT,TEXT,TEXT,TEXT) TO %I',role_name);
   END LOOP;
 END
 $acl$;
