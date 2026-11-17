@@ -1,29 +1,28 @@
 import { spawnSync } from "node:child_process";
 import postgres from "postgres";
 
+const workerRoles = [
+  "coordinator", "web_engineer", "seo", "geo", "growth", "analytics", "qa_security",
+  "vk_strategist", "copywriter", "designer", "image_generator", "storyteller",
+  "community_manager", "content_seo", "ads_manager", "trend_scout",
+  "auto_news_editor", "auto_law_monitor", "fact_checker"
+];
 const groups = {
   core: ["coordinator", "seo", "qa_security", "supervisor"],
-  research: ["coordinator", "web_engineer", "seo", "analytics", "qa_security", "supervisor"],
-  all: ["coordinator", "community_manager", "qa_security", "web_engineer", "seo", "analytics", "supervisor"]
+  research: ["coordinator", "web_engineer", "seo", "geo", "analytics", "trend_scout", "fact_checker", "auto_law_monitor", "qa_security", "supervisor"],
+  all: [...workerRoles, "supervisor"]
 };
 // Only identities covered by the disposable role-isolation suite are eligible for launch.
 // This is a preflight guard, NOT proof that production RLS has been installed.
-const auditedLogins = Object.freeze({
-  coordinator: "agent_coordinator",
-  seo: "agent_seo",
-  qa_security: "agent_qa_security",
-  supervisor: "agent_supervisor"
-});
+const auditedLogins = Object.freeze(Object.fromEntries([
+  ...workerRoles.map(role => [role, "agent_" + role]),
+  ["supervisor", "agent_supervisor"]
+]));
 
-const roleEnv = {
-  coordinator: "AGENT_HQ_DATABASE_URL_COORDINATOR",
-  community_manager: "AGENT_HQ_DATABASE_URL_COMMUNITY_MANAGER",
-  qa_security: "AGENT_HQ_DATABASE_URL_QA_SECURITY",
-  web_engineer: "AGENT_HQ_DATABASE_URL_WEB_ENGINEER",
-  seo: "AGENT_HQ_DATABASE_URL_SEO",
-  analytics: "AGENT_HQ_DATABASE_URL_ANALYTICS",
-  supervisor: "AGENT_HQ_DATABASE_URL_SUPERVISOR"
-};
+const roleEnv = Object.freeze(Object.fromEntries([
+  ...workerRoles.map(role => [role, "AGENT_HQ_DATABASE_URL_" + role.toUpperCase()]),
+  ["supervisor", "AGENT_HQ_DATABASE_URL_SUPERVISOR"]
+]));
 
 function usage() {
   console.log([
@@ -32,8 +31,8 @@ function usage() {
     "  npm run agent-hq:launch -- start [core|research|all]",
     "  npm run agent-hq:launch -- stop [core|research|all]",
     "",
-    "Default group: core. Requires role-specific PostgreSQL URLs, OPENAI_API_KEY,",
-    "AGENT_MODEL and AGENT_HQ_WORKERS_ENABLED=true. No secrets are printed."
+    "Default group: core. All groups require a distinct PostgreSQL LOGIN per role.",
+    "Starting workers is restricted to deterministic NODE_ENV=test fixtures; no live provider calls."
   ].join("\n"));
 }
 
@@ -55,7 +54,8 @@ function validate(group) {
     throw new Error(`Group "${group}" includes roles without audited database authorization: ${unsupported.join(", ")}. Only core is eligible for preflight; workers remain disabled until production RLS and E2E review.`);
   }
   const missing = [];
-  if (!process.env.OPENAI_API_KEY) missing.push("OPENAI_API_KEY");
+  const testStubReady = process.env.NODE_ENV === "test" && Boolean(process.env.AGENT_HQ_TEST_RESPONSES_JSON);
+  if (!testStubReady && !process.env.OPENAI_API_KEY) missing.push("OPENAI_API_KEY");
   if (!process.env.AGENT_MODEL) missing.push("AGENT_MODEL");
   if (process.env.AGENT_HQ_WORKERS_ENABLED !== "true") missing.push("AGENT_HQ_WORKERS_ENABLED=true");
   for (const service of services) {
@@ -123,6 +123,9 @@ if (command === "stop") {
   if (command === "check") {
     await checkBudget(false);
   } else if (command === "start") {
+    if (process.env.NODE_ENV !== "test" || !process.env.AGENT_HQ_TEST_RESPONSES_JSON) {
+      throw new Error("Worker start is restricted to no-spend test mode. Set NODE_ENV=test and AGENT_HQ_TEST_RESPONSES_JSON; live provider execution is disabled by this launcher.");
+    }
     await checkBudget(true);
     compose(["up", "-d", ...services]);
     console.log("Selected Agent HQ services started.");
