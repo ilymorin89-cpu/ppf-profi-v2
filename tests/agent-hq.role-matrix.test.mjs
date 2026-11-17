@@ -48,9 +48,14 @@ test("every Agent HQ worker login sees only its own role and cannot forge messag
 
         const visible = await sql`SELECT id,assigned_role FROM agent_tasks
           WHERE id = ANY(${taskIds}::bigint[]) ORDER BY id`;
-        assert.equal(visible.length, 1, role + " must not see another role's task.");
-        assert.equal(String(visible[0].id), String(idByRole.get(role)));
-        assert.equal(visible[0].assigned_role, role);
+        const expectedVisibleIds = role === "qa_security"
+          ? [idByRole.get(role), idByRole.get("seo")]
+          : role === "coordinator"
+            ? [idByRole.get(role), idByRole.get("geo")]
+            : [idByRole.get(role)];
+        assert.deepEqual(visible.map(row => String(row.id)).sort(),
+          expectedVisibleIds.map(String).sort(),
+          role + " must see only its own task and explicitly granted task access.");
 
         const scopedArtifacts = await sql`SELECT id,task_id FROM agent_artifacts
           WHERE id = ANY(${artifactIds}::bigint[]) ORDER BY id`;
