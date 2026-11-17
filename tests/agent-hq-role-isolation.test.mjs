@@ -300,3 +300,24 @@ test("real SEO worker completes a task using its restricted PostgreSQL login and
     await admin.end();
   }
 });
+
+
+test("Agent HQ worker rejects a database LOGIN that does not match AGENT_ROLE", {
+  skip: !roleUrls.seo
+}, () => {
+  const result = spawnSync(process.execPath, ["scripts/agent-hq-worker.mjs", "--once"], {
+    cwd: path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."),
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      NODE_ENV: "test",
+      DATABASE_URL: roleUrls.seo,
+      AGENT_ROLE: "qa_security",
+      OPENAI_API_KEY: "test-key-never-used",
+      AGENT_MODEL: "test-model",
+      AGENT_HQ_TEST_RESPONSES_JSON: JSON.stringify({ output: [], usage: { input_tokens: 0, output_tokens: 0 } })
+    }
+  });
+  assert.notEqual(result.status, 0, "Worker must reject mismatched database identity before claiming work.");
+  assert.match(result.stderr, /must authenticate as PostgreSQL LOGIN "agent_qa_security"/i);
+});
