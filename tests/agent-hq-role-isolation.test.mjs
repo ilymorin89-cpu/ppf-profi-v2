@@ -383,16 +383,15 @@ test("Agent HQ blocks retry and retains reservation after ambiguous provider out
         AGENT_WORKER_ID:"test-seo",OPENAI_API_KEY:"test-key-never-used",
         AGENT_MODEL:"gpt-4.1-mini",AGENT_WEB_SEARCH_ENABLED:"false",
         AGENT_HQ_TEST_RESPONSES_JSON:JSON.stringify({
+          // The provider stub marks an accepted request with no confirmed outcome.
           __test_provider_outcome:"ambiguous",
-          output:[{
-            type:"message",
-            content:[{type:"output_text",text:"Deterministic ambiguous-outcome fixture."}]
-          }],
+          output:[],
           usage:{input_tokens:0,output_tokens:0}
         })
       }
     });
     assert.equal(child.status,0,child.stderr||child.stdout);
+    assert.match(child.stderr||"",/simulated an ambiguous accepted request/);
     const [blocked]=await admin`SELECT status FROM agent_tasks WHERE id=${taskId}`;
     assert.equal(blocked.status,"blocked",child.stderr||child.stdout);
     const [reservation]=await admin`SELECT state FROM agent_budget_reservations WHERE task_id=${taskId}`;
