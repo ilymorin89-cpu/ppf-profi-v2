@@ -1,0 +1,32 @@
+name: Agent HQ dependency lock refresh (artifact only)
+
+on:
+  push:
+    branches: ["agent-hq/enable-research-tools"]
+    paths: [".github/workflows/agent-hq-dependency-lock.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  refresh-lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Update patched framework and React versions and resolve lockfile
+        run: |
+          npm pkg set 'dependencies.next=16.4.6' 'dependencies.react=19.3.1' 'dependencies.react-dom=19.3.1' 'devDependencies.eslint-config-next=16.4.6'
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          npm ci --ignore-scripts --no-audit --no-fund
+      - name: Upload reviewed candidate manifests
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-hq-dependency-refresh
+          path: |
+            package.json
+            package-lock.json
+          if-no-files-found: error
+          retention-days: 7
