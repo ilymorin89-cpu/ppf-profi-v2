@@ -347,7 +347,7 @@ async function runTask(task) {
     if (!settlement) throw new Error("Trusted budget settlement returned no result");
     const actualCost = settlement.cost;
     await sql.begin(async tx => {
-      const [owned] = await tx`SELECT public.agent_task_transition(${task.id},${workerId},'complete') AS status`;
+      const [owned] = await tx`SELECT public.agent_task_transition(${task.id},${workerId},'complete',${run.reservationId}) AS status`;
       if (!owned?.status) throw new Error("Lease lost before completion; result not committed");
       await tx`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content,evidence)
         VALUES (${task.id},${role},'result',${task.title},${result},'[]'::jsonb)`;
