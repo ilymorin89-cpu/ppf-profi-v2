@@ -438,3 +438,67 @@ test("Agent HQ concurrent supervisors create one QA task and one scoped grant", 
     await sql.end({ timeout: 5 });
   }
 });
+
+
+test("Agent HQ supervisor blocks QA REVISE and exhausted specialist work", async () => {
+  assert.ok(databaseUrl, "Set AGENT_HQ_TEST_DATABASE_URL to a disposable PostgreSQL database.");
+  assert.ok(supervisorUrl, "Missing isolated supervisor test login.");
+  assert.notEqual(databaseUrl, process.env.DATABASE_URL, "Test database must not equal DATABASE_URL.");
+  const sql = postgres(databaseUrl, { max: 5, idle_timeout: 5 });
+  const marker = randomUUID();
+  const parentIds = [];
+  try {
+    const [reviseParent] = await sql`INSERT INTO agent_tasks
+      (assigned_role,title,objective,expected_output,created_by,status)
+      VALUES ('coordinator',${"QA revise " + marker},'Require revision','Blocked','integration-test','review')
+      RETURNING id`;
+    parentIds.push(reviseParent.id);
+    const [reviseSpecialist] = await sql`INSERT INTO agent_tasks
+      (parent_task_id,assigned_role,title,objective,expected_output,created_by,status)
+      VALUES (${reviseParent.id},'seo','Specialist output','Evidence','Evidence','integration-test','done')
+      RETURNING id`;
+    await sql`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
+      VALUES (${reviseSpecialist.id},'seo','result','Evidence','Finding requires correction')`;
+    const [qa] = await sql`INSERT INTO agent_tasks
+      (parent_task_id,assigned_role,title,objective,expected_output,created_by,status)
+      VALUES (${reviseParent.id},'qa_security','QA review','Review evidence','Verdict','supervisor','done')
+      RETURNING id`;
+    await sql`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
+      VALUES (${qa.id},'qa_security','review','QA verdict','VERDICT: REVISE\\nMissing evidence and unsupported conclusion')`;
+
+    const [deadParent] = await sql`INSERT INTO agent_tasks
+      (assigned_role,title,objective,expected_output,created_by,status)
+      VALUES ('coordinator',${"Dead letter " + marker},'Handle exhausted specialist','Blocked','integration-test','review')
+      RETURNING id`;
+    parentIds.push(deadParent.id);
+    const [deadChild] = await sql`INSERT INTO agent_tasks
+      (parent_task_id,assigned_role,title,objective,expected_output,created_by,status,attempts,max_attempts)
+      VALUES (${deadParent.id},'web_engineer','Exhausted task','Complete work','Evidence','integration-test','dead_letter',3,3)
+      RETURNING id`;
+
+    const result = runNode("scripts/agent-hq-supervisor.mjs", ["--once"], { DATABASE_URL: supervisorUrl });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+
+    const [reviseState] = await sql`SELECT status FROM agent_tasks WHERE id=${reviseParent.id}`;
+    assert.equal(reviseState.status, "blocked", "QA REVISE must block the parent.");
+    const [objection] = await sql`SELECT kind,body FROM agent_messages
+      WHERE task_id=${reviseParent.id} AND to_role='coordinator' AND kind='objection'
+      ORDER BY created_at DESC LIMIT 1`;
+    assert.ok(objection, "QA REVISE must notify the coordinator.");
+    assert.match(objection.body, /VERDICT:\\s*REVISE/i);
+
+    const [deadState] = await sql`SELECT status FROM agent_tasks WHERE id=${deadParent.id}`;
+    assert.equal(deadState.status, "blocked", "Dead-letter specialist work must block the parent.");
+    const [deadNotice] = await sql`SELECT kind,body FROM agent_messages
+      WHERE task_id=${deadParent.id} AND to_role='coordinator' AND kind='status'
+      ORDER BY created_at DESC LIMIT 1`;
+    assert.ok(deadNotice, "Dead-letter outcome must notify the coordinator.");
+    assert.equal(String(deadChild.id), String(deadChild.id));
+  } finally {
+    for (const id of parentIds) {
+      await sql`DELETE FROM agent_tasks WHERE parent_task_id=${id}`;
+      await sql`DELETE FROM agent_tasks WHERE id=${id}`;
+    }
+    await sql.end({ timeout: 5 });
+  }
+});
