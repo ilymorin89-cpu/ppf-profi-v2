@@ -89,6 +89,9 @@ CREATE POLICY task_update_own_role ON agent_tasks FOR UPDATE USING (
 CREATE POLICY task_insert_coordinator ON agent_tasks FOR INSERT WITH CHECK (
   session_user='agent_supervisor' OR (
     session_user='agent_coordinator' AND created_by='coordinator'
+    AND assigned_role IN ('web_engineer','seo','geo','growth','analytics','qa_security','vk_strategist','copywriter','designer','image_generator','storyteller','community_manager','content_seo','ads_manager','trend_scout','auto_news_editor','auto_law_monitor','fact_checker')
+    AND status='queued' AND attempts=0 AND lease_owner IS NULL AND lease_until IS NULL
+    AND completed_at IS NULL
     AND parent_task_id IS NOT NULL
     AND EXISTS (SELECT 1 FROM agent_tasks parent
       WHERE parent.id=agent_tasks.parent_task_id
@@ -103,9 +106,13 @@ CREATE POLICY message_read_recipient ON agent_messages FOR SELECT USING (
     WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
 );
 CREATE POLICY message_insert_sender ON agent_messages FOR INSERT WITH CHECK (
-  session_user='agent_supervisor' OR from_role = CASE session_user
-    WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
-    WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
+  session_user='agent_supervisor' OR (
+    from_role = CASE session_user
+      WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
+      WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
+    AND (task_id IS NULL OR EXISTS (SELECT 1 FROM agent_tasks t
+      WHERE t.id=agent_messages.task_id AND t.assigned_role=from_role))
+  )
 );
 
 CREATE POLICY run_read_own_role ON agent_runs FOR SELECT USING (
@@ -114,9 +121,13 @@ CREATE POLICY run_read_own_role ON agent_runs FOR SELECT USING (
     WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
 );
 CREATE POLICY run_insert_own_role ON agent_runs FOR INSERT WITH CHECK (
-  session_user='agent_supervisor' OR role = CASE session_user
-    WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
-    WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
+  session_user='agent_supervisor' OR (
+    role = CASE session_user
+      WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
+      WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
+    AND status='running'
+    AND EXISTS (SELECT 1 FROM agent_tasks t WHERE t.id=agent_runs.task_id AND t.assigned_role=role)
+  )
 );
 CREATE POLICY run_update_own_role ON agent_runs FOR UPDATE USING (
   session_user='agent_supervisor' OR role = CASE session_user
@@ -169,8 +180,12 @@ CREATE POLICY approval_read_requester ON agent_approvals FOR SELECT USING (
     WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
 );
 CREATE POLICY approval_insert_requester ON agent_approvals FOR INSERT WITH CHECK (
-  session_user='agent_supervisor' OR requested_by = CASE session_user
-    WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
-    WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
+  session_user='agent_supervisor' OR (
+    status='pending'
+    AND requested_by = CASE session_user
+      WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
+      WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
+    AND EXISTS (SELECT 1 FROM agent_tasks t WHERE t.id=agent_approvals.task_id AND t.assigned_role=requested_by)
+  )
 );
 CREATE POLICY budget_read_only ON agent_budget_config FOR SELECT USING (true);
