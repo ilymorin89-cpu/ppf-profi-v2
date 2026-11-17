@@ -90,14 +90,14 @@ test("Agent HQ supervisor blocks a parent when QA does not PASS", async () => {
       RETURNING id`;
     await sql`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
       VALUES (${specialist.id},'seo','result','Evidence','Test evidence')`;
-    const first = runNode("scripts/agent-hq-supervisor.mjs", ["--once"]);
+    const first = runNode("scripts/agent-hq-supervisor.mjs", ["--once"], { DATABASE_URL: supervisorUrl });
     assert.equal(first.status, 0, first.stderr || first.stdout);
     const [qa] = await sql`SELECT id FROM agent_tasks
       WHERE parent_task_id=${parentId} AND assigned_role='qa_security'`;
     await sql`UPDATE agent_tasks SET status='done',completed_at=now() WHERE id=${qa.id}`;
     await sql`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
       VALUES (${qa.id},'qa_security','review','QA verdict','VERDICT: REVISE\\nEvidence missing')`;
-    const second = runNode("scripts/agent-hq-supervisor.mjs", ["--once"]);
+    const second = runNode("scripts/agent-hq-supervisor.mjs", ["--once"], { DATABASE_URL: supervisorUrl });
     assert.equal(second.status, 0, second.stderr || second.stdout);
     const [blocked] = await sql`SELECT status FROM agent_tasks WHERE id=${parentId}`;
     assert.equal(blocked.status, "blocked");
