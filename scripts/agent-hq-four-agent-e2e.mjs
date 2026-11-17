@@ -197,6 +197,22 @@ try {
   assert.equal(qaAccess?.access_reason, "qa_review",
     "Supervisor must grant QA scoped access to the SEO task, not global access.");
 
+  // Verify the exact artifact query is visible under QA's authenticated PostgreSQL LOGIN.
+  // The real QA worker repeats this query when building its sibling-artifact context.
+  const qaDb = postgres(roleUrls.qa_security, { max: 1, connect_timeout: 10 });
+  try {
+    const visibleArtifacts = await qaDb`SELECT a.id,a.content
+      FROM public.agent_artifacts a
+      JOIN public.agent_tasks child ON child.id=a.task_id
+      WHERE child.parent_task_id=${parentId} AND child.assigned_role='seo'`;
+    assert.equal(visibleArtifacts.length, 1,
+      "QA's dedicated LOGIN must be able to read the scoped SEO artifact.");
+    assert.match(visibleArtifacts[0].content, /SEO_E2E_EVIDENCE/,
+      "QA's database session must see the exact SEO evidence it is assigned to review.");
+  } finally {
+    await qaDb.end({ timeout: 5 });
+  }
+
   // 4. QA runs under its own LOGIN, reads SEO evidence and sends an objection/verdict message.
   runProcess("qa_security", "scripts/agent-hq-worker.mjs", fixtures.qa_security);
   const [qaDone] = await sql`SELECT status FROM public.agent_tasks WHERE id=${qaTask.id}`;
