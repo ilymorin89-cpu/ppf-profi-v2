@@ -113,7 +113,7 @@ ORDER BY t.id DESC;
 "
 ```
 
-Repeat only after checking the previous task state, using a new task title for each run. To exercise coordinator, seed a task with `assigned_role='coordinator'` and run `run coordinator`; the coordinator will move its parent task to `review`. Run `run supervisor` only after seeding an appropriate review parent and child task set.
+Repeat only after checking the previous task state, using a new task title for each run. You can seed separate tasks for `coordinator` and `qa_security` and run `npm run agent-hq:simulate -- run coordinator` and `npm run agent-hq:simulate -- run qa_security`. The coordinator moves its parent task to `review`; a subsequent `npm run agent-hq:simulate -- run supervisor` performs one supervisor pass. For the simplest smoke test, start with SEO.
 
 ## 4. Stop and remove the disposable database
 
@@ -123,7 +123,7 @@ docker rm -f agent-hq-test-db
 
 ## What this simulation proves — and does not prove
 
-CI also executes this exact one-shot simulation after the regular integration suite, then asserts that the task is `done`, exactly one artifact exists, and the successful `test_stub` run has zero recorded cost. It removes the fixture rows and resets the disposable CI budget immediately afterward.
+CI executes one-shot coordinator, SEO and QA worker passes, then runs the supervisor once against the coordinator review task. It asserts all three tasks are `done`, each has exactly one artifact, and each successful `test_stub` run has zero recorded cost. It removes the fixture rows and resets the disposable CI budget immediately afterward.
 
 It proves that a local, dedicated PostgreSQL role can claim one queued task, pass through the worker's deterministic model-response seam, persist a result artifact, update the task/run records and exit without an external provider call.
 
