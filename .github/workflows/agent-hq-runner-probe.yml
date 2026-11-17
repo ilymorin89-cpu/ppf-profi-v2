@@ -1,0 +1,32 @@
+name: Agent HQ runner probe
+
+on:
+  push:
+    branches: ["agent-hq/actions-runner-probe"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hosted-runner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Prove GitHub-hosted runner starts and executes commands
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "AGENT_HQ_RUNNER_PROBE=STARTED"
+          echo "run_id=${GITHUB_RUN_ID}"
+          echo "run_attempt=${GITHUB_RUN_ATTEMPT}"
+          echo "commit=${GITHUB_SHA}"
+          echo "ref=${GITHUB_REF}"
+          echo "runner_os=${RUNNER_OS}"
+          echo "runner_arch=${RUNNER_ARCH}"
+          node --version
+          npm --version
+          docker --version
+          docker compose version
+          node -e 'console.log("node_execution=PASS")'
+          echo "AGENT_HQ_RUNNER_PROBE=PASS"
