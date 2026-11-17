@@ -7,6 +7,7 @@ on:
       - "scripts/agent-hq-*.mjs"
       - "scripts/agent-hq-*.sh"
       - "scripts/agent-hq-db-connectivity-check.mjs"
+      - "docker-compose.yml"
       - "docker-compose.agent-hq-test.yml"
       - "docker-compose.agent-hq-four-agent-test.yml"
       - "tests/agent-hq*.mjs"
@@ -107,6 +108,8 @@ jobs:
       AGENT_HQ_ROLE_TEST_URL_ROLE_FACT_CHECKER: postgres://agent_fact_checker:ci_agent_fact_checker@localhost:5432/agent_hq_test
     steps:
       - uses: actions/checkout@v4
+      - name: Validate live Agent HQ runtime Compose without starting services
+        run: docker compose -f docker-compose.yml config --quiet
       - uses: actions/setup-node@v4
         with:
           node-version: 22
