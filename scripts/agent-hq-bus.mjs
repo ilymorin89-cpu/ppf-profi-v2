@@ -180,8 +180,8 @@ Commands:
   enqueue <role> <title> <objective>
   send <fromRole> <toRole> <taskId|-> <kind> <message>
   approvals
-  approve <approvalId> <decidedBy> [note]
-  reject <approvalId> <decidedBy> [note]
+  approve <approvalId> [note] (requires root-owned /etc/ppf-agent-hq/approver-uids)
+  reject <approvalId> [note] (requires root-owned /etc/ppf-agent-hq/approver-uids)
   inbox <role>
   claim <role> <workerId>
   heartbeat <workerId> <taskId>
