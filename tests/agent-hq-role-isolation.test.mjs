@@ -286,9 +286,21 @@ test("real SEO worker completes a task using its restricted PostgreSQL login and
       WHERE task_id=${taskId} AND created_by='seo'`;
     assert.equal(artifacts.length, 1);
     assert.match(artifacts[0].content, /CI mocked evidence/);
-    const runs = await admin`SELECT status FROM agent_runs WHERE task_id=${taskId}`;
+    const runs = await admin`SELECT status,input_tokens,output_tokens,cost_microusd FROM agent_runs WHERE task_id=${taskId}`;
     assert.equal(runs.length, 1);
     assert.equal(runs[0].status, "succeeded");
+    assert.equal(Number(runs[0].input_tokens),0);
+    assert.equal(Number(runs[0].output_tokens),0);
+    assert.equal(Number(runs[0].cost_microusd),0);
+    const [reservation]=await admin`SELECT state,reserved_microusd FROM agent_budget_reservations WHERE task_id=${taskId}`;
+    assert.equal(reservation.state,"settled");
+    assert.ok(Number(reservation.reserved_microusd)>0);
+    const [settlementCount]=await admin`SELECT count(*)::int AS n FROM agent_budget_settlements s
+      JOIN agent_budget_reservations r ON r.id=s.reservation_id WHERE r.task_id=${taskId}`;
+    assert.equal(settlementCount.n,1);
+    const [ledgerCount]=await admin`SELECT count(*)::int AS n FROM agent_budget_ledger l
+      JOIN agent_budget_reservations r ON r.id=l.reservation_id WHERE r.task_id=${taskId}`;
+    assert.equal(ledgerCount.n,2);
   } finally {
     if (taskId) {
       await admin`DELETE FROM agent_budget_ledger WHERE reservation_id IN
@@ -332,6 +344,55 @@ test("Agent HQ worker rejects a database LOGIN that does not match AGENT_ROLE", 
   assert.match(result.stderr, /must authenticate as PostgreSQL LOGIN "agent_qa_security"/i);
 });
 
+
+test("Agent HQ concurrent reservations cannot overspend the daily cap", {
+  skip: !adminUrl || !roleUrls.seo
+}, async () => {
+  const admin=postgres(adminUrl,{max:2});
+  const workerA=postgres(roleUrls.seo,{max:1});
+  const workerB=postgres(roleUrls.seo,{max:1});
+  let oldBudget;
+  const taskIds=[];
+  try {
+    [oldBudget]=await admin`SELECT * FROM agent_budget_config WHERE id=1`;
+    await admin`UPDATE agent_budget_config SET enabled=true,daily_cap_microusd=1026,
+      monthly_cap_microusd=50000,per_run_cap_microusd=5000,
+      input_price_per_million_microusd=100000,output_price_per_million_microusd=100000,
+      web_search_price_microusd_per_call=0 WHERE id=1`;
+    const [a]=await admin`INSERT INTO agent_tasks(assigned_role,title,objective,expected_output,created_by,
+      status,lease_owner,lease_until,budget_limit_microusd)
+      VALUES('seo','concurrent budget A','test','test','integration-test','claimed','seo-budget-a',
+        now()+interval '5 minutes',5000) RETURNING id`;
+    const [b]=await admin`INSERT INTO agent_tasks(assigned_role,title,objective,expected_output,created_by,
+      status,lease_owner,lease_until,budget_limit_microusd)
+      VALUES('seo','concurrent budget B','test','test','integration-test','claimed','seo-budget-b',
+        now()+interval '5 minutes',5000) RETURNING id`;
+    taskIds.push(a.id,b.id);
+    const calls=await Promise.allSettled([
+      workerA`SELECT * FROM agent_budget_reserve(${a.id},'seo-budget-a','test_stub','test-model',10000,256,1,0,${'parallel-a-'+randomUUID()})`,
+      workerB`SELECT * FROM agent_budget_reserve(${b.id},'seo-budget-b','test_stub','test-model',10000,256,1,0,${'parallel-b-'+randomUUID()})`
+    ]);
+    assert.equal(calls.filter(x=>x.status==="fulfilled").length,1,
+      "The serialized budget reservation lock must admit only one run at the exact daily cap");
+    assert.equal(calls.filter(x=>x.status==="rejected").length,1);
+  } finally {
+    for(const taskId of taskIds){
+      await admin`DELETE FROM agent_budget_ledger WHERE reservation_id IN
+        (SELECT id FROM agent_budget_reservations WHERE task_id=${taskId})`;
+      await admin`DELETE FROM agent_budget_settlements WHERE reservation_id IN
+        (SELECT id FROM agent_budget_reservations WHERE task_id=${taskId})`;
+      await admin`DELETE FROM agent_budget_reservations WHERE task_id=${taskId}`;
+      await admin`DELETE FROM agent_tasks WHERE id=${taskId}`;
+    }
+    if(oldBudget) await admin`UPDATE agent_budget_config SET enabled=${oldBudget.enabled},
+      daily_cap_microusd=${oldBudget.daily_cap_microusd},monthly_cap_microusd=${oldBudget.monthly_cap_microusd},
+      per_run_cap_microusd=${oldBudget.per_run_cap_microusd},
+      input_price_per_million_microusd=${oldBudget.input_price_per_million_microusd},
+      output_price_per_million_microusd=${oldBudget.output_price_per_million_microusd},
+      web_search_price_microusd_per_call=${oldBudget.web_search_price_microusd_per_call} WHERE id=1`;
+    await Promise.all([workerA.end(),workerB.end(),admin.end()]);
+  }
+});
 
 test("Agent HQ trusted budget tables and run accounting are inaccessible to workers", {
   skip: !adminUrl || !roleUrls.seo
