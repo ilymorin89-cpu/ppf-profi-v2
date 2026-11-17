@@ -59,6 +59,7 @@ jobs:
       AGENT_HQ_ROLE_TEST_URL_QA: postgres://agent_qa_security:ci_agent_qa@localhost:5432/agent_hq_test
       AGENT_HQ_ROLE_TEST_URL_COORDINATOR: postgres://agent_coordinator:ci_agent_coordinator@localhost:5432/agent_hq_test
       AGENT_HQ_ROLE_TEST_URL_SUPERVISOR: postgres://agent_supervisor:ci_agent_supervisor@localhost:5432/agent_hq_test
+      AGENT_HQ_ROLE_TEST_URL_OPERATOR: postgres://agent_operator:ci_agent_operator@localhost:5432/agent_hq_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

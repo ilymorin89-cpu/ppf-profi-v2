@@ -6,6 +6,15 @@ const groups = {
   research: ["coordinator", "web_engineer", "seo", "analytics", "qa_security", "supervisor"],
   all: ["coordinator", "community_manager", "qa_security", "web_engineer", "seo", "analytics", "supervisor"]
 };
+// Only identities covered by the disposable role-isolation suite are eligible for launch.
+// This is a preflight guard, NOT proof that production RLS has been installed.
+const auditedLogins = Object.freeze({
+  coordinator: "agent_coordinator",
+  seo: "agent_seo",
+  qa_security: "agent_qa_security",
+  supervisor: "agent_supervisor"
+});
+
 const roleEnv = {
   coordinator: "AGENT_HQ_DATABASE_URL_COORDINATOR",
   community_manager: "AGENT_HQ_DATABASE_URL_COMMUNITY_MANAGER",
@@ -41,6 +50,10 @@ function compose(args) {
 function validate(group) {
   const services = groups[group];
   if (!services) throw new Error(`Unknown group "${group}". Choose: ${Object.keys(groups).join(", ")}.`);
+  const unsupported = services.filter(service => !Object.hasOwn(auditedLogins, service));
+  if (unsupported.length) {
+    throw new Error(`Group "${group}" includes roles without audited database authorization: ${unsupported.join(", ")}. Only core is eligible for preflight; workers remain disabled until production RLS and E2E review.`);
+  }
   const missing = [];
   if (!process.env.OPENAI_API_KEY) missing.push("OPENAI_API_KEY");
   if (!process.env.AGENT_MODEL) missing.push("AGENT_MODEL");
@@ -56,6 +69,9 @@ function validate(group) {
     try { username = new URL(process.env[key]).username; }
     catch { throw new Error(`${key} must be a valid PostgreSQL URL.`); }
     if (!username) throw new Error(`${key} must include a PostgreSQL login.`);
+    if (username !== auditedLogins[service]) {
+      throw new Error(`${key} must use the dedicated login ${auditedLogins[service]}; shared or elevated database identities are forbidden.`);
+    }
     return [service, username];
   });
   const seen = new Map();

@@ -3,13 +3,30 @@ import { readFileSync, statSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { requireAgentRole, resolveApproverIdentity } from "./agent-hq-helpers.mjs";
 
+const [command, ...args] = process.argv.slice(2);
 const url = process.env.DATABASE_URL;
 if (!url) {
   console.error("DATABASE_URL is required. Set it in the worker environment; never commit it.");
   process.exit(1);
 }
 const sql = postgres(url, { max: 1, idle_timeout: 20 });
-const [command, ...args] = process.argv.slice(2);
+let operatorSql;
+if (command === "approve" || command === "reject") {
+  const operatorUrl = process.env.AGENT_HQ_OPERATOR_DATABASE_URL;
+  if (!operatorUrl) throw new Error("AGENT_HQ_OPERATOR_DATABASE_URL is required for approval decisions; shared DATABASE_URL is never used.");
+  let mainUsername;
+  let operatorUsername;
+  try {
+    mainUsername = decodeURIComponent(new URL(url).username);
+    operatorUsername = decodeURIComponent(new URL(operatorUrl).username);
+  } catch {
+    throw new Error("DATABASE_URL and AGENT_HQ_OPERATOR_DATABASE_URL must be valid PostgreSQL URLs.");
+  }
+  if (!mainUsername || operatorUsername !== "agent_operator" || operatorUsername === mainUsername) {
+    throw new Error("Approval decisions require a distinct PostgreSQL login named agent_operator.");
+  }
+  operatorSql = postgres(operatorUrl, { max: 1, idle_timeout: 20 });
+}
 
 function required(value, label) {
   if (!value || !String(value).trim()) throw new Error(`Missing ${label}`);
@@ -158,7 +175,7 @@ async function main() {
     const actor = resolveApproverIdentity({ uid, allowedUids });
     const note = noteParts.join(" ").slice(0, 4000);
     const status = command === "approve" ? "approved" : "rejected";
-    const [approval] = await sql`UPDATE agent_approvals
+    const [approval] = await operatorSql`UPDATE agent_approvals
       SET status=${status},decided_by=${actor},decision_note=${note || null},decided_at=now()
       WHERE id=${id} AND status='pending'
       RETURNING id,task_id,action,status,decided_by,decision_note,decided_at`;
@@ -192,4 +209,7 @@ Commands:
 This is a PostgreSQL task/message transport. It does not call an LLM or run workers by itself.`);
 }
 try { await main(); } catch (error) { console.error(error instanceof Error ? error.message : error); process.exitCode=1; }
-finally { await sql.end({ timeout: 5 }); }
+finally {
+  if (operatorSql) await operatorSql.end({ timeout: 5 });
+  await sql.end({ timeout: 5 });
+}
