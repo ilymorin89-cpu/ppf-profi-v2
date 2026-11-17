@@ -1,7 +1,13 @@
 -- Disposable CI-only least-privilege harness. NEVER apply to a live database.
 -- The CI database owner is the only seeding/cleanup identity.
 -- Keep the DO block's opening and closing dollar-quote delimiters identical.
-DO $$ BEGIN
+DO $ DECLARE role_name TEXT; BEGIN
+
+  FOREACH role_name IN ARRAY ARRAY['agent_web_engineer','agent_geo','agent_growth','agent_analytics','agent_vk_strategist','agent_copywriter','agent_designer','agent_image_generator','agent_storyteller','agent_community_manager','agent_content_seo','agent_ads_manager','agent_trend_scout','agent_auto_news_editor','agent_auto_law_monitor','agent_fact_checker'] LOOP
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname=role_name) THEN
+      EXECUTE format('CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS', role_name, 'ci_' || role_name);
+    END IF;
+  END LOOP;
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='agent_seo') THEN CREATE ROLE agent_seo LOGIN PASSWORD 'ci_agent_seo' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS; END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='agent_qa_security') THEN CREATE ROLE agent_qa_security LOGIN PASSWORD 'ci_agent_qa' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS; END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='agent_coordinator') THEN CREATE ROLE agent_coordinator LOGIN PASSWORD 'ci_agent_coordinator' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS; END IF;
@@ -52,6 +58,22 @@ GRANT INSERT (task_id,principal,access_reason) ON agent_task_access TO agent_sup
 
 GRANT USAGE,SELECT ON SEQUENCE agent_tasks_id_seq,agent_messages_id_seq,agent_runs_id_seq,agent_artifacts_id_seq,agent_approvals_id_seq
   TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
+
+-- Give every specialist the same narrow baseline; RLS below scopes rows by session_user.
+DO $ DECLARE role_name TEXT; BEGIN
+  FOREACH role_name IN ARRAY ARRAY['agent_web_engineer','agent_geo','agent_growth','agent_analytics','agent_vk_strategist','agent_copywriter','agent_designer','agent_image_generator','agent_storyteller','agent_community_manager','agent_content_seo','agent_ads_manager','agent_trend_scout','agent_auto_news_editor','agent_auto_law_monitor','agent_fact_checker'] LOOP
+    EXECUTE format('GRANT CONNECT ON DATABASE agent_hq_test TO %I', role_name);
+    EXECUTE format('GRANT USAGE ON SCHEMA public TO %I', role_name);
+    EXECUTE format('GRANT SELECT ON agent_tasks,agent_messages,agent_runs,agent_artifacts,agent_approvals,agent_budget_config TO %I', role_name);
+    EXECUTE format('GRANT UPDATE (status,attempts,lease_owner,lease_until,updated_at,completed_at) ON agent_tasks TO %I', role_name);
+    EXECUTE format('GRANT INSERT (task_id,conversation_id,from_role,to_role,kind,body,evidence,in_reply_to,idempotency_key) ON agent_messages TO %I', role_name);
+    EXECUTE format('GRANT INSERT (task_id,role,worker_id,provider,model,status,cost_microusd) ON agent_runs TO %I', role_name);
+    EXECUTE format('GRANT UPDATE (status,input_tokens,output_tokens,cost_microusd,error,finished_at) ON agent_runs TO %I', role_name);
+    EXECUTE format('GRANT INSERT (task_id,created_by,artifact_type,title,content,evidence) ON agent_artifacts TO %I', role_name);
+    EXECUTE format('GRANT INSERT (task_id,action,requested_by,payload,status) ON agent_approvals TO %I', role_name);
+    EXECUTE format('GRANT USAGE,SELECT ON SEQUENCE agent_tasks_id_seq,agent_messages_id_seq,agent_runs_id_seq,agent_artifacts_id_seq,agent_approvals_id_seq TO %I', role_name);
+  END LOOP;
+END $;
 
 -- CI-only SECURITY DEFINER helper avoids recursive RLS evaluation between
 -- agent_tasks and agent_task_access. Production owner must be a dedicated,
@@ -106,6 +128,39 @@ $parent_check$;
 REVOKE ALL ON FUNCTION public.agent_is_valid_coordinator_parent(BIGINT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.agent_is_valid_coordinator_parent(BIGINT) TO agent_coordinator,agent_supervisor;
 
+
+CREATE OR REPLACE FUNCTION public.agent_role_for_session()
+RETURNS TEXT
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $role_map$
+  SELECT CASE session_user
+    WHEN 'agent_web_engineer' THEN 'web_engineer'
+    WHEN 'agent_geo' THEN 'geo'
+    WHEN 'agent_growth' THEN 'growth'
+    WHEN 'agent_analytics' THEN 'analytics'
+    WHEN 'agent_vk_strategist' THEN 'vk_strategist'
+    WHEN 'agent_copywriter' THEN 'copywriter'
+    WHEN 'agent_designer' THEN 'designer'
+    WHEN 'agent_image_generator' THEN 'image_generator'
+    WHEN 'agent_storyteller' THEN 'storyteller'
+    WHEN 'agent_community_manager' THEN 'community_manager'
+    WHEN 'agent_content_seo' THEN 'content_seo'
+    WHEN 'agent_ads_manager' THEN 'ads_manager'
+    WHEN 'agent_trend_scout' THEN 'trend_scout'
+    WHEN 'agent_auto_news_editor' THEN 'auto_news_editor'
+    WHEN 'agent_auto_law_monitor' THEN 'auto_law_monitor'
+    WHEN 'agent_fact_checker' THEN 'fact_checker'
+    WHEN 'agent_seo' THEN 'seo'
+    WHEN 'agent_qa_security' THEN 'qa_security'
+    WHEN 'agent_coordinator' THEN 'coordinator'
+    ELSE NULL
+  END
+$role_map$;
+REVOKE ALL ON FUNCTION public.agent_role_for_session() FROM PUBLIC;
+
 CREATE OR REPLACE FUNCTION public.agent_can_insert_own_artifact(p_task_id BIGINT, p_created_by TEXT)
 RETURNS BOOLEAN
 LANGUAGE SQL
@@ -113,17 +168,21 @@ STABLE
 SECURITY DEFINER
 SET search_path = pg_catalog, public
 AS $artifact_check$
-  SELECT p_created_by = CASE session_user
-    WHEN 'agent_seo' THEN 'seo'
-    WHEN 'agent_qa_security' THEN 'qa_security'
-    WHEN 'agent_coordinator' THEN 'coordinator'
-    ELSE '__denied__' END
+  SELECT p_created_by = COALESCE(public.agent_role_for_session(), '__denied__')
     AND EXISTS (SELECT 1 FROM public.agent_tasks t
       WHERE t.id=p_task_id AND t.assigned_role=p_created_by)
 $artifact_check$;
 REVOKE ALL ON FUNCTION public.agent_can_insert_own_artifact(BIGINT,TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.agent_can_insert_own_artifact(BIGINT,TEXT)
   TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
+GRANT EXECUTE ON FUNCTION public.agent_role_for_session()
+  TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
+DO $ DECLARE role_name TEXT; BEGIN
+  FOREACH role_name IN ARRAY ARRAY['agent_web_engineer','agent_geo','agent_growth','agent_analytics','agent_vk_strategist','agent_copywriter','agent_designer','agent_image_generator','agent_storyteller','agent_community_manager','agent_content_seo','agent_ads_manager','agent_trend_scout','agent_auto_news_editor','agent_auto_law_monitor','agent_fact_checker'] LOOP
+    EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_role_for_session() TO %I', role_name);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_can_insert_own_artifact(BIGINT,TEXT) TO %I', role_name);
+  END LOOP;
+END $;
 
 ALTER TABLE agent_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_tasks FORCE ROW LEVEL SECURITY;
@@ -144,9 +203,7 @@ CREATE POLICY task_read_explicit_access ON agent_tasks FOR SELECT USING (
   public.agent_has_task_access(agent_tasks.id)
 );
 CREATE POLICY task_read_own_role ON agent_tasks FOR SELECT USING (
-  session_user='agent_supervisor' OR assigned_role = CASE session_user
-    WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
-    WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
+  session_user='agent_supervisor' OR assigned_role = COALESCE(public.agent_role_for_session(), '__denied__')
 );
 CREATE POLICY task_update_own_role ON agent_tasks FOR UPDATE USING (
   session_user='agent_supervisor' OR assigned_role = CASE session_user
@@ -175,9 +232,7 @@ CREATE POLICY message_read_recipient ON agent_messages FOR SELECT USING (
 );
 CREATE POLICY message_insert_sender ON agent_messages FOR INSERT WITH CHECK (
   session_user='agent_supervisor' OR (
-    from_role = CASE session_user
-      WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
-      WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
+    from_role = COALESCE(public.agent_role_for_session(), '__denied__')
     AND (task_id IS NULL OR EXISTS (SELECT 1 FROM agent_tasks t
       WHERE t.id=agent_messages.task_id AND t.assigned_role=from_role))
   )
@@ -208,10 +263,7 @@ CREATE POLICY run_update_own_role ON agent_runs FOR UPDATE USING (
 );
 
 CREATE POLICY task_access_read_own ON agent_task_access FOR SELECT USING (
-  session_user='agent_supervisor' OR principal=CASE session_user
-    WHEN 'agent_qa_security' THEN 'qa_security'
-    WHEN 'agent_coordinator' THEN 'coordinator'
-    ELSE '__denied__' END
+  session_user='agent_supervisor' OR principal=COALESCE(public.agent_role_for_session(), '__denied__')
 );
 CREATE POLICY task_access_insert_supervisor ON agent_task_access FOR INSERT
   WITH CHECK (public.agent_can_grant_task_access(principal));
