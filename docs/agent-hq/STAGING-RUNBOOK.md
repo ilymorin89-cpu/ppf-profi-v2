@@ -2,6 +2,53 @@
 
 This runbook prepares an isolated staging deployment. It does not authorize production deployment, external messages, advertising, or spend.
 
+## Timeweb App Platform: diagnose PostgreSQL reachability before workers
+
+The existing Timeweb App Platform deployment is not a reason to create another server. Keep the production website application and its database untouched. The current Agent HQ Timeweb app must be treated as staging only after its repository branch and database target have been verified.
+
+The GitHub branch selected in the supplied App Platform screenshot is `feat/vk-content-army`, at commit `d032f9d0fc272e5a0b31872021efad71f6ad23bf`. The exact `docker-compose.yml` at that commit contains only three worker services (`coordinator`, `community_manager`, `qa_security`), plus `gateway` and `supervisor`; all four runtime services reuse the single `AGENT_HQ_DATABASE_URL`. This is not the 19-worker, role-specific-LOGIN configuration in the newer reviewed Agent HQ branch. Do not turn workers on in this currently selected branch. The newer 19-worker Compose remains in Draft PRs and must pass review/CI before it is selected for staging.
+
+The Timeweb screenshots supplied for this project show:
+- App Platform framework: Docker Compose; compose path `/docker-compose.yml`.
+- Selected deployment branch: `feat/vk-content-army`.
+- App variables visible: `AGENT_HQ_DATABASE_URL` and `AGENT_HQ_WORKERS_ENABLED=false`.
+- PostgreSQL service: `ppfprofi`; database `agent_hq`; role `agent_hq_user`; port `5432`.
+- PostgreSQL public endpoint: `5.42.126.47:5432`; private endpoint: `192.168.0.4:5432`; private network CIDR: `192.168.0.0/24`.
+- PostgreSQL users shown in the UI: `agent_hq_user`, `agent_worker`, `gen_user`.
+- Existing application logs repeatedly report `EHOSTUNREACH` and `CONNECT_TIMEOUT`.
+
+These observations do not prove that the App Platform container is attached to the PostgreSQL private network. Do not assume that `192.168.0.4` is reachable from App Platform merely because the database owns that private address. Confirm the App Platform network attachment / supported routing in Timeweb first.
+
+Timeweb's current App Platform documentation supports attaching an existing backend/Docker Compose application to a private network after creation. In the Agent HQ app (not the production website), open **App Platform → ppf-agent-hq → Network** and verify that it is attached to the exact same private network shown for PostgreSQL (the supplied DB screenshot names it `Fair Cepheus`). If it is not attached, do not change it until the current deployment is confirmed to be the isolated Agent HQ app and a maintenance window is accepted: Timeweb says changing the network triggers a new deployment and can cause 1–5 minutes of downtime. When both services are in the same private network, use the database's private endpoint `192.168.0.4:5432`. If they are not in the same network, the private address will not route; do not repeatedly retry it. If the platform cannot join that private network, use only a provider-supported public connection with TLS and a firewall rule restricted to the actual App Platform egress source. Do not open PostgreSQL to `0.0.0.0/0`.
+
+Run the secret-safe, read-only diagnostic from inside the Agent HQ application container, if the App Platform console supports an exec shell:
+
+```sh
+npm run agent-hq:db-check
+```
+
+It reads `AGENT_HQ_DATABASE_URL` (or `DATABASE_URL`), refuses any database other than `agent_hq` or port other than 5432, tests DNS/TCP/PostgreSQL authentication, requires TLS by default, and prints no password or connection URL. For a controlled non-TLS diagnostic only, set `AGENT_HQ_DB_REQUIRE_TLS=false`; do not use that mode for live staging. The command is read-only and makes no migrations or provider calls.
+
+Interpret results:
+- `stage=dns`: hostname resolution / DNS configuration issue.
+- `stage=tcp`, `EHOSTUNREACH`: no route to the selected address; inspect App Platform network attachment and firewall routing before credentials.
+- `stage=tcp`, `CONNECT_TIMEOUT`: packets are being dropped or no route responds; inspect network/firewall.
+- `ECONNREFUSED`: route reached the host but PostgreSQL is not accepting connections on that address/port.
+- `stage=postgres-authentication-or-tls`: TCP is reachable; inspect TLS setting, database, role and password using Timeweb secret UI, never chat.
+- `status=PASS`: the diagnostic authenticated to `agent_hq` with TLS and reported the actual PostgreSQL session identity.
+
+Do not change the existing Timeweb deployment branch, environment variables, firewall, network attachment, or database credentials as part of diagnosis. Capture the JSON diagnostic output with secrets absent, plus the Timeweb network/firewall view, before proposing a change.
+
+The current screenshots show only one Agent HQ database URL and `AGENT_HQ_WORKERS_ENABLED=false`. The current reviewed Compose file expects distinct role-specific database URLs (`AGENT_HQ_DATABASE_URL_<ROLE>`) for each worker and a separate supervisor URL. Do not copy the same `agent_hq_user` URL into all 19 roles. Role-specific PostgreSQL identities and grants must be provisioned and verified before any worker is enabled.
+
+## Timeweb infrastructure incident: 17 November 2026
+
+Timeweb published a postmortem for a Cloud networking incident on 17 November 2026. The provider states that from 13:18 to 15:05 MSK some Cloud services in all locations except Novosibirsk lost network connectivity during a hypervisor network-stack update: the dynamic-routing service did not fully restart, so some hypervisors did not re-advertise routes. The VMs themselves continued running. Timeweb reports that it restarted the hypervisor network stack, restored most reachability by 14:17 MSK, and declared the incident fully recovered at 15:05 MSK. Source: Timeweb Cloud Alerts postmortem, reproduced at https://habr.com/ru/articles/1108972/ and https://telemetr.io/ru/channels/1826583437-timewebcloud_alerts/posts.
+
+This incident is consistent with transient EHOSTUNREACH / CONNECT_TIMEOUT symptoms observed in the supplied Agent HQ logs on 17 November. It is not, by itself, proof that every later connection failure has the same cause or that this specific app/database pair recovered. Preserve the existing known-good endpoint and settings; do not rotate credentials, recreate the database, change private networking, or redeploy solely because of the incident. After the provider's recovery window, repeat read-only checks from the actual Agent HQ container: DNS (if hostname), TCP to the configured PostgreSQL host/5432, then TLS and authenticated SELECT current_database(), session_user, inet_server_addr(), inet_server_port(). Record timestamp (MSK), exact deployment commit, endpoint type (private/public), stage and error code. Never log the full database URL or credentials. If TCP still fails after the provider incident is closed, escalate with the timestamps and diagnostic evidence to Timeweb support before changing network configuration.
+
+The user supplied a screenshot of the live Agent HQ environment variable showing AGENT_HQ_DATABASE_URL targeting 192.168.0.4:5432/agent_hq (credentials redacted) and AGENT_HQ_WORKERS_ENABLED=false. The user also supplied the PostgreSQL connection UI showing public IPv4 5.42.126.47:5432; prior verified project context records the PostgreSQL private endpoint as 192.168.0.4:5432, private network Fair Cepheus, and Agent HQ app private IP 192.168.0.6. The environment-variable host therefore matches the previously recorded private PostgreSQL endpoint. Do not ask the user to rediscover this unless a fresh Timeweb screenshot contradicts it.
+
 ## Preconditions
 
 - A dedicated Linux host or VM for long-running Node.js processes (not a serverless web-function runtime).
@@ -70,7 +117,7 @@ Expected initial state: `enabled = false` and all caps/prices, including the web
 
 ## 3. Configure secrets
 
-Create one root-owned environment file per worker role under `/etc/ppf-agent-hq`. Each role must use its own PostgreSQL LOGIN and its own connection URL; never reuse one shared runtime login for all agents. Compose variables are `AGENT_HQ_DATABASE_URL_COORDINATOR`, `AGENT_HQ_DATABASE_URL_COMMUNITY_MANAGER`, `AGENT_HQ_DATABASE_URL_QA_SECURITY`, `AGENT_HQ_DATABASE_URL_WEB_ENGINEER`, `AGENT_HQ_DATABASE_URL_SEO`, `AGENT_HQ_DATABASE_URL_ANALYTICS`, and `AGENT_HQ_DATABASE_URL_SUPERVISOR`. Set permissions to `0640` and group `ppf-agent`.
+Create one root-owned environment file per worker role under `/etc/ppf-agent-hq`. Each role must use its own PostgreSQL LOGIN and its own connection URL; never reuse one shared runtime login for all agents. Compose expects the following distinct variables (19 worker identities plus supervisor): `AGENT_HQ_DATABASE_URL_ADS_MANAGER`, `AGENT_HQ_DATABASE_URL_ANALYTICS`, `AGENT_HQ_DATABASE_URL_AUTO_LAW_MONITOR`, `AGENT_HQ_DATABASE_URL_AUTO_NEWS_EDITOR`, `AGENT_HQ_DATABASE_URL_COMMUNITY_MANAGER`, `AGENT_HQ_DATABASE_URL_CONTENT_SEO`, `AGENT_HQ_DATABASE_URL_COORDINATOR`, `AGENT_HQ_DATABASE_URL_COPYWRITER`, `AGENT_HQ_DATABASE_URL_DESIGNER`, `AGENT_HQ_DATABASE_URL_FACT_CHECKER`, `AGENT_HQ_DATABASE_URL_GEO`, `AGENT_HQ_DATABASE_URL_GROWTH`, `AGENT_HQ_DATABASE_URL_IMAGE_GENERATOR`, `AGENT_HQ_DATABASE_URL_QA_SECURITY`, `AGENT_HQ_DATABASE_URL_SEO`, `AGENT_HQ_DATABASE_URL_STORYTELLER`, `AGENT_HQ_DATABASE_URL_SUPERVISOR`, `AGENT_HQ_DATABASE_URL_TREND_SCOUT`, `AGENT_HQ_DATABASE_URL_VK_STRATEGIST`, `AGENT_HQ_DATABASE_URL_WEB_ENGINEER`. The gateway's optional health profile separately reads `AGENT_HQ_DATABASE_URL`. Set permissions to `0640` and group `ppf-agent`.
 
 Required variables:
 
@@ -186,7 +233,9 @@ A successful check prints `"status": "OK"`. A `CRITICAL` result or non-zero serv
 
 ## Database role isolation status
 
-The current branch contains a disposable-CI-only RLS harness at `tests/agent-hq-role-isolation.sql` and negative tests using distinct PostgreSQL logins. Migration `0007_agent_task_access.sql` creates the scoped access registry; the supervisor grants coordinator visibility to a parent's child tasks and QA visibility to sibling specialist tasks before QA runs. Supervisor lifecycle tests assert these grants. This migration does **not** enable RLS or create role logins. The RLS policies remain a CI prototype and do not yet cover every runtime operation/column with final least privilege. Do not connect live workers or enable RLS until role-specific PostgreSQL logins, table/sequence grants, column-level restrictions, and end-to-end tests for claim, heartbeat, messages, runs, artifacts, approvals and supervisor lifecycle have been reviewed on a disposable staging database. The compose variables are deliberately separate and default empty.
+Runtime RLS is implemented in migration `0009_agent_hq_runtime_rls.sql`; authenticated worker identity binding is implemented in `0010_agent_hq_authenticated_worker_identity.sql`. These migrations enable and FORCE RLS on the protected Agent HQ tables, install role-scoped policies and column-level grants, and bind each worker LOGIN to an enabled principal record. Migration `0007_agent_task_access.sql` provides the scoped access registry used for coordinator-parent and QA-review visibility. Migration `0011_agent_hq_readonly_monitor.sql` adds an aggregate-only monitor function with a dedicated NOLOGIN owner.
+
+The complete migration chain and catalog/negative-access assertions pass in disposable CI. This is not yet proof that the actual Timeweb database has been provisioned correctly or that its existing roles have the required attributes/passwords. Before live workers can start, provision the exact 19 worker LOGINs plus `agent_supervisor` and `agent_operator`, provision the NOLOGIN function-owner roles, register each unique worker ID, apply the migrations to a verified staging database after backup, and run the staging preflight. Then execute live staging integration tests for claim, heartbeat, messages, runs, artifacts, approvals, supervisor recovery and shutdown. Do not enable workers until those checks pass. Compose role-specific database URL variables are separate and default empty.
 
 ## Not included yet
 
