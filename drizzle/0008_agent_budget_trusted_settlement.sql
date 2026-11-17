@@ -158,7 +158,7 @@ CREATE POLICY budget_owner_settlement_insert ON public.agent_budget_settlements
   FOR INSERT TO agent_hq_budget_owner WITH CHECK (true);
 
 CREATE OR REPLACE FUNCTION public.agent_task_claim(p_worker_id TEXT)
-RETURNS TABLE(id BIGINT,parent_task_id BIGINT,title TEXT,objective TEXT,expected_output TEXT,
+RETURNS TABLE(id BIGINT,parent_task_id BIGINT,title VARCHAR(240),objective TEXT,expected_output TEXT,
   acceptance_criteria JSONB,attempts INTEGER,max_attempts INTEGER,budget_limit_microusd BIGINT)
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog, public
