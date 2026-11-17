@@ -29,6 +29,11 @@ test("Agent HQ supervisor executes the real parent → QA → consolidation life
   const marker = randomUUID();
   let parentId;
   try {
+    const [previousBudget] = await sql`SELECT * FROM agent_budget_config WHERE id=1`;
+    await sql`UPDATE agent_budget_config SET enabled=true,
+      daily_cap_microusd=100000000,monthly_cap_microusd=100000000,
+      per_run_cap_microusd=10000000,input_price_per_million_microusd=1000,
+      output_price_per_million_microusd=1000,web_search_price_microusd_per_call=0 WHERE id=1`;
     const [parent] = await sql`INSERT INTO agent_tasks
       (assigned_role,title,objective,expected_output,acceptance_criteria,created_by,status)
       VALUES ('coordinator',${"Supervisor E2E " + marker},'Verify real supervisor lifecycle','Consolidated result',
@@ -56,9 +61,26 @@ test("Agent HQ supervisor executes the real parent → QA → consolidation life
     assert.ok(grants.some(row => row.principal === "qa_security" && row.access_reason === "qa_review"),
       "Supervisor must grant QA scoped access to specialist artifacts");
 
-    await sql`UPDATE agent_tasks SET status='done',completed_at=now() WHERE id=${qa.id}`;
-    await sql`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
-      VALUES (${qa.id},'qa_security','review','QA verdict','VERDICT: PASS\\nAcceptance criteria verified')`;
+    const qaWorker = runNode("scripts/agent-hq-worker.mjs", ["--once"], {
+      DATABASE_URL: process.env.AGENT_HQ_ROLE_TEST_URL_QA,
+      AGENT_ROLE: "qa_security",
+      AGENT_WORKER_ID: "qa-e2e-worker",
+      OPENAI_API_KEY: "test-key-never-used",
+      AGENT_MODEL: "gpt-4.1-mini",
+      AGENT_WEB_SEARCH_ENABLED: "false",
+      AGENT_HQ_TEST_RESPONSES_JSON: JSON.stringify({
+        output: [{
+          type: "message",
+          content: [{ type: "output_text", text: "VERDICT: PASS\\nAcceptance criteria verified against granted specialist evidence." }]
+        }],
+        usage: { input_tokens: 0, output_tokens: 0 }
+      })
+    });
+    assert.equal(qaWorker.status, 0, qaWorker.stderr || qaWorker.stdout);
+    const [qaCompleted] = await sql`SELECT status FROM agent_tasks WHERE id=${qa.id}`;
+    assert.equal(qaCompleted.status, "done", qaWorker.stderr || qaWorker.stdout);
+    const [qaArtifact] = await sql`SELECT content FROM agent_artifacts WHERE task_id=${qa.id} AND created_by='qa_security'`;
+    assert.match(qaArtifact.content, /VERDICT: PASS/);
 
     const second = runNode("scripts/agent-hq-supervisor.mjs", ["--once"], { DATABASE_URL: supervisorUrl });
     assert.equal(second.status, 0, second.stderr || second.stdout);
@@ -71,6 +93,13 @@ test("Agent HQ supervisor executes the real parent → QA → consolidation life
     assert.match(artifact.content, /VERDICT: PASS/);
   } finally {
     if (parentId) await sql`DELETE FROM agent_tasks WHERE id=${parentId}`;
+    await sql`UPDATE agent_budget_config SET enabled=${previousBudget.enabled},
+      daily_cap_microusd=${previousBudget.daily_cap_microusd},
+      monthly_cap_microusd=${previousBudget.monthly_cap_microusd},
+      per_run_cap_microusd=${previousBudget.per_run_cap_microusd},
+      input_price_per_million_microusd=${previousBudget.input_price_per_million_microusd},
+      output_price_per_million_microusd=${previousBudget.output_price_per_million_microusd},
+      web_search_price_microusd_per_call=${previousBudget.web_search_price_microusd_per_call} WHERE id=1`;
     await sql.end({ timeout: 5 });
   }
 });
