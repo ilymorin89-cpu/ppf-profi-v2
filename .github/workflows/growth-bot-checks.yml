@@ -1,0 +1,25 @@
+name: Growth Bot checks
+on:
+  pull_request:
+    paths:
+      - "growth-bot/**"
+      - ".github/workflows/growth-bot-checks.yml"
+  push:
+    branches: [main]
+    paths:
+      - "growth-bot/**"
+      - ".github/workflows/growth-bot-checks.yml"
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: growth-bot
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm run check
+      - run: node --test test/*.test.mjs
+      - run: docker build -t ppf-profi-growth-bot:test .
