@@ -86,20 +86,8 @@ function outputText(response) {
 }
 
 async function claim() {
-  return sql.begin(async tx => {
-    const [task] = await tx`
-      WITH candidate AS (
-        SELECT id FROM agent_tasks
-        WHERE assigned_role=${role} AND status='queued' AND attempts < max_attempts
-        ORDER BY priority,created_at FOR UPDATE SKIP LOCKED LIMIT 1
-      )
-      UPDATE agent_tasks t SET status='claimed',lease_owner=${workerId},
-        lease_until=now()+interval '3 minutes',attempts=t.attempts+1,updated_at=now()
-      FROM candidate WHERE t.id=candidate.id
-      RETURNING t.id,t.parent_task_id,t.title,t.objective,t.expected_output,t.acceptance_criteria,t.attempts,t.max_attempts,t.budget_limit_microusd
-    `;
-    return task || null;
-  });
+  const [task] = await sql`SELECT * FROM public.agent_task_claim(${workerId})`;
+  return task || null;
 }
 
 async function runTask(task) {
