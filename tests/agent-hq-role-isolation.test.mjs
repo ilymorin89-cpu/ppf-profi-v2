@@ -325,6 +325,61 @@ test("real SEO worker completes a task using its restricted PostgreSQL login and
 });
 
 
+test("Agent HQ blocks retry and retains reservation after ambiguous provider outcome", {
+  skip: !adminUrl || !roleUrls.seo
+}, async () => {
+  const admin=postgres(adminUrl,{max:2});
+  const marker=randomUUID();
+  let taskId;
+  let oldBudget;
+  try {
+    [oldBudget]=await admin`SELECT * FROM agent_budget_config WHERE id=1`;
+    await admin`UPDATE agent_budget_config SET enabled=true,
+      daily_cap_microusd=100000,monthly_cap_microusd=500000,per_run_cap_microusd=5000,
+      input_price_per_million_microusd=100000,output_price_per_million_microusd=100000,
+      web_search_price_microusd_per_call=0 WHERE id=1`;
+    const [task]=await admin`INSERT INTO agent_tasks(assigned_role,title,objective,expected_output,created_by)
+      VALUES('seo',${"ambiguous provider outcome "+marker},'Test ambiguous billing outcome',
+        'A non-empty result','integration-test') RETURNING id`;
+    taskId=task.id;
+    const child=spawnSync(process.execPath,["scripts/agent-hq-worker.mjs","--once"],{
+      cwd:path.resolve(path.dirname(fileURLToPath(import.meta.url)),".."),
+      encoding:"utf8",
+      env:{
+        ...process.env,NODE_ENV:"test",DATABASE_URL:roleUrls.seo,AGENT_ROLE:"seo",
+        AGENT_WORKER_ID:"seo-ambiguous-outcome",OPENAI_API_KEY:"test-key-never-used",
+        AGENT_MODEL:"gpt-4.1-mini",AGENT_WEB_SEARCH_ENABLED:"false",
+        AGENT_HQ_TEST_RESPONSES_JSON:JSON.stringify({
+          output:[],usage:{input_tokens:0,output_tokens:0}
+        })
+      }
+    });
+    assert.equal(child.status,0,child.stderr||child.stdout);
+    const [blocked]=await admin`SELECT status FROM agent_tasks WHERE id=${taskId}`;
+    assert.equal(blocked.status,"blocked",child.stderr||child.stdout);
+    const [reservation]=await admin`SELECT state FROM agent_budget_reservations WHERE task_id=${taskId}`;
+    assert.equal(reservation.state,"unknown");
+    const [event]=await admin`SELECT count(*)::int AS n FROM agent_budget_ledger l
+      JOIN agent_budget_reservations r ON r.id=l.reservation_id
+      WHERE r.task_id=${taskId} AND l.event_type='unknown'`;
+    assert.equal(event.n,1);
+  } finally {
+    if(taskId){
+      await admin`DELETE FROM agent_budget_ledger WHERE reservation_id IN (SELECT id FROM agent_budget_reservations WHERE task_id=${taskId})`;
+      await admin`DELETE FROM agent_budget_settlements WHERE reservation_id IN (SELECT id FROM agent_budget_reservations WHERE task_id=${taskId})`;
+      await admin`DELETE FROM agent_budget_reservations WHERE task_id=${taskId}`;
+      await admin`DELETE FROM agent_tasks WHERE id=${taskId}`;
+    }
+    if(oldBudget) await admin`UPDATE agent_budget_config SET enabled=${oldBudget.enabled},
+      daily_cap_microusd=${oldBudget.daily_cap_microusd},monthly_cap_microusd=${oldBudget.monthly_cap_microusd},
+      per_run_cap_microusd=${oldBudget.per_run_cap_microusd},
+      input_price_per_million_microusd=${oldBudget.input_price_per_million_microusd},
+      output_price_per_million_microusd=${oldBudget.output_price_per_million_microusd},
+      web_search_price_microusd_per_call=${oldBudget.web_search_price_microusd_per_call} WHERE id=1`;
+    await admin.end();
+  }
+});
+
 test("Agent HQ worker rejects a database LOGIN that does not match AGENT_ROLE", {
   skip: !roleUrls.seo
 }, () => {
