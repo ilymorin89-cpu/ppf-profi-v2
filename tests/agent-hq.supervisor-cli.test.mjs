@@ -236,7 +236,7 @@ test("Agent HQ approval CLI lists, approves and rejects pending requests exactly
         RETURNING id`;
       approvalIds.push(approval.id);
     }
-    const listed = runNode("scripts/agent-hq-bus.mjs", ["approvals"]);
+    const listed = runNode("scripts/agent-hq-bus.mjs", ["approvals"], { AGENT_HQ_OPERATOR_DATABASE_URL: operatorUrl });
     assert.equal(listed.status, 0, listed.stderr || listed.stdout);
     assert.ok(listed.stdout.includes(String(approvalIds[0])));
     assert.ok(listed.stdout.includes(String(approvalIds[1])));
