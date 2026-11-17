@@ -223,6 +223,9 @@ ALTER TABLE agent_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_messages FORCE ROW LEVEL SECURITY;
 ALTER TABLE agent_runs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_runs FORCE ROW LEVEL SECURITY;
+CREATE POLICY run_budget_owner_insert ON agent_runs FOR INSERT TO agent_hq_budget_owner_ci WITH CHECK (true);
+CREATE POLICY run_budget_owner_update ON agent_runs FOR UPDATE TO agent_hq_budget_owner_ci USING (true) WITH CHECK (true);
+
 ALTER TABLE agent_artifacts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_artifacts FORCE ROW LEVEL SECURITY;
 ALTER TABLE agent_approvals ENABLE ROW LEVEL SECURITY;
