@@ -8,7 +8,7 @@
 
 ## Executive result
 
-<badge>ISOLATED TEST CANDIDATE: PASS</badge>
+**ISOLATED TEST CANDIDATE: PASS**
 
 The integrated Agent HQ candidate passed PostgreSQL integration, website build, and all-19-container no-spend E2E in GitHub Actions. The tests used a disposable PostgreSQL database, deterministic `test_stub` provider responses, and an internal Docker network with no external connectivity.
 
