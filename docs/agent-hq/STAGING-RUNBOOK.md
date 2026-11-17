@@ -43,11 +43,12 @@ psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0007_agent_task_acce
 psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0008_agent_budget_trusted_settlement.sql
 psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0009_agent_hq_runtime_rls.sql
 psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0010_agent_hq_authenticated_worker_identity.sql
+psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0011_agent_hq_readonly_monitor.sql
 ```
 
-Use a separate staging database URL for runtime. The staging database name is pinned to `agent_hq_staging`; do not point this procedure at the production database. Before creating worker services, register all 19 unique worker LOGINs and immutable worker IDs in `agent_worker_principals`, and create distinct `agent_supervisor` and `agent_operator` LOGINs. Keep both SECURITY DEFINER function-owner roles as NOLOGIN.
+Use a separate staging database URL for runtime. The staging database name is pinned to `agent_hq_staging`; do not point this procedure at the production database. Before creating worker services, register all 19 unique worker LOGINs and immutable worker IDs in `agent_worker_principals`, and create distinct `agent_supervisor` and `agent_operator` LOGINs. Keep the budget, runtime and monitor SECURITY DEFINER function-owner roles as NOLOGIN.
 
-Run the fail-closed preflight with a TLS-enabled, read-only-capable staging migration/verification account. It checks the exact database name, TLS, the disabled budget, all 19 enabled principals, unique LOGINs/worker IDs, least-privilege LOGIN attributes, separate supervisor/operator LOGINs and NOLOGIN function owners. It makes no changes and makes no provider calls:
+Run the fail-closed preflight with a TLS-enabled, read-only-capable staging migration/verification account. It checks the exact database name, TLS, the disabled budget, all 19 enabled principals, unique LOGINs/worker IDs, least-privilege LOGIN attributes, separate supervisor/operator LOGINs and three NOLOGIN function owners (budget, runtime and monitor). It makes no changes and makes no provider calls:
 
 ```sh
 STAGING_DATABASE_URL='postgresql://<staging-verifier>:<secret>@<staging-host>:5432/agent_hq_staging?sslmode=require' npm run agent-hq:staging-preflight
