@@ -41,6 +41,7 @@ on:
       - "tests/agent-hq-register-test-workers.sql"
       - "tests/agent-hq-provision-test-roles.sql"
       - "tests/agent-hq-role-isolation.sql"
+      - "tests/agent-hq-test-helpers.sql"
       - "docs/agent-hq/**"
       - "deploy/systemd/**"
       - "package.json"
@@ -123,6 +124,8 @@ jobs:
           psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/agent-hq-register-test-workers.sql
       - name: Assert migration-only RLS and least-privilege boundary
         run: psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/agent-hq-role-isolation.sql
+      - name: Apply disposable CI-only aggregate helper after migration assertions
+        run: psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/agent-hq-test-helpers.sql
       - name: Check Agent HQ JavaScript syntax
         run: |
           node --check scripts/agent-hq-bus.mjs
