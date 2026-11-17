@@ -671,9 +671,18 @@ test("Agent HQ trusted budget tables and run accounting are inaccessible to work
       FROM pg_roles WHERE rolname='agent_hq_budget_owner'`;
     assert.ok(owner);
     assert.deepEqual(owner,{rolcanlogin:false,rolsuper:false,rolcreatedb:false,rolcreaterole:false,rolinherit:false,rolbypassrls:false});
-    const [tableOwner]=await admin`SELECT r.rolname FROM pg_class c JOIN pg_roles r ON r.oid=c.relowner
-      WHERE c.relname='agent_budget_reservations'`;
-    assert.notEqual(tableOwner?.rolname,"agent_hq_budget_owner");
+    const ownedTables=await admin`SELECT c.relname FROM pg_class c JOIN pg_roles r ON r.oid=c.relowner
+      WHERE r.rolname='agent_hq_budget_owner' AND c.relname = ANY(${[
+        "agent_tasks","agent_runs","agent_budget_config","agent_budget_reservations",
+        "agent_budget_ledger","agent_budget_settlements"
+      ]})`;
+    assert.equal(ownedTables.length,0,"Budget function owner must not own protected tables");
+    const [ownerMemberships]=await admin`SELECT count(*)::int AS n FROM pg_auth_members m
+      JOIN pg_roles r ON r.oid=m.roleid JOIN pg_roles member ON member.oid=m.member
+      WHERE r.rolname='agent_hq_budget_owner' OR member.rolname='agent_hq_budget_owner'`;
+    assert.equal(ownerMemberships.n,0,"Budget function owner must not have or receive role memberships");
+    const [schemaCreate]=await admin`SELECT has_schema_privilege('agent_hq_budget_owner','public','CREATE') AS allowed`;
+    assert.equal(schemaCreate.allowed,false,"Budget function owner must not retain CREATE on public");
     const [publicExec]=await admin`SELECT has_function_privilege('public',
       'public.agent_budget_reserve(bigint,text,text,text,integer,integer,integer,integer,text)','EXECUTE') AS allowed`;
     assert.equal(publicExec.allowed,false);
