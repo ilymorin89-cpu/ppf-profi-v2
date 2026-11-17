@@ -1,14 +1,17 @@
+x-agent-hq-test-env: &agent-hq-test-env
+  NODE_ENV: test
+  AGENT_HQ_WORKERS_ENABLED: "true"
+  OPENAI_API_KEY: test-no-provider-call
+  AGENT_MODEL: test-model
+  AGENT_HQ_TEST_RESPONSES_JSON: '{"output":[{"type":"message","content":[{"type":"output_text","text":"NO-SPEND E2E: deterministic fixture response; no external provider or tool was called."}]}],"usage":{"input_tokens":0,"output_tokens":0}}'
+  AGENT_WEB_SEARCH_ENABLED: "false"
+  GITHUB_TOKEN: ""
+  AGENT_GITHUB_REPOSITORY: ""
+
 x-agent-hq-no-spend-worker: &agent-hq-no-spend-worker
   image: ppf-agent-hq:test
   environment:
-    NODE_ENV: test
-    AGENT_HQ_WORKERS_ENABLED: "true"
-    OPENAI_API_KEY: test-no-provider-call
-    AGENT_MODEL: test-model
-    AGENT_HQ_TEST_RESPONSES_JSON: '{"output":[{"type":"message","content":[{"type":"output_text","text":"NO-SPEND E2E: deterministic fixture response; no external provider or tool was called."}]}],"usage":{"input_tokens":0,"output_tokens":0}}'
-    AGENT_WEB_SEARCH_ENABLED: "false"
-    GITHUB_TOKEN: ""
-    AGENT_GITHUB_REPOSITORY: ""
+    <<: *agent-hq-test-env
   depends_on:
     postgres:
       condition: service_healthy
@@ -62,115 +65,115 @@ services:
   coordinator:
     <<: *agent-hq-no-spend-worker
     environment:
-      <<: *agent-hq-no-spend-worker.environment
+      <<: *agent-hq-test-env
       DATABASE_URL: postgres://agent_coordinator:ci_agent_coordinator@postgres:5432/agent_hq_test
 
   web_engineer:
     <<: *agent-hq-no-spend-worker
     environment:
-      <<: *agent-hq-no-spend-worker.environment
+      <<: *agent-hq-test-env
       DATABASE_URL: postgres://agent_web_engineer:ci_agent_web_engineer@postgres:5432/agent_hq_test
 
   seo:
     <<: *agent-hq-no-spend-worker
     environment:
-      <<: *agent-hq-no-spend-worker.environment
+      <<: *agent-hq-test-env
       DATABASE_URL: postgres://agent_seo:ci_agent_seo@postgres:5432/agent_hq_test
 
   geo:
     <<: *agent-hq-no-spend-worker
     environment:
-      <<: *agent-hq-no-spend-worker.environment
+      <<: *agent-hq-test-env
       DATABASE_URL: postgres://agent_geo:ci_agent_geo@postgres:5432/agent_hq_test
 
   growth:
     <<: *agent-hq-no-spend-worker
     environment:
-      <<: *agent-hq-no-spend-worker.environment
+      <<: *agent-hq-test-env
       DATABASE_URL: postgres://agent_growth:ci_agent_growth@postgres:5432/agent_hq_test
 
   analytics:
     <<: *agent-hq-no-spend-worker
     environment:
-      <<: *agent-hq-no-spend-worker.environment
+      <<: *agent-hq-test-env
       DATABASE_URL: postgres://agent_analytics:ci_agent_analytics@postgres:5432/agent_hq_test
 
   qa_security:
     <<: *agent-hq-no-spend-worker
     environment:
-      <<: *agent-hq-no-spend-worker.environment
+      <<: *agent-hq-test-env
       DATABASE_URL: postgres://agent_qa_security:ci_agent_qa_security@postgres:5432/agent_hq_test
 
   vk_strategist:
     <<: *agent-hq-no-spend-worker
     environment:
-      <<: *agent-hq-no-spend-worker.environment
+      <<: *agent-hq-test-env
       DATABASE_URL: postgres://agent_vk_strategist:ci_agent_vk_strategist@postgres:5432/agent_hq_test
 
   copywriter:
     <<: *agent-hq-no-spend-worker
     environment:
-      <<: *agent-hq-no-spend-worker.environment
+      <<: *agent-hq-test-env
       DATABASE_URL: postgres://agent_copywriter:ci_agent_copywriter@postgres:5432/agent_hq_test
 
   designer:
     <<: *agent-hq-no-spend-worker
     environment:
-      <<: *agent-hq-no-spend-worker.environment
+      <<: *agent-hq-test-env
       DATABASE_URL: postgres://agent_designer:ci_agent_designer@postgres:5432/agent_hq_test
 
   image_generator:
     <<: *agent-hq-no-spend-worker
     environment:
-      <<: *agent-hq-no-spend-worker.environment
+      <<: *agent-hq-test-env
       DATABASE_URL: postgres://agent_image_generator:ci_agent_image_generator@postgres:5432/agent_hq_test
 
   storyteller:
     <<: *agent-hq-no-spend-worker
     environment:
-      <<: *agent-hq-no-spend-worker.environment
+      <<: *agent-hq-test-env
       DATABASE_URL: postgres://agent_storyteller:ci_agent_storyteller@postgres:5432/agent_hq_test
 
   community_manager:
     <<: *agent-hq-no-spend-worker
     environment:
-      <<: *agent-hq-no-spend-worker.environment
+      <<: *agent-hq-test-env
       DATABASE_URL: postgres://agent_community_manager:ci_agent_community_manager@postgres:5432/agent_hq_test
 
   content_seo:
     <<: *agent-hq-no-spend-worker
     environment:
-      <<: *agent-hq-no-spend-worker.environment
+      <<: *agent-hq-test-env
       DATABASE_URL: postgres://agent_content_seo:ci_agent_content_seo@postgres:5432/agent_hq_test
 
   ads_manager:
     <<: *agent-hq-no-spend-worker
     environment:
-      <<: *agent-hq-no-spend-worker.environment
+      <<: *agent-hq-test-env
       DATABASE_URL: postgres://agent_ads_manager:ci_agent_ads_manager@postgres:5432/agent_hq_test
 
   trend_scout:
     <<: *agent-hq-no-spend-worker
     environment:
-      <<: *agent-hq-no-spend-worker.environment
+      <<: *agent-hq-test-env
       DATABASE_URL: postgres://agent_trend_scout:ci_agent_trend_scout@postgres:5432/agent_hq_test
 
   auto_news_editor:
     <<: *agent-hq-no-spend-worker
     environment:
-      <<: *agent-hq-no-spend-worker.environment
+      <<: *agent-hq-test-env
       DATABASE_URL: postgres://agent_auto_news_editor:ci_agent_auto_news_editor@postgres:5432/agent_hq_test
 
   auto_law_monitor:
     <<: *agent-hq-no-spend-worker
     environment:
-      <<: *agent-hq-no-spend-worker.environment
+      <<: *agent-hq-test-env
       DATABASE_URL: postgres://agent_auto_law_monitor:ci_agent_auto_law_monitor@postgres:5432/agent_hq_test
 
   fact_checker:
     <<: *agent-hq-no-spend-worker
     environment:
-      <<: *agent-hq-no-spend-worker.environment
+      <<: *agent-hq-test-env
       DATABASE_URL: postgres://agent_fact_checker:ci_agent_fact_checker@postgres:5432/agent_hq_test
   supervisor:
     image: ppf-agent-hq:test
