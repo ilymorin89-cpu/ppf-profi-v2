@@ -65,6 +65,7 @@ const roleInstructions = {
 const instructions = roleInstructions[role] || "Complete the assigned specialist task rigorously. State evidence, uncertainty, limitations and next action.";
 
 let testResponseIndex = 0;
+let testInputAssertionsChecked = false;
 async function requestModel(payload, signal) {
   // Test mode is fail-closed: never fall through to the hosted provider.
   // A deterministic fixture is mandatory to exercise the real worker/DB path.
@@ -73,6 +74,28 @@ async function requestModel(payload, signal) {
       throw new Error("Provider requests are disabled in NODE_ENV=test; AGENT_HQ_TEST_RESPONSES_JSON is required.");
     }
     const configured = JSON.parse(process.env.AGENT_HQ_TEST_RESPONSES_JSON);
+    // Optional test-only contract: prove that a worker received required context
+    // before a deterministic response fixture is allowed to answer.
+    if (!testInputAssertionsChecked && process.env.AGENT_HQ_TEST_EXPECT_INPUT_JSON) {
+      let expectedInput;
+      try {
+        expectedInput = JSON.parse(process.env.AGENT_HQ_TEST_EXPECT_INPUT_JSON);
+      } catch {
+        throw new Error("AGENT_HQ_TEST_EXPECT_INPUT_JSON must contain valid JSON.");
+      }
+      if (!Array.isArray(expectedInput) || expectedInput.length < 1 || expectedInput.length > 20 ||
+          expectedInput.some(value => typeof value !== "string" || !value.trim() || value.length > 300)) {
+        throw new Error("AGENT_HQ_TEST_EXPECT_INPUT_JSON must be a non-empty array of 1-20 short strings.");
+      }
+      const actualInput = typeof payload?.input === "string"
+        ? payload.input
+        : JSON.stringify(payload?.input ?? "");
+      const missing = expectedInput.filter(value => !actualInput.includes(value));
+      if (missing.length) {
+        throw new Error("Deterministic test input assertion failed; required context is missing: " + missing.join(", "));
+      }
+      testInputAssertionsChecked = true;
+    }
     const mocked = Array.isArray(configured)
       ? configured[Math.min(testResponseIndex++, configured.length - 1)]
       : configured;

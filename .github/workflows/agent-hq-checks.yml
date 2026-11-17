@@ -8,6 +8,7 @@ on:
       - "scripts/agent-hq-*.sh"
       - "scripts/agent-hq-db-connectivity-check.mjs"
       - "docker-compose.agent-hq-test.yml"
+      - "docker-compose.agent-hq-four-agent-test.yml"
       - "tests/agent-hq*.mjs"
       - "tests/agent-hq*.sql"
       - "tests/agent-hq-db-connectivity-check.test.mjs"
@@ -52,6 +53,7 @@ on:
       - ".github/workflows/agent-hq-checks.yml"
       - "scripts/agent-hq-*.sh"
       - "docker-compose.agent-hq-test.yml"
+      - "docker-compose.agent-hq-four-agent-test.yml"
       - "Dockerfile.agent-hq"
 
 permissions:
@@ -143,6 +145,7 @@ jobs:
           node --check scripts/agent-hq-db-connectivity-check.mjs
           node --check scripts/agent-hq-launch.mjs
           node --check scripts/agent-hq-simulate.mjs
+          node --check scripts/agent-hq-four-agent-e2e.mjs
           node --check scripts/agent-hq-test-assert.mjs
           node --check scripts/agent-hq-db-connectivity-check.mjs
           node --test tests/agent-hq-db-connectivity-check.test.mjs
@@ -150,7 +153,7 @@ jobs:
           node --check tests/agent-hq.role-matrix.test.mjs
       - name: Run PostgreSQL integration tests
         run: npm run agent-hq:test
-      - name: Run deterministic no-spend core team simulation against disposable PostgreSQL
+      - name: Run deterministic isolated role smoke checks against disposable PostgreSQL
         shell: bash
         run: |
           set -euo pipefail
@@ -191,13 +194,14 @@ jobs:
               exit 1
             fi
           done
-          echo "Deterministic no-spend core team simulation completed successfully."
+          echo "Deterministic zero-cost isolated role smoke checks completed successfully."
       - name: Verify systemd unit syntax
         run: systemd-analyze verify deploy/systemd/agent-hq-worker@.service deploy/systemd/agent-hq-supervisor.service
       - name: Validate Docker Compose configuration
         run: |
           docker compose -f docker-compose.yml config --quiet
           docker compose -f docker-compose.agent-hq-test.yml config --quiet
+          docker compose -f docker-compose.agent-hq-four-agent-test.yml config --quiet
       - name: Build Agent HQ runtime container (no deployment)
         run: docker build --file Dockerfile.agent-hq --tag ppf-agent-hq:ci .
 
@@ -229,6 +233,29 @@ jobs:
             auto_news_editor auto_law_monitor fact_checker supervisor
           compose run --rm test-assert
           echo "All 19 role containers completed deterministic zero-cost tasks."
+
+  four-agent-orchestration-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run real Coordinator -> SEO -> QA Security -> Supervisor flow with no egress
+        shell: bash
+        run: |
+          set -euo pipefail
+          compose() {
+            docker compose -f docker-compose.agent-hq-four-agent-test.yml "$@"
+          }
+          cleanup() {
+            compose logs --no-color --tail=120 || true
+            compose down --volumes --remove-orphans || true
+          }
+          trap cleanup EXIT
+
+          # Compose's internal-only network prevents outbound traffic. The
+          # orchestrator starts real worker processes with separate PostgreSQL
+          # LOGINs and deterministic fixtures; the disposable DB is in tmpfs.
+          compose up --build --abort-on-container-exit --exit-code-from orchestrated-core orchestrated-core
+          echo "Four-agent deterministic no-egress orchestration completed successfully."
 
   website-build:
     runs-on: ubuntu-latest
