@@ -416,9 +416,9 @@ test("Agent HQ reservation and settlement are idempotent and bound to the origin
     taskId=task.id;
     const reserveKey="reserve-"+marker;
     const [first]=await seo`SELECT * FROM agent_budget_reserve(
-      ${taskId},${workerId},'test_stub','test-model',10000,256,1,0,${reserveKey})`;
+      ${taskId},${workerId},'test_stub','test-model',10000,1024,1,0,${reserveKey})`;
     const [again]=await seo`SELECT * FROM agent_budget_reserve(
-      ${taskId},${workerId},'test_stub','test-model',10000,256,1,0,${reserveKey})`;
+      ${taskId},${workerId},'test_stub','test-model',10000,1024,1,0,${reserveKey})`;
     assert.equal(String(again.run_id),String(first.run_id));
     assert.equal(String(again.reservation_id),String(first.reservation_id));
     await assert.rejects(seo`SELECT agent_budget_settle(
