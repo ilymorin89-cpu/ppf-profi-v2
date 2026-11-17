@@ -486,16 +486,13 @@ END
 $reconcile$;
 
 CREATE OR REPLACE FUNCTION public.agent_budget_recover_expired_tasks()
-RETURNS TABLE(requeued_count INTEGER,blocked_count INTEGER,dead_letter_count INTEGER)
+RETURNS TABLE(task_id BIGINT,recovery_status TEXT,has_open_reservation BOOLEAN)
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog, public
 AS $recover$
 DECLARE
   v_task RECORD;
   v_target_status TEXT;
-  v_requeued INTEGER := 0;
-  v_blocked INTEGER := 0;
-  v_dead_letter INTEGER := 0;
 BEGIN
   IF session_user<>'agent_supervisor' THEN
     RAISE EXCEPTION 'only the authenticated supervisor may recover expired task leases' USING ERRCODE='42501';
@@ -516,20 +513,11 @@ BEGIN
     END;
     UPDATE public.agent_tasks SET status=v_target_status,lease_owner=NULL,lease_until=NULL,updated_at=now()
       WHERE id=v_task.id;
-    IF v_target_status='blocked' THEN
-      v_blocked:=v_blocked+1;
-      INSERT INTO public.agent_messages(task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
-        VALUES(v_task.id,gen_random_uuid(),'supervisor','coordinator','status',
-          'Expired worker lease has an active or unknown budget reservation. Automatic retry is blocked pending operator reconciliation.',
-          'budget-recovery-'||v_task.id)
-        ON CONFLICT (idempotency_key) DO NOTHING;
-    ELSIF v_target_status='dead_letter' THEN
-      v_dead_letter:=v_dead_letter+1;
-    ELSE
-      v_requeued:=v_requeued+1;
-    END IF;
+    task_id:=v_task.id;
+    recovery_status:=v_target_status;
+    has_open_reservation:=v_task.has_open_reservation;
+    RETURN NEXT;
   END LOOP;
-  RETURN QUERY SELECT v_requeued,v_blocked,v_dead_letter;
 END
 $recover$;
 
