@@ -11,6 +11,7 @@ const maxOutputTokens = Number(process.env.AGENT_MAX_OUTPUT_TOKENS || 1200);
 const maxModelTurns = 4;
 const maxBuiltInToolCallsPerTurn = 5;
 const webSearchEnabled = process.env.AGENT_WEB_SEARCH_ENABLED !== "false";
+const testStubMode = process.env.NODE_ENV === "test" && Boolean(process.env.AGENT_HQ_TEST_RESPONSES_JSON);
 const pollMs = Number(process.env.AGENT_POLL_MS || 5000);
 
 const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security","vk_strategist","copywriter","designer","image_generator","storyteller","community_manager","content_seo","ads_manager","trend_scout","auto_news_editor","auto_law_monitor","fact_checker"];
@@ -48,9 +49,12 @@ const instructions = roleInstructions[role] || "Complete the assigned specialist
 
 let testResponseIndex = 0;
 async function requestModel(payload) {
-  // Deterministic test seam: CI can exercise the real worker/DB path without
-  // network access, credentials, or provider spend. An array scripts tool turns.
-  if (process.env.NODE_ENV === "test" && process.env.AGENT_HQ_TEST_RESPONSES_JSON) {
+  // Test mode is fail-closed: never fall through to the hosted provider.
+  // A deterministic fixture is mandatory to exercise the real worker/DB path.
+  if (process.env.NODE_ENV === "test") {
+    if (!testStubMode) {
+      throw new Error("Provider requests are disabled in NODE_ENV=test; AGENT_HQ_TEST_RESPONSES_JSON is required.");
+    }
     const configured = JSON.parse(process.env.AGENT_HQ_TEST_RESPONSES_JSON);
     const mocked = Array.isArray(configured)
       ? configured[Math.min(testResponseIndex++, configured.length - 1)]
@@ -123,7 +127,7 @@ async function runTask(task) {
       }
       const [created] = await tx`INSERT INTO agent_runs
         (task_id,role,worker_id,provider,model,status,cost_microusd)
-        VALUES (${task.id},${role},${workerId},'openai',${model},'running',${estimate}) RETURNING id`;
+        VALUES (${task.id},${role},${workerId},${testStubMode ? "test_stub" : "openai"},${model},'running',${estimate}) RETURNING id`;
       return created;
     });
   

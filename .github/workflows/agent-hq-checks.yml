@@ -102,10 +102,33 @@ jobs:
           node --check scripts/agent-hq-worker.mjs
           node --check scripts/agent-hq-supervisor.mjs
           node --check scripts/agent-hq-launch.mjs
+          node --check scripts/agent-hq-simulate.mjs
           node --check tests/agent-hq.integration.test.mjs
           node --check tests/agent-hq.role-matrix.test.mjs
       - name: Run PostgreSQL integration tests
         run: npm run agent-hq:test
+      - name: Run deterministic no-spend worker simulation against disposable PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          TASK_ID=""
+          cleanup() {
+            if [ -n "$TASK_ID" ]; then
+              psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -c "DELETE FROM agent_messages WHERE task_id=$TASK_ID; DELETE FROM agent_artifacts WHERE task_id=$TASK_ID; DELETE FROM agent_runs WHERE task_id=$TASK_ID; DELETE FROM agent_tasks WHERE id=$TASK_ID;" || true
+            fi
+            psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -c "UPDATE agent_budget_config SET enabled=false,daily_cap_microusd=0,monthly_cap_microusd=0,per_run_cap_microusd=0,input_price_per_million_microusd=0,output_price_per_million_microusd=0,updated_at=now() WHERE id=1;" || true
+          }
+          trap cleanup EXIT
+          psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -c "UPDATE agent_budget_config SET enabled=true,daily_cap_microusd=1000000,monthly_cap_microusd=5000000,per_run_cap_microusd=100000,input_price_per_million_microusd=1,output_price_per_million_microusd=1,web_search_price_microusd_per_call=0,updated_at=now() WHERE id=1;"
+          TASK_ID="$(psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -Atqc "INSERT INTO agent_tasks (title,objective,expected_output,assigned_role,created_by) VALUES ('CI no-spend simulation ${GITHUB_RUN_ID}','Complete one deterministic local simulation pass','Persist one artifact and complete the task','seo','owner') RETURNING id;")"
+          npm run agent-hq:simulate -- check seo
+          npm run agent-hq:simulate -- run seo
+          RESULT="$(psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -Atqc "SELECT t.status || '|' || (SELECT count(*) FROM agent_artifacts a WHERE a.task_id=t.id) || '|' || (SELECT count(*) FROM agent_runs r WHERE r.task_id=t.id AND r.status='succeeded' AND r.provider='test_stub' AND r.cost_microusd=0) FROM agent_tasks t WHERE t.id=$TASK_ID;")"
+          if [ "$RESULT" != "done|1|1" ]; then
+            echo "Unexpected no-spend simulation result: $RESULT"
+            exit 1
+          fi
+          echo "Deterministic no-spend worker simulation completed successfully for task $TASK_ID."
       - name: Verify systemd unit syntax
         run: systemd-analyze verify deploy/systemd/agent-hq-worker@.service deploy/systemd/agent-hq-supervisor.service
       - name: Validate Docker Compose configuration

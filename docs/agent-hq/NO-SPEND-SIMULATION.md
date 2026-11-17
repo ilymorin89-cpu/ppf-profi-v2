@@ -71,7 +71,7 @@ WHERE id=1;
 "
 ```
 
-These values are simulated accounting data. The stub returns zero token usage and no web-search calls; no provider is contacted and no money is spent. Never run this update against a non-test database.
+These values are simulated accounting data. The stub returns zero token usage and no web-search calls; the run is labeled `test_stub`, no provider is contacted and no money is spent. Never run this update against a non-test database.
 
 ## 3. Seed one task and run one simulated worker pass
 
@@ -122,6 +122,8 @@ docker rm -f agent-hq-test-db
 ```
 
 ## What this simulation proves — and does not prove
+
+CI also executes this exact one-shot simulation after the regular integration suite, then asserts that the task is `done`, exactly one artifact exists, and the successful `test_stub` run has zero recorded cost. It removes the fixture rows and resets the disposable CI budget immediately afterward.
 
 It proves that a local, dedicated PostgreSQL role can claim one queued task, pass through the worker's deterministic model-response seam, persist a result artifact, update the task/run records and exit without an external provider call.
 
