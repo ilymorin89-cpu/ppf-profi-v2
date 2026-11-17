@@ -365,11 +365,11 @@ async function runTask(task) {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await sql.begin(async tx => {
+      await tx`SELECT public.agent_budget_mark_unknown(${run.reservationId}, ${message.slice(0,500)}, ${'agent-unknown-' + run.id})`;
       await tx`UPDATE agent_tasks SET
         status=CASE WHEN attempts < max_attempts THEN 'queued' ELSE 'dead_letter' END,
         lease_owner=NULL,lease_until=NULL,updated_at=now()
         WHERE id=${task.id} AND lease_owner=${workerId}`;
-      await tx`SELECT public.agent_budget_mark_unknown(${run.reservationId}, ${message.slice(0,500)}, ${'agent-unknown-' + run.id})`;
       await tx`INSERT INTO agent_messages
         (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
         VALUES (${task.id},${randomUUID()},${role},'coordinator','status',${message.slice(0,4000)},${randomUUID()})`;
