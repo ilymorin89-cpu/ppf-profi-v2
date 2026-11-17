@@ -162,7 +162,10 @@ DECLARE
   v_role TEXT;
 BEGIN
   v_role:=public.agent_budget_role_for_session();
-  IF v_role IS NULL OR p_worker_id IS DISTINCT FROM public.agent_worker_id_for_session() OR p_worker_id IS NULL OR length(p_worker_id) NOT BETWEEN 1 AND 120 THEN
+  IF p_worker_id IS DISTINCT FROM public.agent_worker_id_for_session() THEN
+    RAISE EXCEPTION 'worker ID does not match authenticated PostgreSQL principal' USING ERRCODE='42501';
+  END IF;
+  IF v_role IS NULL OR p_worker_id IS NULL OR length(p_worker_id) NOT BETWEEN 1 AND 120 THEN
     RAISE EXCEPTION 'invalid worker task claim identity' USING ERRCODE='42501';
   END IF;
   RETURN QUERY
@@ -202,7 +205,10 @@ DECLARE
   v_reservation BIGINT;
 BEGIN
   v_role := public.agent_budget_role_for_session();
-  IF v_role IS NULL OR p_worker_id IS DISTINCT FROM public.agent_worker_id_for_session() OR p_worker_id IS NULL OR p_worker_id='' OR p_provider IS NULL OR p_provider NOT IN ('openai','test_stub') OR p_model IS NULL OR p_model=''
+  IF p_worker_id IS DISTINCT FROM public.agent_worker_id_for_session() THEN
+    RAISE EXCEPTION 'worker ID does not match authenticated PostgreSQL principal' USING ERRCODE='42501';
+  END IF;
+  IF v_role IS NULL OR p_worker_id IS NULL OR p_worker_id='' OR p_provider IS NULL OR p_provider NOT IN ('openai','test_stub') OR p_model IS NULL OR p_model=''
      OR p_idempotency_key IS NULL OR length(p_idempotency_key) NOT BETWEEN 8 AND 160
      OR p_estimated_input_tokens NOT BETWEEN 1 AND 10000000
      OR p_max_output_tokens NOT BETWEEN 64 AND 8192 OR p_max_turns NOT BETWEEN 1 AND 8
@@ -303,7 +309,10 @@ DECLARE
   v_cost BIGINT;
 BEGIN
   v_role:=public.agent_budget_role_for_session();
-  IF v_role IS NULL OR p_worker_id IS DISTINCT FROM public.agent_worker_id_for_session() OR p_worker_id IS NULL OR p_worker_id='' OR p_input_tokens NOT BETWEEN 0 AND 100000000
+  IF p_worker_id IS DISTINCT FROM public.agent_worker_id_for_session() THEN
+    RAISE EXCEPTION 'worker ID does not match authenticated PostgreSQL principal' USING ERRCODE='42501';
+  END IF;
+  IF v_role IS NULL OR p_worker_id IS NULL OR p_worker_id='' OR p_input_tokens NOT BETWEEN 0 AND 100000000
      OR p_output_tokens NOT BETWEEN 0 AND 100000000 OR p_search_calls NOT BETWEEN 0 AND 512
      OR p_idempotency_key IS NULL OR length(p_idempotency_key) NOT BETWEEN 8 AND 160 THEN
     RAISE EXCEPTION 'invalid settlement request' USING ERRCODE='22023';
@@ -362,7 +371,10 @@ AS $release$
 DECLARE v_role TEXT; v_res public.agent_budget_reservations%ROWTYPE;
 BEGIN
   v_role:=public.agent_budget_role_for_session();
-  IF v_role IS NULL OR p_worker_id IS DISTINCT FROM public.agent_worker_id_for_session() OR p_worker_id IS NULL OR p_worker_id='' OR p_reason IS NULL OR length(p_reason) NOT BETWEEN 1 AND 500
+  IF p_worker_id IS DISTINCT FROM public.agent_worker_id_for_session() THEN
+    RAISE EXCEPTION 'worker ID does not match authenticated PostgreSQL principal' USING ERRCODE='42501';
+  END IF;
+  IF v_role IS NULL OR p_worker_id IS NULL OR p_worker_id='' OR p_reason IS NULL OR length(p_reason) NOT BETWEEN 1 AND 500
      OR p_idempotency_key IS NULL OR length(p_idempotency_key) NOT BETWEEN 8 AND 160 THEN
     RAISE EXCEPTION 'invalid release request' USING ERRCODE='22023';
   END IF;
@@ -397,7 +409,10 @@ AS $unknown$
 DECLARE v_role TEXT; v_res public.agent_budget_reservations%ROWTYPE;
 BEGIN
   v_role:=public.agent_budget_role_for_session();
-  IF v_role IS NULL OR p_worker_id IS DISTINCT FROM public.agent_worker_id_for_session() OR p_worker_id IS NULL OR p_worker_id='' OR p_reason IS NULL OR length(p_reason) NOT BETWEEN 1 AND 500
+  IF p_worker_id IS DISTINCT FROM public.agent_worker_id_for_session() THEN
+    RAISE EXCEPTION 'worker ID does not match authenticated PostgreSQL principal' USING ERRCODE='42501';
+  END IF;
+  IF v_role IS NULL OR p_worker_id IS NULL OR p_worker_id='' OR p_reason IS NULL OR length(p_reason) NOT BETWEEN 1 AND 500
      OR p_event_key IS NULL OR length(p_event_key) NOT BETWEEN 8 AND 160 THEN
     RAISE EXCEPTION 'invalid unknown reservation request' USING ERRCODE='22023';
   END IF;
@@ -618,7 +633,10 @@ AS $heartbeat$
 DECLARE v_role TEXT;
 BEGIN
   v_role:=public.agent_budget_role_for_session();
-  IF v_role IS NULL OR p_worker_id IS DISTINCT FROM public.agent_worker_id_for_session() OR p_worker_id IS NULL OR p_worker_id='' THEN
+  IF p_worker_id IS DISTINCT FROM public.agent_worker_id_for_session() THEN
+    RAISE EXCEPTION 'worker ID does not match authenticated PostgreSQL principal' USING ERRCODE='42501';
+  END IF;
+  IF v_role IS NULL OR p_worker_id IS NULL OR p_worker_id='' THEN
     RAISE EXCEPTION 'invalid task heartbeat identity' USING ERRCODE='42501';
   END IF;
   UPDATE public.agent_tasks SET status='running',
@@ -642,7 +660,10 @@ DECLARE
   v_target TEXT;
 BEGIN
   v_role:=public.agent_budget_role_for_session();
-  IF v_role IS NULL OR p_worker_id IS DISTINCT FROM public.agent_worker_id_for_session() OR p_worker_id IS NULL OR p_worker_id=''
+  IF p_worker_id IS DISTINCT FROM public.agent_worker_id_for_session() THEN
+    RAISE EXCEPTION 'worker ID does not match authenticated PostgreSQL principal' USING ERRCODE='42501';
+  END IF;
+  IF v_role IS NULL OR p_worker_id IS NULL OR p_worker_id=''
      OR p_transition NOT IN ('complete','blocked','retry','dead_letter') THEN
     RAISE EXCEPTION 'invalid task transition request' USING ERRCODE='22023';
   END IF;
