@@ -121,8 +121,7 @@ async function runTask(task) {
     const reason = error instanceof Error ? error.message : String(error);
     if (/budget|cap|exceeds per-run/i.test(reason)) {
       await sql.begin(async tx => {
-        await tx`UPDATE agent_tasks SET status='blocked',lease_owner=NULL,lease_until=NULL,updated_at=now()
-          WHERE id=${task.id} AND lease_owner=${workerId}`;
+        await tx`SELECT public.agent_task_transition(${task.id},${workerId},'blocked')`;
         await tx`INSERT INTO agent_messages
           (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
           VALUES (${task.id},${randomUUID()},${role},'coordinator','status',${reason.slice(0,4000)},${randomUUID()})`;
@@ -132,11 +131,8 @@ async function runTask(task) {
   }
   const heartbeat = setInterval(async () => {
     try {
-      const [lease] = await sql`UPDATE agent_tasks SET status='running',
-        lease_until=now()+interval '3 minutes',updated_at=now()
-        WHERE id=${task.id} AND lease_owner=${workerId} AND status IN ('claimed','running')
-        RETURNING id`;
-      if (!lease) stopping = true;
+      const [lease] = await sql`SELECT public.agent_task_heartbeat(${task.id},${workerId}) AS ok`;
+      if (!lease?.ok) stopping = true;
     } catch (error) {
       console.error("Heartbeat failed:", error instanceof Error ? error.message : error);
       stopping = true;
@@ -351,13 +347,8 @@ async function runTask(task) {
     if (!settlement) throw new Error("Trusted budget settlement returned no result");
     const actualCost = settlement.cost;
     await sql.begin(async tx => {
-      const [owned] = await tx`UPDATE agent_tasks SET
-        status=CASE WHEN ${role}='coordinator' THEN 'review' ELSE 'done' END,
-        completed_at=CASE WHEN ${role}='coordinator' THEN NULL ELSE now() END,
-        lease_owner=NULL,lease_until=NULL,updated_at=now()
-        WHERE id=${task.id} AND lease_owner=${workerId} AND status IN ('claimed','running')
-        RETURNING id,title,status`;
-      if (!owned) throw new Error("Lease lost before completion; result not committed");
+      const [owned] = await tx`SELECT public.agent_task_transition(${task.id},${workerId},'complete') AS status`;
+      if (!owned?.status) throw new Error("Lease lost before completion; result not committed");
       await tx`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content,evidence)
         VALUES (${task.id},${role},'result',${task.title},${result},'[]'::jsonb)`;
       await tx`INSERT INTO agent_messages
@@ -382,10 +373,9 @@ async function runTask(task) {
       }
     }
     await sql.begin(async tx => {
-      await tx`UPDATE agent_tasks SET
-        status=CASE WHEN attempts >= max_attempts THEN 'dead_letter' WHEN ${safeToRetry} THEN 'queued' ELSE 'blocked' END,
-        lease_owner=NULL,lease_until=NULL,updated_at=now()
-        WHERE id=${task.id} AND lease_owner=${workerId}`;
+      const transition = Number(task.attempts) >= Number(task.max_attempts)
+        ? "dead_letter" : safeToRetry ? "retry" : "blocked";
+      await tx`SELECT public.agent_task_transition(${task.id},${workerId},${transition})`;
       await tx`INSERT INTO agent_messages
         (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
         VALUES (${task.id},${randomUUID()},${role},'coordinator','status',${message.slice(0,4000)},${randomUUID()})`;
