@@ -66,7 +66,7 @@ jobs:
       AGENT_HQ_ROLE_TEST_URL_ROLE_GEO: postgres://agent_geo:ci_agent_geo@localhost:5432/agent_hq_test
       AGENT_HQ_ROLE_TEST_URL_ROLE_GROWTH: postgres://agent_growth:ci_agent_growth@localhost:5432/agent_hq_test
       AGENT_HQ_ROLE_TEST_URL_ROLE_ANALYTICS: postgres://agent_analytics:ci_agent_analytics@localhost:5432/agent_hq_test
-      AGENT_HQ_ROLE_TEST_URL_ROLE_QA_SECURITY: postgres://agent_qa_security:ci_agent_qa_security@localhost:5432/agent_hq_test
+      AGENT_HQ_ROLE_TEST_URL_ROLE_QA_SECURITY: postgres://agent_qa_security:ci_agent_qa@localhost:5432/agent_hq_test
       AGENT_HQ_ROLE_TEST_URL_ROLE_VK_STRATEGIST: postgres://agent_vk_strategist:ci_agent_vk_strategist@localhost:5432/agent_hq_test
       AGENT_HQ_ROLE_TEST_URL_ROLE_COPYWRITER: postgres://agent_copywriter:ci_agent_copywriter@localhost:5432/agent_hq_test
       AGENT_HQ_ROLE_TEST_URL_ROLE_DESIGNER: postgres://agent_designer:ci_agent_designer@localhost:5432/agent_hq_test
