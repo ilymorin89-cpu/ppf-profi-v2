@@ -328,13 +328,14 @@ test("Agent HQ SECURITY DEFINER helpers use a dedicated NOLOGIN non-BYPASSRLS ow
 }, async () => {
   const admin = postgres(adminUrl, { max: 1 });
   try {
-    const [owner] = await admin`SELECT rolcanlogin,rolsuper,rolcreatedb,rolcreaterole,rolbypassrls
+    const [owner] = await admin`SELECT rolcanlogin,rolsuper,rolcreatedb,rolcreaterole,rolinherit,rolbypassrls
       FROM pg_roles WHERE rolname='agent_hq_fn_owner_ci'`;
     assert.ok(owner, "Dedicated CI function owner must exist");
     assert.equal(owner.rolcanlogin, false);
     assert.equal(owner.rolsuper, false);
     assert.equal(owner.rolcreatedb, false);
     assert.equal(owner.rolcreaterole, false);
+    assert.equal(owner.rolinherit, false);
     assert.equal(owner.rolbypassrls, false);
 
     const helpers = await admin`
@@ -356,7 +357,7 @@ test("Agent HQ SECURITY DEFINER helpers use a dedicated NOLOGIN non-BYPASSRLS ow
       assert.equal(helper.owner, "agent_hq_fn_owner_ci", helper.proname + " owner");
       assert.equal(helper.prosecdef, true, helper.proname + " must be SECURITY DEFINER");
       assert.ok(
-        Array.isArray(helper.proconfig) && helper.proconfig.some(value => value.startsWith("search_path=")),
+        Array.isArray(helper.proconfig) && helper.proconfig.some(value => value.startsWith("search_path=pg_catalog")),
         helper.proname + " must pin search_path"
       );
     }
@@ -368,12 +369,21 @@ test("Agent HQ SECURITY DEFINER helpers use a dedicated NOLOGIN non-BYPASSRLS ow
       "agent_trend_scout", "agent_auto_news_editor", "agent_auto_law_monitor", "agent_fact_checker",
       "agent_seo", "agent_qa_security", "agent_coordinator", "agent_supervisor", "agent_operator"
     ];
+    const runtimeRoleFlags = await admin`
+      SELECT rolname,rolcanlogin,rolsuper,rolcreatedb,rolcreaterole,rolinherit,rolbypassrls
+      FROM pg_roles WHERE rolname = ANY(${runtimeLogins})
+    `;
+    assert.equal(runtimeRoleFlags.length, runtimeLogins.length, "All runtime LOGIN roles must exist");
+    assert.ok(runtimeRoleFlags.every(r => r.rolcanlogin && !r.rolsuper && !r.rolcreatedb &&
+      !r.rolcreaterole && !r.rolinherit && !r.rolbypassrls),
+      "Every runtime identity must be LOGIN, NOINHERIT, NOSUPERUSER, NOCREATEDB, NOCREATEROLE and NOBYPASSRLS");
+
     const memberships = await admin`SELECT member.rolname AS member, granted.rolname AS granted_role
       FROM pg_auth_members m
       JOIN pg_roles granted ON granted.oid=m.roleid
       JOIN pg_roles member ON member.oid=m.member
-      WHERE granted.rolname='agent_hq_fn_owner_ci'`;
-    assert.equal(memberships.length, 0, "No role may inherit or SET ROLE to the function owner");
+      WHERE member.rolname = ANY(${runtimeLogins})`;
+    assert.equal(memberships.length, 0, "Runtime LOGINs must not inherit or SET ROLE to any other role");
 
     const budgetExec = await admin`
       SELECT r.rolname, has_function_privilege(r.oid, 'public.agent_test_budget_totals()', 'EXECUTE') AS allowed
@@ -387,6 +397,17 @@ test("Agent HQ SECURITY DEFINER helpers use a dedicated NOLOGIN non-BYPASSRLS ow
       SELECT has_function_privilege('public', 'public.agent_test_budget_totals()', 'EXECUTE') AS allowed
     `;
     assert.equal(publicBudgetExec.allowed, false, "PUBLIC must not execute the test-only aggregate");
+
+    const publicHelperExec = await admin`
+      SELECT p.proname
+      FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+      WHERE n.nspname='public'
+        AND p.proname IN ('agent_has_task_access','agent_can_grant_task_access',
+          'agent_is_valid_coordinator_parent','agent_role_for_session',
+          'agent_can_insert_own_artifact','agent_test_budget_totals')
+        AND has_function_privilege('public', p.oid, 'EXECUTE')
+    `;
+    assert.equal(publicHelperExec.length, 0, "PUBLIC must not execute any SECURITY DEFINER helper");
 
     const tableOwners = await admin`SELECT c.relname,r.rolname AS owner
       FROM pg_class c JOIN pg_roles r ON r.oid=c.relowner
