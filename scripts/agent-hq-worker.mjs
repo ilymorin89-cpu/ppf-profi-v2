@@ -273,7 +273,7 @@ async function runTask(task) {
         providerCallStarted = true;
         throw new Error("Deterministic test provider simulated an ambiguous accepted request");
       }
-      const usage = readProviderUsage(data);
+      const usage = readProviderUsage(data, MAX_REQUEST_INPUT_BYTES, maxOutputTokens);
       totalInputTokens += usage.inputTokens;
       totalOutputTokens += usage.outputTokens;
       if (!testStubMode && (typeof data.id !== "string" || !data.id.trim())) {
