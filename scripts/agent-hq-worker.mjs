@@ -106,36 +106,29 @@ async function runTask(task) {
   const estimatedInputTokens = Math.ceil((task.objective.length + task.title.length + task.expected_output.length + JSON.stringify(task.acceptance_criteria || []).length + 40000) / 4);
   let run;
   try {
-    run = await sql.begin(async tx => {
-      // A transaction-scoped advisory lock serializes global budget reservations
-      // without granting workers UPDATE privilege on the budget configuration.
-      await tx`SELECT pg_advisory_xact_lock(781234, 1)`;
-      const [budget] = await tx`SELECT * FROM agent_budget_config WHERE id=1`;
-      if (!budget || !budget.enabled || budget.daily_cap_microusd <= 0 || budget.monthly_cap_microusd <= 0 || budget.per_run_cap_microusd <= 0) {
-        throw new Error("Agent budget is disabled or has zero caps; refusing model call");
-      }
-      if (webSearchEnabled && Number(budget.web_search_price_microusd_per_call) <= 0) {
-        throw new Error("Hosted web-search price is not configured; refusing model call");
-      }
-      const tokenEstimate = Math.ceil((estimatedInputTokens * maxModelTurns * Number(budget.input_price_per_million_microusd) + maxOutputTokens * maxModelTurns * Number(budget.output_price_per_million_microusd)) / 1000000);
-      const searchEstimate = webSearchEnabled ? maxModelTurns * maxBuiltInToolCallsPerTurn * Number(budget.web_search_price_microusd_per_call) : 0;
-      const estimate = tokenEstimate + searchEstimate;
-      if (estimate <= 0 || estimate > Number(budget.per_run_cap_microusd) || (Number(task.budget_limit_microusd) > 0 && estimate > Number(task.budget_limit_microusd))) {
-        throw new Error("Estimated request exceeds per-run or task budget");
-      }
-      const [totals] = await tx`SELECT
-        COALESCE(SUM(cost_microusd) FILTER (WHERE started_at >= date_trunc('day',now())),0) AS daily,
-        COALESCE(SUM(cost_microusd) FILTER (WHERE started_at >= date_trunc('month',now())),0) AS monthly
-        FROM agent_runs`;
-      if (Number(totals.daily) + estimate > Number(budget.daily_cap_microusd) || Number(totals.monthly) + estimate > Number(budget.monthly_cap_microusd)) {
-        throw new Error("Daily or monthly agent budget exhausted; refusing model call");
-      }
-      const [created] = await tx`INSERT INTO agent_runs
-        (task_id,role,worker_id,provider,model,status,cost_microusd)
-        VALUES (${task.id},${role},${workerId},${testStubMode ? "test_stub" : "openai"},${model},'running',${estimate}) RETURNING id`;
-      return created;
-    });
-  
+    const reserveKey = "agent-reserve-" + createHash("sha256")
+      .update(JSON.stringify([task.id, role, workerId, model, task.attempts])).digest("hex");
+    const maxSearchCalls = webSearchEnabled ? maxModelTurns * maxBuiltInToolCallsPerTurn : 0;
+    const [reserved] = await sql`SELECT * FROM public.agent_budget_reserve(
+      ${task.id}, ${workerId}, ${model}, ${estimatedInputTokens},
+      ${maxOutputTokens}, ${maxModelTurns}, ${maxSearchCalls}, ${reserveKey}
+    )`;
+    if (!reserved) throw new Error("Trusted budget reservation returned no run");
+    run = { id: reserved.run_id, reservationId: reserved.reservation_id };
+    await sql`SELECT set_config('agent.worker_id', ${workerId}, false)`;
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    if (/budget|cap|price configuration|reservation/i.test(reason)) {
+      await sql.begin(async tx => {
+        await tx`UPDATE agent_tasks SET status='blocked',lease_owner=NULL,lease_until=NULL,updated_at=now()
+          WHERE id=${task.id} AND lease_owner=${workerId}`;
+        await tx`INSERT INTO agent_messages
+          (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
+          VALUES (${task.id},${randomUUID()},${role},'coordinator','status',${reason.slice(0,4000)},${randomUUID()})`;
+      });
+    }
+    throw error;
+  }
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     if (/budget|cap|exceeds per-run/i.test(reason)) {
@@ -360,15 +353,14 @@ async function runTask(task) {
     }
     if (!result) throw new Error("Model returned no text output");
     const usage = { input_tokens: totalInputTokens, output_tokens: totalOutputTokens };
-    const [budget] = await sql`SELECT input_price_per_million_microusd,output_price_per_million_microusd,web_search_price_microusd_per_call FROM agent_budget_config WHERE id=1`;
-    const { totalCost: actualCost } = calculateRunCost({
-      inputTokens: usage.input_tokens,
-      outputTokens: usage.output_tokens,
-      inputPricePerMillion: budget.input_price_per_million_microusd,
-      outputPricePerMillion: budget.output_price_per_million_microusd,
-      webSearchCalls: totalWebSearchCalls,
-      webSearchPricePerCall: budget.web_search_price_microusd_per_call
-    });
+    const settlementKey = "agent-settle-" + createHash("sha256")
+      .update(JSON.stringify([run.id, totalInputTokens, totalOutputTokens, totalWebSearchCalls])).digest("hex");
+    const [settled] = await sql`SELECT public.agent_budget_settle(
+      ${run.reservationId}, ${workerId}, ${totalInputTokens}, ${totalOutputTokens},
+      ${totalWebSearchCalls}, ${settlementKey}, NULL
+    ) AS cost`;
+    const actualCost = settled.cost;
+
     await sql.begin(async tx => {
       const [owned] = await tx`UPDATE agent_tasks SET
         status=CASE WHEN ${role}='coordinator' THEN 'review' ELSE 'done' END,
@@ -379,8 +371,6 @@ async function runTask(task) {
       if (!owned) throw new Error("Lease lost before completion; result not committed");
       await tx`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content,evidence)
         VALUES (${task.id},${role},'result',${task.title},${result},'[]'::jsonb)`;
-      await tx`UPDATE agent_runs SET status='succeeded',input_tokens=${usage.input_tokens || 0},
-        output_tokens=${usage.output_tokens || 0},cost_microusd=${actualCost},finished_at=now() WHERE id=${run.id}`;
       await tx`INSERT INTO agent_messages
         (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
         VALUES (${task.id},${randomUUID()},${role},'coordinator','result',${result.slice(0,12000)},${randomUUID()})`;
@@ -393,7 +383,7 @@ async function runTask(task) {
         status=CASE WHEN attempts < max_attempts THEN 'queued' ELSE 'dead_letter' END,
         lease_owner=NULL,lease_until=NULL,updated_at=now()
         WHERE id=${task.id} AND lease_owner=${workerId}`;
-      await tx`UPDATE agent_runs SET status='failed',error=${message.slice(0,4000)},finished_at=now() WHERE id=${run.id}`;
+      await tx`SELECT public.agent_budget_mark_unknown(${run.reservationId}, ${workerId}, ${message.slice(0,500)}, ${'agent-unknown-' + run.id})`;
       await tx`INSERT INTO agent_messages
         (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
         VALUES (${task.id},${randomUUID()},${role},'coordinator','status',${message.slice(0,4000)},${randomUUID()})`;
