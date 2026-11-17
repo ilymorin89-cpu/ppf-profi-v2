@@ -49,9 +49,12 @@ const instructions = roleInstructions[role] || "Complete the assigned specialist
 
 let testResponseIndex = 0;
 async function requestModel(payload) {
-  // Deterministic test seam: CI can exercise the real worker/DB path without
-  // network access, credentials, or provider spend. An array scripts tool turns.
-  if (testStubMode) {
+  // Test mode is fail-closed: never fall through to the hosted provider.
+  // A deterministic fixture is mandatory to exercise the real worker/DB path.
+  if (process.env.NODE_ENV === "test") {
+    if (!testStubMode) {
+      throw new Error("Provider requests are disabled in NODE_ENV=test; AGENT_HQ_TEST_RESPONSES_JSON is required.");
+    }
     const configured = JSON.parse(process.env.AGENT_HQ_TEST_RESPONSES_JSON);
     const mocked = Array.isArray(configured)
       ? configured[Math.min(testResponseIndex++, configured.length - 1)]
