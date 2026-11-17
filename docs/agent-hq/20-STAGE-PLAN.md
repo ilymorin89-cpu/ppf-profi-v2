@@ -19,7 +19,7 @@ Scope: isolated Agent HQ branch only. Production website, production database `d
 - [x] 13. Test approval request creation, listing, approval and rejection end-to-end (real CLI E2E test; CI run 44068858073 passed).
 - [ ] 14. Validate model support for hosted web search using a controlled, non-production test.
 - [ ] 15. Reconcile token and hosted-search charges against provider billing; code now caps built-in tool calls at 5 per response × 4 model turns and reserves up to 20 search calls before execution.
-- [ ] 16. Complete full role/permission/data-exposure review; baseline prompt-injection defenses are now added for task text, messages, artifacts, web pages and repository files.
+- [ ] 16. Complete full role/permission/data-exposure review; baseline prompt-injection defenses are present, but static review found owner-authentication and role-boundary gaps in the manual CLI/runtime model (details below).
 - [ ] 17. Review database grants and ensure Agent HQ remains isolated from production data.
 - [ ] 18. Review dependency advisories and produce a lockfile-backed patch in an isolated branch. Advisory review confirms React 19.2.8 is affected by critical RSC RCE (patched in 19.2.9); Next.js 16.3.5 predates the November 2026 security release (patched from 16.4.5). Lockfile-backed update remains pending.
 - [ ] 19. Run full CI, container build and disposable end-to-end acceptance tests.
@@ -31,7 +31,8 @@ Scope: isolated Agent HQ branch only. Production website, production database `d
 2. CI run #113 passed. The latest CI run #44068858073 also passed both `syntax` (including supervisor/CLI E2E tests) and `website-build`. The subsequent documentation-only commit does not alter runtime code. A staging runbook omission was found and corrected: migration 0006 is now applied and its web-search price column is included in verification and the budget template.
 3. Agent worker budget remains disabled with zero caps. Workers and supervisor must remain disabled.
 4. Web-search billing and configured model compatibility have not yet been verified with a controlled runtime test.
-5. Approval commands record an owner's decision only; they do not execute the requested external action.
+5. Approval commands record a decision only; they do not execute the requested external action. Static review found `approve`/`reject` accept a caller-supplied `decidedBy` string without verifying the caller's identity. This is acceptable only as a trusted local operator CLI with tightly controlled DB access; it is not owner authentication and must not be exposed through a dashboard/API as-is. The CLI `enqueue`/`send` commands also accept caller-supplied role strings; enforce role allowlists and authenticated identity before any multi-user interface.
+6. The current worker model does not provide database-enforced per-role isolation: workers share the configured DB connection identity, while role restrictions are enforced in application code and prompt/tool definitions. Before live multi-role operation, use separate least-privilege DB roles or narrowly scoped server-side operations, and prove that one role cannot read or mutate another role's tasks, messages, approvals or artifacts. Do not treat prompt instructions as an access-control boundary.
 
 ## Safety invariants
 
