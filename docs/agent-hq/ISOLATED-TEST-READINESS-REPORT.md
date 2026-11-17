@@ -1,3 +1,6 @@
+
+> **Historical evidence snapshot (2026-11-17).** PASS results below apply only to the exact historical head and CI run listed in this report. They do not establish that the current PR #137 stack passes CI or that Timeweb staging is ready. Use [CURRENT-STATUS.md](./CURRENT-STATUS.md) for current launch status.
+
 # PPF PROFI Agent HQ — Isolated Test Readiness Report
 
 **Snapshot:** 2026-11-17  
