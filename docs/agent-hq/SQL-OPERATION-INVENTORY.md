@@ -50,6 +50,10 @@ These tests do **not** prove production authorization:
 - the supervisor lifecycle suite still does not cover restart mid-flow, every parent-specific artifact access boundary, or all lease races;
 - provider billing reconciliation is not proven by local estimates or mocked tests.
 
+### Bus CLI hardening follow-up
+
+The bus CLI now derives the permitted role from PostgreSQL `session_user` for `send`, `inbox`, and `claim`; `heartbeat`, `complete`, and `fail` first resolve the task through the caller's visible row scope and then require the matching role LOGIN. Global `enqueue`, `status`, `approvals`, and `recover` commands are disabled until dedicated least-privilege operator/supervisor paths are implemented. A focused CLI test rejects global commands and mismatched role arguments. This is a fail-closed reduction of the CLI surface, not a production RLS implementation.
+
 ## Required production design before any migration
 
 1. Decide which runtime roles are actually enabled. Each enabled role must have one dedicated LOGIN; unknown roles fail closed.
