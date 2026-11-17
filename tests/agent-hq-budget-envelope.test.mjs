@@ -36,10 +36,15 @@ test("worker instructions are composed once and measured exactly as sent", () =>
 });
 
 test("provider usage must be present and contain non-negative integer token counts", () => {
-  assert.deepEqual(readProviderUsage({ usage: { input_tokens: 120, output_tokens: 45 } }), {
+  assert.deepEqual(readProviderUsage({ usage: { input_tokens: 120, output_tokens: 45 } }, 1000, 256), {
     inputTokens: 120, outputTokens: 45
   });
-  assert.throws(() => readProviderUsage({ usage: {} }), /requires reconciliation/);
-  assert.throws(() => readProviderUsage({ usage: { input_tokens: -1, output_tokens: 2 } }), /requires reconciliation/);
-  assert.throws(() => readProviderUsage({ usage: { input_tokens: 1.5, output_tokens: 2 } }), /requires reconciliation/);
+  assert.throws(() => readProviderUsage({ usage: {} }, 1000, 256), /requires reconciliation/);
+  assert.throws(() => readProviderUsage({ usage: { input_tokens: -1, output_tokens: 2 } }, 1000, 256), /requires reconciliation/);
+  assert.throws(() => readProviderUsage({ usage: { input_tokens: 1.5, output_tokens: 2 } }, 1000, 256), /requires reconciliation/);
+});
+
+test("provider usage above the reserved per-turn envelope is rejected", () => {
+  assert.throws(() => readProviderUsage({ usage: { input_tokens: 1001, output_tokens: 10 } }, 1000, 256), /exceeded the per-turn/);
+  assert.throws(() => readProviderUsage({ usage: { input_tokens: 10, output_tokens: 257 } }, 1000, 256), /exceeded the per-turn/);
 });
