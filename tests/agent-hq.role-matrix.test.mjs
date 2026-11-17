@@ -40,11 +40,34 @@ test("every Agent HQ worker login sees only its own role and cannot forge messag
         assert.equal(String(visible[0].id), String(idByRole.get(role)));
         assert.equal(visible[0].assigned_role, role);
 
+        await assert.rejects(
+          () => sql`UPDATE agent_tasks SET assigned_role='coordinator' WHERE id=${idByRole.get(role)}`,
+          undefined,
+          role + " must not change task routing identity."
+        );
+        await assert.rejects(
+          () => sql`UPDATE agent_tasks SET budget_limit_microusd=1 WHERE id=${idByRole.get(role)}`,
+          undefined,
+          role + " must not change task budget ownership."
+        );
+
+        const ownInboxKey = "role-matrix-inbox-" + marker + "-" + role;
+        messageKeys.push(ownInboxKey);
+        await sql`INSERT INTO agent_messages
+          (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
+          VALUES (${idByRole.get(role)},${randomUUID()},${role},${role},'status','Message addressed to own role',${ownInboxKey})`;
+        const ownInbox = await sql`SELECT id FROM agent_messages WHERE idempotency_key=${ownInboxKey}`;
+        assert.equal(ownInbox.length, 1, role + " must read messages addressed to itself.");
+
         const ownKey = "role-matrix-own-" + marker + "-" + role;
         messageKeys.push(ownKey);
         await sql`INSERT INTO agent_messages
           (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
           VALUES (${idByRole.get(role)},${randomUUID()},${role},'coordinator','status','Own sender identity',${ownKey})`;
+        if (role !== "coordinator") {
+          const hidden = await sql`SELECT id FROM agent_messages WHERE idempotency_key=${ownKey}`;
+          assert.equal(hidden.length, 0, role + " must not read messages addressed to another role.");
+        }
 
         const forgedRole = role === "coordinator" ? "seo" : "coordinator";
         const forgedKey = "role-matrix-forged-" + marker + "-" + role;
