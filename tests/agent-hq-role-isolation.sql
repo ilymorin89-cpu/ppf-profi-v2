@@ -68,7 +68,6 @@ DO $roles$ DECLARE role_name TEXT; BEGIN
     EXECUTE format('GRANT SELECT ON agent_tasks,agent_messages,agent_runs,agent_artifacts,agent_approvals,agent_budget_config TO %I', role_name);
     EXECUTE format('GRANT UPDATE (status,attempts,lease_owner,lease_until,updated_at,completed_at) ON agent_tasks TO %I', role_name);
     EXECUTE format('GRANT INSERT (task_id,conversation_id,from_role,to_role,kind,body,evidence,in_reply_to,idempotency_key) ON agent_messages TO %I', role_name);
-    EXECUTE format('GRANT INSERT (task_id,role,worker_id,provider,model,status) ON agent_runs TO %I', role_name);
     EXECUTE format('GRANT UPDATE (status,error,finished_at) ON agent_runs TO %I', role_name);
     EXECUTE format('GRANT INSERT (task_id,created_by,artifact_type,title,content,evidence) ON agent_artifacts TO %I', role_name);
     EXECUTE format('GRANT INSERT (task_id,action,requested_by,payload,status) ON agent_approvals TO %I', role_name);
