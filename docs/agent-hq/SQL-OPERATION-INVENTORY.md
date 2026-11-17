@@ -6,7 +6,7 @@ Reviewed on 2026-11-17 against:
 - `scripts/agent-hq-worker.mjs`
 - `scripts/agent-hq-supervisor.mjs`
 - `scripts/agent-hq-bus.mjs`
-- `drizzle/0003_agent_hq.sql` through `drizzle/0007_agent_task_access.sql`
+- `drizzle/0003_agent_hq.sql` through `drizzle/0008_agent_budget_trusted_settlement.sql`
 - `tests/agent-hq-role-isolation.sql`
 
 ## Inventory result
@@ -33,7 +33,7 @@ These counts are a review index, not proof of exhaustive runtime coverage. Condi
 3. **Coordinator delegation:** child task creation must require a coordinator-owned parent and an allowlisted specialist role. A caller must not set arbitrary `created_by`, `parent_task_id`, or `assigned_role`.
 4. **Messages:** worker path uses the process role, but bus `send` accepts a caller-supplied `fromRole`. Treat the bus as privileged until sender identity is derived from a dedicated authenticated LOGIN or fixed-search-path function. Reject spoofed sender, task mismatch, recipient escalation and idempotency replay.
 5. **Approvals:** worker may create pending requests but must not decide them. `approve/reject` uses `AGENT_HQ_OPERATOR_DATABASE_URL` and a root-owned UID allowlist in the CLI. Production acceptance must verify OS UID allowlist ownership/mode, DB LOGIN separation, pending-only update, actor derivation, duplicate decision rejection, and direct UPDATE denial for all other roles.
-6. **Budget:** worker takes a transaction advisory lock, reads caps/prices, estimates maximum cost and inserts a reservation in `agent_runs`; later it writes provider-reported usage/cost. Current design must still prove atomic settlement/reconciliation under concurrency, retries, provider failures, price changes, and web-search usage. CI mocks prove no live billing.
+6. **Budget (migration 0008):** worker creates runs only through `agent_budget_reserve`, settles only through `agent_budget_settle`, releases only before a provider call through `agent_budget_release`, and retains ambiguous outcomes through `agent_budget_mark_unknown`. `agent_budget_owner` is a dedicated NOLOGIN/NOBYPASSRLS function owner; reservations snapshot integer micro-USD pricing; a transaction advisory lock serializes admission against daily/monthly/per-run/task caps; ledger and settlement writes are restricted to trusted functions. Operator-only `agent_budget_reconcile_usage` and `agent_budget_reconcile_no_charge` resolve reservations after the worker lease expires. CI applies the migration to disposable PostgreSQL and uses mocked providers only; this is not production authorization.
 7. **Sequences and helper functions:** review `currval`, all sequence grants, SECURITY DEFINER helper owners, function EXECUTE grants, fixed `search_path`, PUBLIC revocation and function argument validation. CI helper ownership by database owner is not a production ownership model.
 8. **Bus operational commands:** `claim`, `complete`, `fail`, `inbox` and `send` must bind to the authenticated role LOGIN. Global `enqueue`, `status` and `recover` remain disabled until narrow operator/supervisor functions and read paths exist; `approvals` is restricted to the separate `agent_operator` LOGIN.
 
@@ -84,3 +84,10 @@ The worker also reads a global `SUM(agent_runs.cost_microusd)` under role-scoped
 ## Non-actions
 
 No production migration, database login provisioning, Timeweb change, secret change, worker activation, model call, spend, publication, external message or deployment was performed. This document does not authorize any of them.
+
+
+## Budget boundary implementation update — 2026-11-17
+
+The former budget-risk description above is historical; the implementation is now in `drizzle/0008_agent_budget_trusted_settlement.sql`. Runtime worker LOGINs have direct INSERT/UPDATE on `agent_runs` revoked and use trusted reserve/settle/release/unknown functions. The dedicated `agent_hq_budget_owner`-style function owner is named `agent_hq_budget_owner` in the migration, is NOLOGIN/NOSUPERUSER/NOCREATEDB/NOCREATEROLE/NOINHERIT/NOBYPASSRLS, has no role memberships, and does not own the protected tables. It has no CREATE privilege on schema `public`. The budget ledger grants SELECT/INSERT only to the function owner; no runtime worker receives table access.
+
+Current PR validation must be read from the exact latest PR head and its Actions run. A prior successful CI run does not validate a later commit. All checks run against disposable PostgreSQL and test adapters; no production database, provider billing, deployment, external publication, or message delivery is involved.
