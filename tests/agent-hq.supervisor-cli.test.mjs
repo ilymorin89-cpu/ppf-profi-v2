@@ -584,7 +584,7 @@ test("Agent HQ concurrent supervisors create one QA task and one scoped grant", 
 });
 
 
-test("Agent HQ supervisor blocks QA REVISE and exhausted specialist work", async () => {
+test("Agent HQ requeues QA REVISE for coordinator and blocks exhausted work", async () => {
   assert.ok(databaseUrl, "Set AGENT_HQ_TEST_DATABASE_URL to a disposable PostgreSQL database.");
   assert.ok(supervisorUrl, "Missing isolated supervisor test login.");
   assert.notEqual(databaseUrl, process.env.DATABASE_URL, "Test database must not equal DATABASE_URL.");
@@ -610,6 +610,24 @@ test("Agent HQ supervisor blocks QA REVISE and exhausted specialist work", async
     await sql`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
       VALUES (${qa.id},'qa_security','review','QA verdict','VERDICT: REVISE\\nMissing evidence and unsupported conclusion')`;
 
+    const [exhaustedReviseParent] = await sql`INSERT INTO agent_tasks
+      (assigned_role,title,objective,expected_output,created_by,status,attempts,max_attempts)
+      VALUES ('coordinator',${"Exhausted QA revise " + marker},'No more coordinator retries','Blocked','integration-test','review',3,3)
+      RETURNING id`;
+    parentIds.push(exhaustedReviseParent.id);
+    const [exhaustedReviseSpecialist] = await sql`INSERT INTO agent_tasks
+      (parent_task_id,assigned_role,title,objective,expected_output,created_by,status)
+      VALUES (${exhaustedReviseParent.id},'seo','Exhausted QA specialist','Evidence','Evidence','integration-test','done')
+      RETURNING id`;
+    await sql`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
+      VALUES (${exhaustedReviseSpecialist.id},'seo','result','Evidence','Evidence still needs correction')`;
+    const [exhaustedQa] = await sql`INSERT INTO agent_tasks
+      (parent_task_id,assigned_role,title,objective,expected_output,created_by,status)
+      VALUES (${exhaustedReviseParent.id},'qa_security','Exhausted QA review','Review evidence','Verdict','supervisor','done')
+      RETURNING id`;
+    await sql`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
+      VALUES (${exhaustedQa.id},'qa_security','review','QA verdict','VERDICT: REVISE\\nRequired correction is still missing')`;
+
     const [deadParent] = await sql`INSERT INTO agent_tasks
       (assigned_role,title,objective,expected_output,created_by,status)
       VALUES ('coordinator',${"Dead letter " + marker},'Handle exhausted specialist','Blocked','integration-test','review')
@@ -624,13 +642,16 @@ test("Agent HQ supervisor blocks QA REVISE and exhausted specialist work", async
     assert.equal(result.status, 0, result.stderr || result.stdout);
 
     const [reviseState] = await sql`SELECT status FROM agent_tasks WHERE id=${reviseParent.id}`;
-    assert.equal(reviseState.status, "blocked", "QA REVISE must block the parent.");
+    assert.equal(reviseState.status, "queued", "QA REVISE with remaining attempts must requeue the coordinator parent.");
     const [objection] = await sql`SELECT kind,body FROM agent_messages
       WHERE task_id=${reviseParent.id} AND to_role='coordinator' AND kind='objection'
       ORDER BY created_at DESC LIMIT 1`;
     assert.ok(objection, "QA REVISE must notify the coordinator.");
     assert.ok(objection.body.includes("VERDICT: REVISE"), "Supervisor must preserve the explicit QA REVISE verdict in its objection.");
+    assert.ok(objection.body.includes("Coordinator task requeued"), "The objection must tell Coordinator to create revised specialist work.");
 
+    const [exhaustedReviseState] = await sql`SELECT status FROM agent_tasks WHERE id=${exhaustedReviseParent.id}`;
+    assert.equal(exhaustedReviseState.status, "blocked", "QA REVISE must block when the coordinator retry limit is exhausted.");
     const [deadState] = await sql`SELECT status FROM agent_tasks WHERE id=${deadParent.id}`;
     assert.equal(deadState.status, "blocked", "Dead-letter specialist work must block the parent.");
     const [deadNotice] = await sql`SELECT kind,body FROM agent_messages
