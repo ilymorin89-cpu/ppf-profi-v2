@@ -35,3 +35,29 @@ export function calculateRunCost({ inputTokens, outputTokens, inputPricePerMilli
   const searchCost = Number(webSearchCalls) * Number(webSearchPricePerCall);
   return { tokenCost, searchCost, totalCost: tokenCost + searchCost };
 }
+
+
+export const AGENT_ROLES = Object.freeze([
+  "coordinator", "web_engineer", "seo", "geo", "growth", "analytics",
+  "qa_security", "vk_strategist", "copywriter", "designer", "image_generator",
+  "storyteller", "community_manager", "content_seo", "ads_manager",
+  "trend_scout", "auto_news_editor", "auto_law_monitor", "fact_checker"
+]);
+
+export function requireAgentRole(value, label = "role") {
+  if (typeof value !== "string" || !AGENT_ROLES.includes(value)) {
+    throw new Error(`Invalid ${label}: role is not allowlisted`);
+  }
+  return value;
+}
+
+export function resolveApproverIdentity({ uid, allowedUids }) {
+  if (!Number.isInteger(uid) || uid < 0) {
+    throw new Error("Approval decisions require a supported operating-system UID");
+  }
+  const allowed = String(allowedUids || "").split(",").map(value => value.trim()).filter(Boolean);
+  if (!allowed.length || !allowed.includes(String(uid))) {
+    throw new Error("Current operating-system UID is not authorized to decide approvals");
+  }
+  return `uid:${uid}`;
+}
