@@ -1,4 +1,5 @@
 import postgres from "postgres";
+import { createSupervisorLifecycle } from "./agent-hq-supervisor-lifecycle.mjs";
 
 const databaseUrl = process.env.DATABASE_URL;
 const workerId = process.env.AGENT_SUPERVISOR_ID || `supervisor-${process.pid}`;
@@ -11,32 +12,11 @@ if (databaseIdentity?.login !== "agent_supervisor") {
   throw new Error(`Supervisor must authenticate as PostgreSQL LOGIN "agent_supervisor"; received "${databaseIdentity?.login || "unknown"}".`);
 }
 const once = process.argv.includes("--once");
-let stopping = false;
-let sleepTimer = null;
-let wakeSleep = null;
-
-function requestStop(signal) {
-  if (stopping) return;
-  stopping = true;
-  console.log("Supervisor received " + signal + "; finishing the current database cycle and stopping.");
-  if (sleepTimer) clearTimeout(sleepTimer);
-  wakeSleep?.();
-}
-process.once("SIGTERM", () => requestStop("SIGTERM"));
-process.once("SIGINT", () => requestStop("SIGINT"));
-
-function waitForNextCycle(ms) {
-  if (stopping) return Promise.resolve();
-  return new Promise(resolve => {
-    wakeSleep = resolve;
-    sleepTimer = setTimeout(() => {
-      sleepTimer = null;
-      wakeSleep = null;
-      resolve();
-    }, ms);
-    sleepTimer.unref?.();
-  });
-}
+const lifecycle = createSupervisorLifecycle({
+  onStop: signal => console.log("Supervisor received " + signal + "; finishing the current database cycle and stopping.")
+});
+process.once("SIGTERM", () => lifecycle.requestStop("SIGTERM"));
+process.once("SIGINT", () => lifecycle.requestStop("SIGINT"));
 
 async function supervise() {
   const recovered = await sql`SELECT * FROM public.agent_budget_recover_expired_tasks()`;
@@ -156,13 +136,12 @@ async function supervise() {
 }
 
 try {
-  while (!stopping) {
+  while (!lifecycle.stopping) {
     await supervise();
-    if (once || stopping) break;
-    await waitForNextCycle(pollMs);
+    if (once || lifecycle.stopping) break;
+    await lifecycle.waitForNextCycle(pollMs);
   }
 } finally {
-  if (sleepTimer) clearTimeout(sleepTimer);
-  wakeSleep?.();
+  lifecycle.close();
   await sql.end({ timeout: 5 });
 }
