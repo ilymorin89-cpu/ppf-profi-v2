@@ -604,6 +604,9 @@ test("Agent HQ operator reconciles an unknown reservation exactly once after lea
     const [repeat]=await operator`SELECT agent_budget_reconcile_usage(
       ${reservation.reservation_id},1000,500,0,'provider-usage-confirmed',${"reconcile-"+marker}) AS cost`;
     assert.equal(String(repeat.cost),String(cost.cost));
+    await assert.rejects(operator`SELECT agent_budget_reconcile_usage(
+      ${reservation.reservation_id},1000,500,0,'different-provider-reference',${"reconcile-"+marker}) AS cost`,
+      e=>e.code==="23505");
     const [state]=await admin`SELECT state FROM agent_budget_reservations WHERE id=${reservation.reservation_id}`;
     assert.equal(state.state,"settled");
     const [run]=await admin`SELECT status,input_tokens,output_tokens,cost_microusd FROM agent_runs WHERE id=${reservation.run_id}`;
