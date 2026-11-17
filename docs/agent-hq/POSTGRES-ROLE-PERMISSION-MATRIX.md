@@ -118,3 +118,19 @@ The SQL harness alone is insufficient. Use at least two specialist logins to pro
 - No OpenAI billable request or budget activation.
 - No worker/supervisor service activation.
 - PR #89 remains draft and unmerged until reviewed and separately approved.
+
+## Current CI prototype status (2026-11-17)
+
+The disposable CI harness now implements and exercises:
+- distinct LOGINs for SEO, QA, coordinator and supervisor;
+- FORCE RLS on tasks, messages, runs, artifacts, approvals, budget config and task access;
+- column-level grants instead of whole-table UPDATE;
+- immutable routing/parent/creator columns for worker logins;
+- scoped QA/coordinator access through narrowly parameterized SECURITY DEFINER test helpers;
+- coordinator child creation only under a valid coordinator parent and for allowlisted specialist roles;
+- pending-only approval creation, sender/task checks for messages, role/task checks for runs;
+- negative checks for foreign task access, identity forgery, forbidden columns, DELETE, cross-parent evidence, GUC spoofing, SET ROLE, budget writes, approval decisions and unauthorized access grants.
+
+The E2E test now executes actual coordinator, SEO, QA and supervisor processes using their separate CI PostgreSQL logins. Responses API output is deterministic and mocked in the test process; no HTTP request, API key, model spend or web search occurs. The test validates delegation, specialist completion, supervisor-issued QA access, QA PASS, and final consolidation.
+
+**Important limits:** this is still a CI-only authorization harness, not a deployable runtime migration. The test helper functions are owned by the disposable CI database owner; production must use a dedicated non-login, narrowly privileged function owner with fixed search_path and reviewed grants. Only the four core identities above are currently exercised; the full specialist roster, operator approval identity, all worker/bus commands, column-by-column lifecycle transitions, DDL/sequence/unknown-login tests and production-grade function ownership remain open. Do not copy this harness to a live database.
