@@ -40,6 +40,9 @@ psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0004_agent_budget.sq
 psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0005_agent_approval_idempotency.sql
 psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0006_agent_web_search_budget.sql
 psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0007_agent_task_access.sql
+psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0008_agent_budget_trusted_settlement.sql
+psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0009_agent_hq_runtime_rls.sql
+psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0010_agent_hq_authenticated_worker_identity.sql
 ```
 
 Use a separate staging database URL for runtime. Verify that the budget row exists and remains disabled:
@@ -121,6 +124,8 @@ For a full delegated lifecycle, start the specialist workers with their own role
 ## 7. Service management and rollback
 
 Use systemd (or an equivalent process supervisor) with one service instance per role and a separate supervisor process. Keep automatic restart enabled, but rate-limit restarts and alert on repeated failures. Do not expose worker ports publicly; workers do not need inbound HTTP access.
+
+Workers handle `SIGTERM` and `SIGINT` by stopping new claims and aborting an in-flight provider request. A failed heartbeat also aborts the active request and stops further tool execution. If a provider request may already have been accepted, the reservation is marked `unknown` and retained for operator reconciliation; it is never automatically released merely because shutdown or lease loss interrupted the response. Allow the service manager a bounded stop timeout longer than the provider request cancellation and database cleanup window, then verify the worker exited and inspect unknown reservations before restarting affected tasks.
 
 To stop the system, stop the supervisor and every worker service, then disable the staging budget row:
 
