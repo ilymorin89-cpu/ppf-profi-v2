@@ -9,6 +9,7 @@ import path from "node:path";
 const databaseUrl = process.env.AGENT_HQ_TEST_DATABASE_URL;
 const supervisorUrl = process.env.AGENT_HQ_ROLE_TEST_URL_SUPERVISOR;
 const operatorUrl = process.env.AGENT_HQ_ROLE_TEST_URL_OPERATOR;
+const seoUrl = process.env.AGENT_HQ_ROLE_TEST_URL_SEO;
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const runNode = (script, args = [], overrides = {}) => spawnSync(process.execPath, [script, ...args], {
   cwd: root,
@@ -498,6 +499,31 @@ test("Agent HQ supervisor blocks QA REVISE and exhausted specialist work", async
       await sql`DELETE FROM agent_tasks WHERE parent_task_id=${id}`;
       await sql`DELETE FROM agent_tasks WHERE id=${id}`;
     }
+    await sql.end({ timeout: 5 });
+  }
+});
+
+
+test("Agent HQ bus send derives sender from authenticated PostgreSQL LOGIN", async () => {
+  assert.ok(databaseUrl, "Set AGENT_HQ_TEST_DATABASE_URL to a disposable PostgreSQL database.");
+  assert.ok(seoUrl, "Missing isolated SEO PostgreSQL LOGIN.");
+  assert.notEqual(databaseUrl, process.env.DATABASE_URL, "Test database must not equal DATABASE_URL.");
+  const sql = postgres(databaseUrl, { max: 2, idle_timeout: 5 });
+  const marker = randomUUID();
+  const ownBody = "authenticated sender " + marker;
+  const forgedBody = "forged sender " + marker;
+  try {
+    const own = runNode("scripts/agent-hq-bus.mjs", ["send","seo","coordinator","-","status",ownBody], { DATABASE_URL: seoUrl });
+    assert.equal(own.status, 0, own.stderr || own.stdout);
+    const forged = runNode("scripts/agent-hq-bus.mjs", ["send","coordinator","seo","-","status",forgedBody], { DATABASE_URL: seoUrl });
+    assert.notEqual(forged.status, 0, "A worker must not claim another role as the sender.");
+    assert.match(forged.stderr, /authenticated PostgreSQL LOGIN/i);
+    const rows = await sql`SELECT id,from_role,to_role FROM agent_messages WHERE body=${ownBody}`;
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].from_role, "seo");
+    assert.equal(rows[0].to_role, "coordinator");
+  } finally {
+    await sql`DELETE FROM agent_messages WHERE body IN (${ownBody},${forgedBody})`;
     await sql.end({ timeout: 5 });
   }
 });
