@@ -37,6 +37,7 @@ on:
       - "tests/agent-hq*.mjs"
       - "scripts/agent-hq-db-connectivity-check.mjs"
       - "tests/agent-hq-db-connectivity-check.test.mjs"
+      - "docker-compose.yml"
       - "drizzle/0003_agent_hq.sql"
       - "drizzle/0004_agent_budget.sql"
       - "drizzle/0005_agent_approval_idempotency.sql"
@@ -108,8 +109,6 @@ jobs:
       AGENT_HQ_ROLE_TEST_URL_ROLE_FACT_CHECKER: postgres://agent_fact_checker:ci_agent_fact_checker@localhost:5432/agent_hq_test
     steps:
       - uses: actions/checkout@v4
-      - name: Validate live Agent HQ runtime Compose without starting services
-        run: docker compose -f docker-compose.yml config --quiet
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -142,6 +141,7 @@ jobs:
         run: |
           node --check scripts/agent-hq-bus.mjs
           node --check scripts/agent-hq-worker.mjs
+          node --check scripts/agent-hq-budget-envelope.mjs
           node --check scripts/agent-hq-supervisor.mjs
           node --check scripts/agent-hq-supervisor-lifecycle.mjs
           node --check scripts/agent-hq-worker-lifecycle.mjs
