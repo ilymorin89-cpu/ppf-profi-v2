@@ -5,6 +5,11 @@ const workerId = process.env.AGENT_SUPERVISOR_ID || `supervisor-${process.pid}`;
 const pollMs = Number(process.env.AGENT_POLL_MS || 5000);
 if (!databaseUrl) throw new Error("DATABASE_URL is required");
 const sql = postgres(databaseUrl, { max: 2, idle_timeout: 20 });
+const [databaseIdentity] = await sql`SELECT session_user AS login`;
+if (databaseIdentity?.login !== "agent_supervisor") {
+  await sql.end({ timeout: 5 });
+  throw new Error(`Supervisor must authenticate as PostgreSQL LOGIN "agent_supervisor"; received "${databaseIdentity?.login || "unknown"}".`);
+}
 const once = process.argv.includes("--once");
 let stopping = false;
 
