@@ -20,6 +20,14 @@ async function supervise() {
       const [locked] = await tx`SELECT id FROM agent_tasks WHERE id=${parent.id} AND status='review' FOR UPDATE`;
       if (!locked) return;
       const children = await tx`SELECT id,assigned_role,status FROM agent_tasks WHERE parent_task_id=${parent.id} ORDER BY id`;
+      // The supervisor is the only component that grants cross-role visibility.
+      // Coordinator access is scoped to this parent's child tasks; QA access is
+      // added below only for specialist artifacts that QA must independently review.
+      for (const child of children) {
+        await tx`INSERT INTO agent_task_access (task_id,principal,access_reason)
+          VALUES (${child.id},'coordinator','coordinator_oversight')
+          ON CONFLICT (task_id,principal) DO NOTHING`;
+      }
       if (!children.length) {
         await tx`UPDATE agent_tasks SET status='done',completed_at=now(),updated_at=now() WHERE id=${parent.id}`;
         return;
@@ -41,6 +49,16 @@ async function supervise() {
             ${`Parent objective: ${parent.objective}\nParent acceptance criteria: ${JSON.stringify(parent.acceptance_criteria || [])}\nIndependently review all specialist outputs for parent task ${parent.id}. Check factual support, completeness, contradictions, risks and whether each acceptance criterion is met. Send direct objections to coordinator using send_message. Return a verdict: PASS or REVISE, list blockers and cite artifact IDs. Do not approve unsupported claims.`},
             'Independent verdict, blockers and artifact references','["Review every specialist artifact","Identify unsupported claims and missing evidence","Return PASS or REVISE verdict"]'::jsonb,20,'supervisor')
           ON CONFLICT DO NOTHING`;
+        const [createdQa] = await tx`SELECT id FROM agent_tasks
+          WHERE parent_task_id=${parent.id} AND assigned_role='qa_security'
+          ORDER BY created_at DESC LIMIT 1`;
+        if (createdQa) {
+          for (const specialist of specialists) {
+            await tx`INSERT INTO agent_task_access (task_id,principal,access_reason)
+              VALUES (${specialist.id},'qa_security','qa_review')
+              ON CONFLICT (task_id,principal) DO NOTHING`;
+          }
+        }
         return;
       }
       if (qa.status === "done") {
