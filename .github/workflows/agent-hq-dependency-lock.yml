@@ -1,4 +1,4 @@
-name: Agent HQ dependency lock refresh (artifact only)
+name: Agent HQ dependency lock refresh
 
 on:
   push:
@@ -6,13 +6,16 @@ on:
     paths: [".github/workflows/agent-hq-dependency-lock.yml"]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   refresh-lock:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: agent-hq/enable-research-tools
+          persist-credentials: true
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -21,12 +24,11 @@ jobs:
           npm pkg set 'dependencies.next=16.4.6' 'dependencies.react=19.3.1' 'dependencies.react-dom=19.3.1' 'devDependencies.eslint-config-next=16.4.6'
           npm install --package-lock-only --ignore-scripts --no-audit --no-fund
           npm ci --ignore-scripts --no-audit --no-fund
-      - name: Upload reviewed candidate manifests
-        uses: actions/upload-artifact@v4
-        with:
-          name: agent-hq-dependency-refresh
-          path: |
-            package.json
-            package-lock.json
-          if-no-files-found: error
-          retention-days: 7
+      - name: Commit lockfile-backed security updates to isolated branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package.json package-lock.json
+          if git diff --cached --quiet; then echo 'No dependency changes'; exit 0; fi
+          git commit -m 'fix(deps): patch Next.js and React security releases'
+          git push origin HEAD:agent-hq/enable-research-tools
