@@ -60,6 +60,14 @@ These tests do **not** prove production authorization:
 
 The bus CLI now derives the permitted role from PostgreSQL `session_user` for `send`, `inbox`, and `claim`; `heartbeat`, `complete`, and `fail` first resolve the task through the caller's visible row scope and then require the matching role LOGIN. Global `enqueue`, `status`, `approvals`, and `recover` commands are disabled until dedicated least-privilege operator/supervisor paths are implemented. A focused CLI test rejects global commands and mismatched role arguments. This is a fail-closed reduction of the CLI surface, not a production RLS implementation.
 
+### Confirmed accounting privilege gap — blocking
+
+A focused review of the current worker and CI grants found that the disposable role-isolation harness still grants runtime roles `UPDATE (status,input_tokens,output_tokens,cost_microusd,error,finished_at)` and `INSERT (...,cost_microusd)` on `agent_runs`. The worker itself directly writes provider usage and final cost on success, and writes the failed status directly on error. This means the current CI harness does not prove protection against a compromised worker forging usage/cost; the existing CI success must not be interpreted as closing this risk.
+
+The worker also reads a global `SUM(agent_runs.cost_microusd)` under role-scoped RLS. That aggregate is not globally authoritative for a runtime LOGIN. The test-only aggregate remains CI-only and is not a replacement.
+
+**Required next change:** replace direct worker reservation/settlement SQL with narrowly scoped trusted reserve/settle/release operations, backed by an append-only/idempotent ledger and conservative treatment of ambiguous provider outcomes. Runtime roles must not be able to INSERT or UPDATE authoritative cost/token fields. A detailed design and negative/concurrency test plan is in `docs/agent-hq/BUDGET-RESERVATION-SETTLEMENT-SECURITY-DESIGN.md`.
+
 ## Required production design before any migration
 
 1. Decide which runtime roles are actually enabled. Each enabled role must have one dedicated LOGIN; unknown roles fail closed.
