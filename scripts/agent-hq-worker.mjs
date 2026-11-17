@@ -23,6 +23,11 @@ if (!Number.isInteger(maxOutputTokens) || maxOutputTokens < 64 || maxOutputToken
   throw new Error("AGENT_MAX_OUTPUT_TOKENS must be an integer between 64 and 8192");
 }
 const sql = postgres(databaseUrl, { max: 2, idle_timeout: 20 });
+const [databaseIdentity] = await sql`SELECT session_user AS login`;
+if (databaseIdentity?.login !== `agent_${role}`) {
+  await sql.end({ timeout: 5 });
+  throw new Error(`Worker role "${role}" must authenticate as PostgreSQL LOGIN "agent_${role}"; received "${databaseIdentity?.login || "unknown"}".`);
+}
 let stopping = false;
 const roleInstructions = {
   coordinator: "Coordinate work. Break objectives into verifiable subtasks and route them to the correct specialist. Do not claim work was done unless evidence is present.",
