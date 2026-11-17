@@ -290,7 +290,14 @@ test("real SEO worker completes a task using its restricted PostgreSQL login and
     assert.equal(runs.length, 1);
     assert.equal(runs[0].status, "succeeded");
   } finally {
-    if (taskId) await admin`DELETE FROM agent_tasks WHERE id=${taskId}`;
+    if (taskId) {
+      await admin`DELETE FROM agent_budget_ledger WHERE reservation_id IN
+        (SELECT id FROM agent_budget_reservations WHERE task_id=${taskId})`;
+      await admin`DELETE FROM agent_budget_settlements WHERE reservation_id IN
+        (SELECT id FROM agent_budget_reservations WHERE task_id=${taskId})`;
+      await admin`DELETE FROM agent_budget_reservations WHERE task_id=${taskId}`;
+      await admin`DELETE FROM agent_tasks WHERE id=${taskId}`;
+    }
     if (previousBudget) await admin`UPDATE agent_budget_config SET
       enabled=${previousBudget.enabled},
       daily_cap_microusd=${previousBudget.daily_cap_microusd},
