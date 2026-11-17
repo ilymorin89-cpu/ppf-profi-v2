@@ -36,6 +36,9 @@ on:
       - "deploy/systemd/**"
       - "package.json"
       - ".github/workflows/agent-hq-checks.yml"
+      - "scripts/agent-hq-*.sh"
+      - "docker-compose.agent-hq-test.yml"
+      - "Dockerfile.agent-hq"
 
 permissions:
   contents: read
