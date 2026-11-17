@@ -410,8 +410,12 @@ BEGIN
     END IF;
     RAISE EXCEPTION 'reservation already reconciled with different evidence' USING ERRCODE='23505';
   END IF;
-  IF v_res.state<>'unknown' THEN
-    RAISE EXCEPTION 'only unknown reservations can be reconciled with provider usage' USING ERRCODE='55000';
+  IF v_res.state NOT IN ('active','unknown') THEN
+    RAISE EXCEPTION 'only active or unknown reservations can be reconciled with provider usage' USING ERRCODE='55000';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.agent_tasks t WHERE t.id=v_res.task_id
+    AND t.status IN ('claimed','running') AND t.lease_until>clock_timestamp()) THEN
+    RAISE EXCEPTION 'wait for the worker lease to expire before reconciliation' USING ERRCODE='55000';
   END IF;
   v_cost:=CEIL((
     p_input_tokens::NUMERIC*(v_res.price_snapshot->>'input_price')::BIGINT
@@ -454,8 +458,12 @@ BEGIN
   IF FOUND AND v_res.state='released' AND EXISTS (SELECT 1 FROM public.agent_budget_ledger WHERE reservation_id=v_res.id AND event_key='reconcile:'||p_idempotency_key) THEN
     RETURN true;
   END IF;
-  IF NOT FOUND OR v_res.state<>'unknown' THEN
-    RAISE EXCEPTION 'only unknown reservations can be reconciled' USING ERRCODE='55000';
+  IF NOT FOUND OR v_res.state NOT IN ('active','unknown') THEN
+    RAISE EXCEPTION 'only active or unknown reservations can be reconciled' USING ERRCODE='55000';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.agent_tasks t WHERE t.id=v_res.task_id
+    AND t.status IN ('claimed','running') AND t.lease_until>clock_timestamp()) THEN
+    RAISE EXCEPTION 'wait for the worker lease to expire before reconciliation' USING ERRCODE='55000';
   END IF;
   INSERT INTO public.agent_budget_ledger(reservation_id,event_key,event_type,amount_microusd,metadata)
     VALUES(v_res.id,'reconcile:'||p_idempotency_key,'reconciled',0,
