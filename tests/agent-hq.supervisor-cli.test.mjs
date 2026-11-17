@@ -18,6 +18,11 @@ const runNode = (script, args = [], overrides = {}) => spawnSync(process.execPat
 test("Agent HQ supervisor executes the real parent → QA → consolidation lifecycle", async t => {
   assert.ok(databaseUrl, "Set AGENT_HQ_TEST_DATABASE_URL to a disposable PostgreSQL database.");
   assert.notEqual(databaseUrl, process.env.DATABASE_URL, "Test database must not equal DATABASE_URL.");
+  assert.ok(supervisorUrl, "Set AGENT_HQ_ROLE_TEST_URL_SUPERVISOR for the restricted supervisor login.");
+  const supervisorIdentity = postgres(supervisorUrl, { max: 1 });
+  const [identity] = await supervisorIdentity`SELECT session_user AS login`;
+  assert.equal(identity.login, "agent_supervisor", "Supervisor E2E must use the dedicated PostgreSQL login.");
+  await supervisorIdentity.end();
   const sql = postgres(databaseUrl, { max: 4, idle_timeout: 5 });
   const marker = randomUUID();
   let parentId;
