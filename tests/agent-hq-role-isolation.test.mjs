@@ -20,7 +20,7 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
   const coordinator = postgres(roleUrls.coordinator, { max: 1 });
   const supervisor = postgres(roleUrls.supervisor, { max: 1 });
   const marker = randomUUID();
-  let seoTask, qaTask, parentTask, seoArtifact;
+  let seoTask, qaTask, parentTask, unrelatedParent, unrelatedTask, seoArtifact, unrelatedArtifact;
   try {
     [seoTask] = await admin`INSERT INTO agent_tasks (assigned_role,title,objective,expected_output,created_by)
       VALUES ('seo',${"SEO " + marker},'SEO test','Evidence','integration-test') RETURNING id`;
@@ -36,6 +36,15 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
              (${qaTask.id},'coordinator','coordinator_oversight')`;
     [seoArtifact] = await admin`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
       VALUES (${seoTask.id},'seo','result','SEO artifact',${marker}) RETURNING id`;
+    [unrelatedParent] = await admin`INSERT INTO agent_tasks
+      (assigned_role,title,objective,expected_output,created_by,status)
+      VALUES ('coordinator',${"Unrelated parent " + marker},'Other project','Other result','integration-test','review') RETURNING id`;
+    [unrelatedTask] = await admin`INSERT INTO agent_tasks
+      (assigned_role,title,objective,expected_output,created_by,parent_task_id)
+      VALUES ('seo',${"Unrelated SEO " + marker},'Other task','Other evidence','integration-test',${unrelatedParent.id}) RETURNING id`;
+    [unrelatedArtifact] = await admin`INSERT INTO agent_artifacts
+      (task_id,created_by,artifact_type,title,content)
+      VALUES (${unrelatedTask.id},'seo','result','Unrelated artifact',${"private-" + marker}) RETURNING id`;
 
     const ownTasks = await seo`SELECT id FROM agent_tasks WHERE id=${seoTask.id}`;
     const foreignTasks = await seo`SELECT id FROM agent_tasks WHERE id IN (${qaTask.id},${parentTask.id})`;
@@ -70,6 +79,10 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
     const qaArtifacts = await qa`SELECT id FROM agent_artifacts WHERE id=${seoArtifact.id}`;
     assert.equal(ownArtifacts.length, 1);
     assert.equal(qaArtifacts.length, 1, "QA can read sibling specialist artifacts explicitly granted for this parent review");
+    const unrelatedQaArtifacts = await qa`SELECT id FROM agent_artifacts WHERE id=${unrelatedArtifact.id}`;
+    assert.equal(unrelatedQaArtifacts.length, 0, "QA cannot read artifacts from an unrelated parent");
+    const unrelatedCoordinatorTasks = await coordinator`SELECT id FROM agent_tasks WHERE id=${unrelatedTask.id}`;
+    assert.equal(unrelatedCoordinatorTasks.length, 0, "Coordinator cannot read child tasks without a scoped grant");
     const coordinatorChildTasks = await coordinator`SELECT id FROM agent_tasks WHERE id IN (${seoTask.id},${qaTask.id}) ORDER BY id`;
     assert.equal(coordinatorChildTasks.length, 2, "Coordinator can inspect explicitly granted child tasks");
     const coordinatorArtifacts = await coordinator`SELECT id FROM agent_artifacts WHERE id=${seoArtifact.id}`;
@@ -184,8 +197,10 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
     assert.equal(allTasks.length, 3, "Supervisor has its narrowly designated lifecycle visibility");
   } finally {
     if (parentTask) await admin`DELETE FROM agent_tasks WHERE id=${parentTask.id}`;
+    if (unrelatedParent) await admin`DELETE FROM agent_tasks WHERE id=${unrelatedParent.id}`;
     if (seoTask) await admin`DELETE FROM agent_tasks WHERE id=${seoTask.id}`;
     if (qaTask) await admin`DELETE FROM agent_tasks WHERE id=${qaTask.id}`;
+    if (unrelatedTask) await admin`DELETE FROM agent_tasks WHERE id=${unrelatedTask.id}`;
     await Promise.all([admin.end(),seo.end(),qa.end(),coordinator.end(),supervisor.end()]);
   }
 });
