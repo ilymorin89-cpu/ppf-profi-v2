@@ -84,7 +84,7 @@ services:
 
   web_engineer:
     <<: *agent-hq-test-worker
-    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs --once"]
     environment:
       NODE_ENV: test
       AGENT_HQ_WORKERS_ENABLED: "true"
@@ -102,7 +102,7 @@ services:
 
   seo:
     <<: *agent-hq-test-worker
-    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs --once"]
     environment:
       NODE_ENV: test
       AGENT_HQ_WORKERS_ENABLED: "true"
@@ -120,7 +120,7 @@ services:
 
   geo:
     <<: *agent-hq-test-worker
-    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs --once"]
     environment:
       NODE_ENV: test
       AGENT_HQ_WORKERS_ENABLED: "true"
@@ -138,7 +138,7 @@ services:
 
   growth:
     <<: *agent-hq-test-worker
-    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs --once"]
     environment:
       NODE_ENV: test
       AGENT_HQ_WORKERS_ENABLED: "true"
@@ -156,7 +156,7 @@ services:
 
   analytics:
     <<: *agent-hq-test-worker
-    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs --once"]
     environment:
       NODE_ENV: test
       AGENT_HQ_WORKERS_ENABLED: "true"
@@ -174,7 +174,7 @@ services:
 
   qa_security:
     <<: *agent-hq-test-worker
-    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs --once"]
     environment:
       NODE_ENV: test
       AGENT_HQ_WORKERS_ENABLED: "true"
@@ -192,7 +192,7 @@ services:
 
   vk_strategist:
     <<: *agent-hq-test-worker
-    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs --once"]
     environment:
       NODE_ENV: test
       AGENT_HQ_WORKERS_ENABLED: "true"
@@ -210,7 +210,7 @@ services:
 
   copywriter:
     <<: *agent-hq-test-worker
-    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs --once"]
     environment:
       NODE_ENV: test
       AGENT_HQ_WORKERS_ENABLED: "true"
@@ -228,7 +228,7 @@ services:
 
   designer:
     <<: *agent-hq-test-worker
-    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs --once"]
     environment:
       NODE_ENV: test
       AGENT_HQ_WORKERS_ENABLED: "true"
@@ -246,7 +246,7 @@ services:
 
   image_generator:
     <<: *agent-hq-test-worker
-    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs --once"]
     environment:
       NODE_ENV: test
       AGENT_HQ_WORKERS_ENABLED: "true"
@@ -264,7 +264,7 @@ services:
 
   storyteller:
     <<: *agent-hq-test-worker
-    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs --once"]
     environment:
       NODE_ENV: test
       AGENT_HQ_WORKERS_ENABLED: "true"
@@ -282,7 +282,7 @@ services:
 
   community_manager:
     <<: *agent-hq-test-worker
-    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs --once"]
     environment:
       NODE_ENV: test
       AGENT_HQ_WORKERS_ENABLED: "true"
@@ -300,7 +300,7 @@ services:
 
   content_seo:
     <<: *agent-hq-test-worker
-    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs --once"]
     environment:
       NODE_ENV: test
       AGENT_HQ_WORKERS_ENABLED: "true"
@@ -318,7 +318,7 @@ services:
 
   ads_manager:
     <<: *agent-hq-test-worker
-    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs --once"]
     environment:
       NODE_ENV: test
       AGENT_HQ_WORKERS_ENABLED: "true"
@@ -336,7 +336,7 @@ services:
 
   trend_scout:
     <<: *agent-hq-test-worker
-    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs --once"]
     environment:
       NODE_ENV: test
       AGENT_HQ_WORKERS_ENABLED: "true"
@@ -354,7 +354,7 @@ services:
 
   auto_news_editor:
     <<: *agent-hq-test-worker
-    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs --once"]
     environment:
       NODE_ENV: test
       AGENT_HQ_WORKERS_ENABLED: "true"
@@ -372,7 +372,7 @@ services:
 
   auto_law_monitor:
     <<: *agent-hq-test-worker
-    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs --once"]
     environment:
       NODE_ENV: test
       AGENT_HQ_WORKERS_ENABLED: "true"
@@ -390,7 +390,7 @@ services:
 
   fact_checker:
     <<: *agent-hq-test-worker
-    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs --once"]
     environment:
       NODE_ENV: test
       AGENT_HQ_WORKERS_ENABLED: "true"
