@@ -12,6 +12,31 @@ if (databaseIdentity?.login !== "agent_supervisor") {
 }
 const once = process.argv.includes("--once");
 let stopping = false;
+let sleepTimer = null;
+let wakeSleep = null;
+
+function requestStop(signal) {
+  if (stopping) return;
+  stopping = true;
+  console.log("Supervisor received " + signal + "; finishing the current database cycle and stopping.");
+  if (sleepTimer) clearTimeout(sleepTimer);
+  wakeSleep?.();
+}
+process.once("SIGTERM", () => requestStop("SIGTERM"));
+process.once("SIGINT", () => requestStop("SIGINT"));
+
+function waitForNextCycle(ms) {
+  if (stopping) return Promise.resolve();
+  return new Promise(resolve => {
+    wakeSleep = resolve;
+    sleepTimer = setTimeout(() => {
+      sleepTimer = null;
+      wakeSleep = null;
+      resolve();
+    }, ms);
+    sleepTimer.unref?.();
+  });
+}
 
 async function supervise() {
   const recovered = await sql`SELECT * FROM public.agent_budget_recover_expired_tasks()`;
@@ -133,9 +158,11 @@ async function supervise() {
 try {
   while (!stopping) {
     await supervise();
-    if (once) break;
-    await new Promise(resolve => setTimeout(resolve, pollMs));
+    if (once || stopping) break;
+    await waitForNextCycle(pollMs);
   }
 } finally {
+  if (sleepTimer) clearTimeout(sleepTimer);
+  wakeSleep?.();
   await sql.end({ timeout: 5 });
 }
