@@ -67,6 +67,11 @@ test("every Agent HQ worker login sees only its own role and cannot forge messag
         const expectedSpend = role === "seo" ? 100 : role === "geo" ? 200 : 0;
         assert.equal(Number(visibleSpend.total), expectedSpend,
           role + " must not aggregate another role's hidden run cost.");
+        const [trustedBudget] = await sql`SELECT daily_cost,monthly_cost
+          FROM public.agent_test_budget_totals()`;
+        assert.ok(Number(trustedBudget.daily_cost) >= 300,
+          role + " must receive global spend totals only through the trusted aggregate function.");
+        assert.ok(Number(trustedBudget.monthly_cost) >= 300);
 
         const visible = await sql`SELECT id,assigned_role FROM agent_tasks
           WHERE id = ANY(${taskIds}::bigint[]) ORDER BY id`;
