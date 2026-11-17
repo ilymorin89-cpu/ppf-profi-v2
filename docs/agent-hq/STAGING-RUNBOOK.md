@@ -77,9 +77,29 @@ npm ci --omit=dev
 
 Do not put `.env` files or credentials in the repository.
 
-## 2. Create and migrate the staging database
+## 2. Create the staging database and provision LOGINs BEFORE migrations
 
-Create a new database and a dedicated login for Agent HQ. Keep the migration owner separate from the runtime login where practical. Apply only the Agent HQ migrations to the new database:
+Create a dedicated database named `agent_hq_staging`. Keep the database/migration owner separate from all runtime LOGINs. Never use the PPF PROFI website database or production credentials.
+
+**Order matters:** provision all runtime LOGIN roles before applying migrations `0008` and `0009`. Those migrations issue GRANT statements to the named roles and will fail if the roles do not exist. Migration `0010` also grants the worker-identity function to the 19 worker LOGINs; migration `0011` grants the monitoring function to `agent_supervisor`.
+
+Provision exactly these 21 LOGIN roles using a trusted database administrator and one unique, randomly generated password per role:
+
+- 19 worker LOGINs: `agent_coordinator`, `agent_web_engineer`, `agent_seo`, `agent_geo`, `agent_growth`, `agent_analytics`, `agent_qa_security`, `agent_vk_strategist`, `agent_copywriter`, `agent_designer`, `agent_image_generator`, `agent_storyteller`, `agent_community_manager`, `agent_content_seo`, `agent_ads_manager`, `agent_trend_scout`, `agent_auto_news_editor`, `agent_auto_law_monitor`, `agent_fact_checker`.
+- Dedicated control LOGINs: `agent_supervisor` and `agent_operator`.
+
+Every LOGIN must be `LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS`, with no PostgreSQL role memberships. Use this shape for each role, supplying a distinct password directly from the secret manager (do not reuse the placeholder or CI fixture passwords):
+
+```sql
+CREATE ROLE agent_coordinator
+  LOGIN PASSWORD '<INJECT_UNIQUE_SECRET_FROM_SECRET_MANAGER>'
+  NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
+GRANT CONNECT ON DATABASE agent_hq_staging TO agent_coordinator;
+```
+
+Repeat for all 21 role names above. Do not put passwords in migrations, scripts, GitHub Actions, chat, shell history, or committed environment files. Grant no role memberships. Do not create the three SECURITY DEFINER function-owner roles manually: migrations `0008`, `0009`, and `0011` create and harden the budget, runtime, and monitor owners as NOLOGIN roles.
+
+Apply only the Agent HQ migration chain to the verified staging database, in this exact order, using the separate migration-owner connection:
 
 ```sh
 psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0003_agent_hq.sql
@@ -93,7 +113,26 @@ psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0010_agent_hq_authen
 psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0011_agent_hq_readonly_monitor.sql
 ```
 
-Use a separate staging database URL for runtime. The staging database name is pinned to `agent_hq_staging`; do not point this procedure at the production database. Before creating worker services, register all 19 unique worker LOGINs and immutable worker IDs in `agent_worker_principals`, and create distinct `agent_supervisor` and `agent_operator` LOGINs. Keep the budget, runtime and monitor SECURITY DEFINER function-owner roles as NOLOGIN.
+After migrations `0003–0011`, register the 19 worker LOGINs with their approved unique immutable worker IDs. The repository includes a password-free manifest that inserts the expected worker identities and fails closed if an existing mapping differs, a LOGIN is unsafe, or extra principals exist:
+
+```sh
+psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f scripts/agent-hq-staging-register-workers.sql
+```
+
+The manifest enables the 19 identity records but does not start any worker process, grant passwords, or enable model spending. Keep the singleton budget disabled with zero caps/prices. `agent_supervisor` and `agent_operator` are separate control logins and are not entries in `agent_worker_principals`.
+
+Verify the target identity before continuing:
+
+```sql
+SELECT current_database() AS database_name, session_user AS login, inet_server_addr() AS server_ip;
+SELECT enabled, daily_cap_microusd, monthly_cap_microusd,
+       per_run_cap_microusd, input_price_per_million_microusd,
+       output_price_per_million_microusd,
+       web_search_price_microusd_per_call
+FROM public.agent_budget_config WHERE id = 1;
+```
+
+The database must be `agent_hq_staging`; the budget must be disabled and every cap and price must be zero. Stop on any mismatch. Do not publish the connection URL, password, or server address in logs or chat.
 
 Run the fail-closed preflight with a TLS-enabled, read-only-capable staging migration/verification account. It checks the exact database name, TLS, the disabled budget, all 19 enabled principals, unique LOGINs/worker IDs, least-privilege LOGIN attributes, separate supervisor/operator LOGINs and three NOLOGIN function owners (budget, runtime and monitor). It makes no changes and makes no provider calls:
 
