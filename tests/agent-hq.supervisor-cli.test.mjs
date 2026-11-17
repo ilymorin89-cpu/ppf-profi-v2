@@ -139,3 +139,43 @@ test("Agent HQ approval CLI lists, approves and rejects pending requests exactly
     await sql.end({ timeout: 5 });
   }
 });
+
+test("Agent HQ worker refuses all model calls while the budget is disabled", async () => {
+  assert.ok(databaseUrl, "Set AGENT_HQ_TEST_DATABASE_URL to a disposable PostgreSQL database.");
+  assert.notEqual(databaseUrl, process.env.DATABASE_URL, "Test database must not equal DATABASE_URL.");
+  const sql = postgres(databaseUrl, { max: 2, idle_timeout: 5 });
+  const marker = randomUUID();
+  let taskId;
+  try {
+    await sql`UPDATE agent_budget_config SET enabled=false,daily_cap_microusd=0,
+      monthly_cap_microusd=0,per_run_cap_microusd=0 WHERE id=1`;
+    const [task] = await sql`INSERT INTO agent_tasks
+      (assigned_role,title,objective,expected_output,created_by)
+      VALUES ('seo',${"Budget fail-closed " + marker},'Must not call model','No-op','integration-test')
+      RETURNING id`;
+    taskId = task.id;
+    const child = spawnSync(process.execPath, ["scripts/agent-hq-worker.mjs", "--once"], {
+      cwd: root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        NODE_ENV: "test",
+        DATABASE_URL: databaseUrl,
+        AGENT_ROLE: "seo",
+        OPENAI_API_KEY: "test-key-must-never-be-used",
+        AGENT_MODEL: "gpt-4.1-mini",
+        AGENT_WEB_SEARCH_ENABLED: "false"
+      }
+    });
+    assert.notEqual(child.status, 0);
+    assert.match(child.stderr, /Agent budget is disabled or has zero caps/);
+    const [untouched] = await sql`SELECT status,attempts FROM agent_tasks WHERE id=${taskId}`;
+    const runs = await sql`SELECT id FROM agent_runs WHERE task_id=${taskId}`;
+    assert.equal(untouched.status, "queued");
+    assert.equal(untouched.attempts, 0);
+    assert.equal(runs.length, 0, "No model run may be recorded or started");
+  } finally {
+    if (taskId) await sql`DELETE FROM agent_tasks WHERE id=${taskId}`;
+    await sql.end({ timeout: 5 });
+  }
+});
