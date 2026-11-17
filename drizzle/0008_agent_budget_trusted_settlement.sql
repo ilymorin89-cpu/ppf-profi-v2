@@ -72,9 +72,22 @@ GRANT USAGE ON SCHEMA public TO agent_hq_budget_owner;
 REVOKE CREATE ON SCHEMA public FROM agent_hq_budget_owner;
 GRANT SELECT ON public.agent_tasks,public.agent_budget_config TO agent_hq_budget_owner;
 GRANT UPDATE (status,attempts,lease_owner,lease_until,updated_at,completed_at) ON public.agent_tasks TO agent_hq_budget_owner;
-GRANT SELECT,INSERT,UPDATE ON public.agent_runs TO agent_hq_budget_owner;
-GRANT SELECT,INSERT,UPDATE ON public.agent_budget_reservations TO agent_hq_budget_owner;
-GRANT SELECT,INSERT ON public.agent_budget_ledger,public.agent_budget_settlements TO agent_hq_budget_owner;
+-- Reset prior grants on re-application, then grant only the columns used by
+-- the reviewed SECURITY DEFINER routines. A function-owner compromise must
+-- not become unrestricted run or reservation mutation.
+REVOKE ALL ON public.agent_runs,public.agent_budget_reservations,
+  public.agent_budget_ledger,public.agent_budget_settlements FROM agent_hq_budget_owner;
+GRANT SELECT ON public.agent_budget_reservations,
+  public.agent_budget_ledger,public.agent_budget_settlements TO agent_hq_budget_owner;
+-- INSERT ... RETURNING id requires SELECT on the returned identity column only.
+GRANT SELECT (id) ON public.agent_runs TO agent_hq_budget_owner;
+GRANT INSERT (task_id,role,worker_id,provider,model,status,cost_microusd)
+  ON public.agent_runs TO agent_hq_budget_owner;
+GRANT UPDATE (status,input_tokens,output_tokens,cost_microusd,error,finished_at)
+  ON public.agent_runs TO agent_hq_budget_owner;
+GRANT INSERT ON public.agent_budget_reservations TO agent_hq_budget_owner;
+GRANT UPDATE (state,updated_at) ON public.agent_budget_reservations TO agent_hq_budget_owner;
+GRANT INSERT ON public.agent_budget_ledger,public.agent_budget_settlements TO agent_hq_budget_owner;
 CREATE OR REPLACE FUNCTION public.agent_budget_role_for_session()
 RETURNS TEXT LANGUAGE SQL STABLE SET search_path=pg_catalog
 AS $role_map$
