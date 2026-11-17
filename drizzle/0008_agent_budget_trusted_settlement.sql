@@ -363,7 +363,7 @@ BEGIN
   END IF;
   SELECT * INTO v_res FROM public.agent_budget_reservations WHERE id=p_reservation_id AND role=v_role FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'reservation not owned by caller' USING ERRCODE='42501'; END IF;
-  IF v_res.state='unknown' THEN RETURN true; END IF;
+  IF v_res.state IN ('unknown','settled','released') THEN RETURN true; END IF;
   IF v_res.state<>'active' THEN RAISE EXCEPTION 'reservation is not active' USING ERRCODE='55000'; END IF;
   INSERT INTO public.agent_budget_ledger(reservation_id,event_key,event_type,amount_microusd,metadata)
     VALUES(v_res.id,'unknown:'||p_event_key,'unknown',v_res.reserved_microusd,jsonb_build_object('reason',p_reason));
