@@ -29,6 +29,7 @@ on:
       - "drizzle/0005_agent_approval_idempotency.sql"
       - "drizzle/0006_agent_web_search_budget.sql"
       - "drizzle/0007_agent_task_access.sql"
+      - "drizzle/0008_agent_budget_trusted_settlement.sql"
       - "docs/agent-hq/**"
       - "deploy/systemd/**"
       - "package.json"
