@@ -110,7 +110,7 @@ if (preflight.error) throw preflight.error;
 if (preflight.status !== 0) process.exit(preflight.status || 1);
 
 if (command === "check") {
-  console.log("Simulation target and fail-closed preflight validated for " + role + ". No database connection, task claim or worker process was started.");
+  console.log("Simulation target validated for " + role + "; fail-closed preflight passed. No database connection, task claim or worker process was started.");
   process.exit(0);
 }
 
