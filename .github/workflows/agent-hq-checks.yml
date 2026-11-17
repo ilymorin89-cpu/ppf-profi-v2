@@ -7,6 +7,8 @@ on:
       - "scripts/agent-hq-*.mjs"
       - "tests/agent-hq*.mjs"
       - "tests/agent-hq*.sql"
+      - "Dockerfile.agent-hq"
+      - "Dockerfile.agent-hq"
       - "drizzle/0003_agent_hq.sql"
       - "drizzle/0004_agent_budget.sql"
       - "drizzle/0005_agent_approval_idempotency.sql"
@@ -80,6 +82,8 @@ jobs:
         run: systemd-analyze verify deploy/systemd/agent-hq-worker@.service deploy/systemd/agent-hq-supervisor.service
       - name: Validate Docker Compose configuration
         run: docker compose -f docker-compose.yml config --quiet
+      - name: Build Agent HQ runtime container (no deployment)
+        run: docker build --file Dockerfile.agent-hq --tag ppf-agent-hq:ci .
 
   website-build:
     runs-on: ubuntu-latest
