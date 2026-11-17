@@ -14,6 +14,15 @@ GRANT SELECT,INSERT,UPDATE ON agent_runs TO agent_seo,agent_qa_security,agent_co
 GRANT SELECT,INSERT ON agent_artifacts TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
 GRANT SELECT,INSERT ON agent_approvals TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
 GRANT SELECT ON agent_budget_config TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
+CREATE TABLE IF NOT EXISTS agent_task_access (
+  task_id BIGINT NOT NULL REFERENCES agent_tasks(id) ON DELETE CASCADE,
+  principal VARCHAR(48) NOT NULL,
+  access_reason VARCHAR(32) NOT NULL CHECK (access_reason IN ('qa_review','coordinator_oversight')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (task_id, principal)
+);
+GRANT SELECT ON agent_task_access TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
+GRANT INSERT ON agent_task_access TO agent_supervisor;
 GRANT USAGE,SELECT ON ALL SEQUENCES IN SCHEMA public TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
 
 ALTER TABLE agent_tasks ENABLE ROW LEVEL SECURITY;
@@ -28,7 +37,18 @@ ALTER TABLE agent_approvals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_approvals FORCE ROW LEVEL SECURITY;
 ALTER TABLE agent_budget_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_budget_config FORCE ROW LEVEL SECURITY;
+ALTER TABLE agent_task_access ENABLE ROW LEVEL SECURITY;
+ALTER TABLE agent_task_access FORCE ROW LEVEL SECURITY;
 
+CREATE POLICY task_read_explicit_access ON agent_tasks FOR SELECT USING (
+  EXISTS (SELECT 1 FROM agent_task_access access
+    WHERE access.task_id=agent_tasks.id
+      AND access.principal=CASE session_user
+        WHEN 'agent_qa_security' THEN 'qa_security'
+        WHEN 'agent_coordinator' THEN 'coordinator'
+        WHEN 'agent_supervisor' THEN 'supervisor'
+        ELSE '__denied__' END)
+);
 CREATE POLICY task_read_own_role ON agent_tasks FOR SELECT USING (
   session_user='agent_supervisor' OR assigned_role = CASE session_user
     WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
@@ -64,6 +84,25 @@ CREATE POLICY run_update_own_role ON agent_runs FOR UPDATE USING (session_user='
   WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
   WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END);
 
+CREATE POLICY task_access_read_own ON agent_task_access FOR SELECT USING (
+  principal=CASE session_user
+    WHEN 'agent_qa_security' THEN 'qa_security'
+    WHEN 'agent_coordinator' THEN 'coordinator'
+    WHEN 'agent_supervisor' THEN 'supervisor'
+    ELSE '__denied__' END
+);
+CREATE POLICY task_access_insert_supervisor ON agent_task_access FOR INSERT
+  WITH CHECK (session_user='agent_supervisor' AND principal IN ('qa_security','coordinator'));
+
+CREATE POLICY artifact_read_explicit_access ON agent_artifacts FOR SELECT USING (
+  EXISTS (SELECT 1 FROM agent_task_access access
+    WHERE access.task_id=agent_artifacts.task_id
+      AND access.principal=CASE session_user
+        WHEN 'agent_qa_security' THEN 'qa_security'
+        WHEN 'agent_coordinator' THEN 'coordinator'
+        WHEN 'agent_supervisor' THEN 'supervisor'
+        ELSE '__denied__' END)
+);
 CREATE POLICY artifact_read_own_task ON agent_artifacts FOR SELECT USING (
   session_user='agent_supervisor' OR EXISTS (SELECT 1 FROM agent_tasks t WHERE t.id=task_id AND t.assigned_role = CASE session_user
     WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
