@@ -161,6 +161,24 @@ AS $role_map$
 $role_map$;
 REVOKE ALL ON FUNCTION public.agent_role_for_session() FROM PUBLIC;
 
+-- CI-only proof of the required trusted aggregate boundary. This function is
+-- owned by the disposable database owner and MUST NOT be copied to production.
+CREATE OR REPLACE FUNCTION public.agent_test_budget_totals()
+RETURNS TABLE(daily_cost BIGINT, monthly_cost BIGINT)
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $budget_totals$
+  SELECT
+    COALESCE(SUM(cost_microusd) FILTER (WHERE started_at >= date_trunc('day',now())),0)::BIGINT,
+    COALESCE(SUM(cost_microusd) FILTER (WHERE started_at >= date_trunc('month',now())),0)::BIGINT
+  FROM public.agent_runs
+$budget_totals$;
+REVOKE ALL ON FUNCTION public.agent_test_budget_totals() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.agent_test_budget_totals()
+  TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
+
 CREATE OR REPLACE FUNCTION public.agent_can_insert_own_artifact(p_task_id BIGINT, p_created_by TEXT)
 RETURNS BOOLEAN
 LANGUAGE SQL
@@ -181,6 +199,7 @@ GRANT EXECUTE ON FUNCTION public.agent_role_for_session() TO agent_operator;
 DO $roles$ DECLARE role_name TEXT; BEGIN
   FOREACH role_name IN ARRAY ARRAY['agent_web_engineer','agent_geo','agent_growth','agent_analytics','agent_vk_strategist','agent_copywriter','agent_designer','agent_image_generator','agent_storyteller','agent_community_manager','agent_content_seo','agent_ads_manager','agent_trend_scout','agent_auto_news_editor','agent_auto_law_monitor','agent_fact_checker'] LOOP
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_role_for_session() TO %I', role_name);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_test_budget_totals() TO %I', role_name);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_has_task_access(BIGINT) TO %I', role_name);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_can_insert_own_artifact(BIGINT,TEXT) TO %I', role_name);
   END LOOP;
