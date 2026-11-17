@@ -945,3 +945,35 @@ test("Agent HQ SECURITY DEFINER helpers use a dedicated NOLOGIN non-BYPASSRLS ow
     await admin.end();
   }
 });
+
+
+test("Agent HQ budget function owner has only the column privileges required by trusted routines", {
+  skip: !adminUrl
+}, async () => {
+  const admin=postgres(adminUrl,{max:1});
+  try {
+    const [privileges]=await admin`SELECT
+      has_column_privilege('agent_hq_budget_owner','public.agent_runs','task_id','INSERT') AS run_insert_task,
+      has_column_privilege('agent_hq_budget_owner','public.agent_runs','cost_microusd','INSERT') AS run_insert_cost,
+      has_column_privilege('agent_hq_budget_owner','public.agent_runs','status','UPDATE') AS run_update_status,
+      has_column_privilege('agent_hq_budget_owner','public.agent_runs','cost_microusd','UPDATE') AS run_update_cost,
+      has_column_privilege('agent_hq_budget_owner','public.agent_runs','worker_id','UPDATE') AS run_update_worker,
+      has_column_privilege('agent_hq_budget_owner','public.agent_runs','provider','UPDATE') AS run_update_provider,
+      has_column_privilege('agent_hq_budget_owner','public.agent_budget_reservations','state','UPDATE') AS reservation_update_state,
+      has_column_privilege('agent_hq_budget_owner','public.agent_budget_reservations','updated_at','UPDATE') AS reservation_update_timestamp,
+      has_column_privilege('agent_hq_budget_owner','public.agent_budget_reservations','worker_id','UPDATE') AS reservation_update_worker,
+      has_column_privilege('agent_hq_budget_owner','public.agent_budget_reservations','reserved_microusd','UPDATE') AS reservation_update_amount`;
+    assert.equal(privileges.run_insert_task,true);
+    assert.equal(privileges.run_insert_cost,true);
+    assert.equal(privileges.run_update_status,true);
+    assert.equal(privileges.run_update_cost,true);
+    assert.equal(privileges.run_update_worker,false);
+    assert.equal(privileges.run_update_provider,false);
+    assert.equal(privileges.reservation_update_state,true);
+    assert.equal(privileges.reservation_update_timestamp,true);
+    assert.equal(privileges.reservation_update_worker,false);
+    assert.equal(privileges.reservation_update_amount,false);
+  } finally {
+    await admin.end();
+  }
+});
