@@ -180,6 +180,7 @@ GRANT EXECUTE ON FUNCTION public.agent_role_for_session()
 DO $ DECLARE role_name TEXT; BEGIN
   FOREACH role_name IN ARRAY ARRAY['agent_web_engineer','agent_geo','agent_growth','agent_analytics','agent_vk_strategist','agent_copywriter','agent_designer','agent_image_generator','agent_storyteller','agent_community_manager','agent_content_seo','agent_ads_manager','agent_trend_scout','agent_auto_news_editor','agent_auto_law_monitor','agent_fact_checker'] LOOP
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_role_for_session() TO %I', role_name);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_has_task_access(BIGINT) TO %I', role_name);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_can_insert_own_artifact(BIGINT,TEXT) TO %I', role_name);
   END LOOP;
 END $;
@@ -206,13 +207,9 @@ CREATE POLICY task_read_own_role ON agent_tasks FOR SELECT USING (
   session_user='agent_supervisor' OR assigned_role = COALESCE(public.agent_role_for_session(), '__denied__')
 );
 CREATE POLICY task_update_own_role ON agent_tasks FOR UPDATE USING (
-  session_user='agent_supervisor' OR assigned_role = CASE session_user
-    WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
-    WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
+  session_user='agent_supervisor' OR assigned_role = COALESCE(public.agent_role_for_session(), '__denied__')
 ) WITH CHECK (
-  session_user='agent_supervisor' OR assigned_role = CASE session_user
-    WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
-    WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
+  session_user='agent_supervisor' OR assigned_role = COALESCE(public.agent_role_for_session(), '__denied__')
 );
 CREATE POLICY task_insert_coordinator ON agent_tasks FOR INSERT WITH CHECK (
   session_user='agent_supervisor' OR (
@@ -226,9 +223,7 @@ CREATE POLICY task_insert_coordinator ON agent_tasks FOR INSERT WITH CHECK (
 );
 
 CREATE POLICY message_read_recipient ON agent_messages FOR SELECT USING (
-  session_user='agent_supervisor' OR to_role = CASE session_user
-    WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
-    WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
+  session_user='agent_supervisor' OR to_role = COALESCE(public.agent_role_for_session(), '__denied__')
 );
 CREATE POLICY message_insert_sender ON agent_messages FOR INSERT WITH CHECK (
   session_user='agent_supervisor' OR (
@@ -239,27 +234,19 @@ CREATE POLICY message_insert_sender ON agent_messages FOR INSERT WITH CHECK (
 );
 
 CREATE POLICY run_read_own_role ON agent_runs FOR SELECT USING (
-  session_user='agent_supervisor' OR role = CASE session_user
-    WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
-    WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
+  session_user='agent_supervisor' OR role = COALESCE(public.agent_role_for_session(), '__denied__')
 );
 CREATE POLICY run_insert_own_role ON agent_runs FOR INSERT WITH CHECK (
   session_user='agent_supervisor' OR (
-    role = CASE session_user
-      WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
-      WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
+    role = COALESCE(public.agent_role_for_session(), '__denied__')
     AND status='running'
     AND EXISTS (SELECT 1 FROM agent_tasks t WHERE t.id=agent_runs.task_id AND t.assigned_role=role)
   )
 );
 CREATE POLICY run_update_own_role ON agent_runs FOR UPDATE USING (
-  session_user='agent_supervisor' OR role = CASE session_user
-    WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
-    WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
+  session_user='agent_supervisor' OR role = COALESCE(public.agent_role_for_session(), '__denied__')
 ) WITH CHECK (
-  session_user='agent_supervisor' OR role = CASE session_user
-    WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
-    WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
+  session_user='agent_supervisor' OR role = COALESCE(public.agent_role_for_session(), '__denied__')
 );
 
 CREATE POLICY task_access_read_own ON agent_task_access FOR SELECT USING (
@@ -273,9 +260,7 @@ CREATE POLICY artifact_read_explicit_access ON agent_artifacts FOR SELECT USING 
 );
 CREATE POLICY artifact_read_own_task ON agent_artifacts FOR SELECT USING (
   session_user='agent_supervisor' OR EXISTS (
-    SELECT 1 FROM agent_tasks t WHERE t.id=task_id AND t.assigned_role = CASE session_user
-      WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
-      WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
+    SELECT 1 FROM agent_tasks t WHERE t.id=task_id AND t.assigned_role = COALESCE(public.agent_role_for_session(), '__denied__')
   )
 );
 CREATE POLICY artifact_insert_own_task ON agent_artifacts FOR INSERT WITH CHECK (
@@ -283,9 +268,7 @@ CREATE POLICY artifact_insert_own_task ON agent_artifacts FOR INSERT WITH CHECK 
 );
 
 CREATE POLICY approval_read_requester ON agent_approvals FOR SELECT USING (
-  session_user='agent_supervisor' OR requested_by = CASE session_user
-    WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
-    WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
+  session_user='agent_supervisor' OR requested_by = COALESCE(public.agent_role_for_session(), '__denied__')
 );
 CREATE POLICY approval_operator_read ON agent_approvals FOR SELECT USING (session_user='agent_operator');
 CREATE POLICY approval_operator_decide ON agent_approvals FOR UPDATE
@@ -294,9 +277,7 @@ CREATE POLICY approval_operator_decide ON agent_approvals FOR UPDATE
 CREATE POLICY approval_insert_requester ON agent_approvals FOR INSERT WITH CHECK (
   session_user='agent_supervisor' OR (
     status='pending'
-    AND requested_by = CASE session_user
-      WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
-      WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
+    AND requested_by = COALESCE(public.agent_role_for_session(), '__denied__')
     AND EXISTS (SELECT 1 FROM agent_tasks t WHERE t.id=agent_approvals.task_id AND t.assigned_role=requested_by)
   )
 );
