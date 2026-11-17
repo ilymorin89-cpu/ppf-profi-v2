@@ -53,7 +53,7 @@ test("all launch group requires credentials for all 19 worker roles and supervis
   assert.doesNotMatch(result.stderr, /roles without audited database authorization/);
 });
 
-test("all role URLs are checked for duplicate PostgreSQL identities", () => {
+test("every role URL must use its exact dedicated PostgreSQL LOGIN", () => {
   const env = {
     ...allRoleEnv,
     OPENAI_API_KEY: "test-no-provider-call",
@@ -63,7 +63,7 @@ test("all role URLs are checked for duplicate PostgreSQL identities", () => {
   };
   const result = run(["check", "all"], env);
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /Database login reused by seo and fact_checker/);
+  assert.match(result.stderr, /AGENT_HQ_DATABASE_URL_FACT_CHECKER must use the dedicated login agent_fact_checker/);
 });
 
 test("launcher refuses live provider mode before starting Docker services", () => {
