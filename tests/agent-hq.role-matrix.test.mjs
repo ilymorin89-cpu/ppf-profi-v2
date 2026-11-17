@@ -64,9 +64,10 @@ test("every Agent HQ worker login sees only its own role and cannot forge messag
       assert.ok(url, "Missing disposable PostgreSQL login for " + role + " (" + suffix + ").");
       const sql = postgres(url, { max: 1, idle_timeout: 5 });
       try {
-        const [identity] = await sql`SELECT session_user AS login, public.agent_role_for_session() AS mapped_role`;
+        const [identity] = await sql`SELECT session_user AS login, public.agent_role_for_session() AS mapped_role, public.agent_worker_id_for_session() AS worker_id`;
         assert.equal(identity.login, "agent_" + role);
         assert.equal(identity.mapped_role, role);
+        assert.equal(identity.worker_id, "test-" + role);
 
         // RLS intentionally hides other roles' run rows. A worker-side SUM is
         // therefore role-local; global caps must use a trusted aggregate function.
@@ -112,6 +113,12 @@ test("every Agent HQ worker login sees only its own role and cannot forge messag
           undefined,
           role + " must not change task budget ownership."
         );
+
+        const claimed = await sql`SELECT * FROM public.agent_task_claim(${identity.worker_id})`;
+        assert.equal(claimed.length, 1, role + " must be able to claim exactly one task through the trusted function.");
+        assert.equal(String(claimed[0].id), String(idByRole.get(role)),
+          role + " must claim only a task assigned to its authenticated PostgreSQL role.");
+        assert.equal(claimed[0].attempts, 1);
 
         const ownInboxKey = "role-matrix-inbox-" + marker + "-" + role;
         messageKeys.push(ownInboxKey);
