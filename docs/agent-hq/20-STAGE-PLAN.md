@@ -43,3 +43,11 @@ Scope: isolated Agent HQ branch only. Production website, production database `d
 - No worker/supervisor activation and no model spending while budget is disabled.
 - No repository write/deploy/publish/customer-contact tools are exposed to agents.
 - Any later live test must use a disposable database and an explicit, tightly capped budget.
+
+
+- [ ] 21. Complete the table/column operation inventory for every worker and supervisor SQL path; see `POSTGRES-ROLE-PERMISSION-MATRIX.md`.
+- [ ] 22. Implement actual worker/supervisor role tests using distinct disposable PostgreSQL logins; replace reliance on isolated policy examples alone.
+- [ ] 23. Inject a deterministic/mock Responses API in E2E tests and run the actual coordinator -> specialists -> QA -> supervisor path with no provider spend.
+- [ ] 24. Add negative tests for column-level updates, forged identities, unknown logins, sequence/DDL privileges, unrelated-parent access and all task/message/artifact/run/approval tables.
+- [ ] 25. Select the final authorization implementation (RLS with narrow helper functions or fully encapsulated database procedures) only after the complete test matrix passes.
+- [ ] 26. Review and remove or justify any convenience launcher/configuration that does not fit the approved runtime architecture. Keep worker enablement false.
