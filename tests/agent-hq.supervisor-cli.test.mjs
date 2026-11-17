@@ -95,7 +95,7 @@ test("Agent HQ runs coordinator → SEO → QA → supervisor under separate Pos
     const coordinatorRun = runNode("scripts/agent-hq-worker.mjs", ["--once"], {
       DATABASE_URL: roleUrls.coordinator,
       AGENT_ROLE: "coordinator",
-      AGENT_WORKER_ID: "coordinator-e2e",
+      AGENT_WORKER_ID: "test-coordinator",
       OPENAI_API_KEY: "test-key-never-used",
       AGENT_MODEL: "gpt-4.1-mini",
       AGENT_WEB_SEARCH_ENABLED: "false",
@@ -113,7 +113,7 @@ test("Agent HQ runs coordinator → SEO → QA → supervisor under separate Pos
     const seoRun = runNode("scripts/agent-hq-worker.mjs", ["--once"], {
       DATABASE_URL: roleUrls.seo,
       AGENT_ROLE: "seo",
-      AGENT_WORKER_ID: "seo-e2e",
+      AGENT_WORKER_ID: "test-seo",
       OPENAI_API_KEY: "test-key-never-used",
       AGENT_MODEL: "gpt-4.1-mini",
       AGENT_WEB_SEARCH_ENABLED: "false",
@@ -143,7 +143,7 @@ test("Agent HQ runs coordinator → SEO → QA → supervisor under separate Pos
     const qaRun = runNode("scripts/agent-hq-worker.mjs", ["--once"], {
       DATABASE_URL: roleUrls.qa,
       AGENT_ROLE: "qa_security",
-      AGENT_WORKER_ID: "qa-e2e",
+      AGENT_WORKER_ID: "test-qa_security",
       OPENAI_API_KEY: "test-key-never-used",
       AGENT_MODEL: "gpt-4.1-mini",
       AGENT_WEB_SEARCH_ENABLED: "false",
@@ -264,7 +264,7 @@ test("Agent HQ routes QA REVISE through coordinator revision and a fresh QA PASS
     const coordinatorRun = runNode("scripts/agent-hq-worker.mjs", ["--once"], {
       DATABASE_URL: coordinatorUrl,
       AGENT_ROLE: "coordinator",
-      AGENT_WORKER_ID: "coordinator-revision-" + marker,
+      AGENT_WORKER_ID: "test-coordinator",
       OPENAI_API_KEY: "test-key-never-used",
       AGENT_MODEL: "gpt-4.1-mini",
       AGENT_WEB_SEARCH_ENABLED: "false",
@@ -283,7 +283,7 @@ test("Agent HQ routes QA REVISE through coordinator revision and a fresh QA PASS
     const seoRun = runNode("scripts/agent-hq-worker.mjs", ["--once"], {
       DATABASE_URL: seoUrl,
       AGENT_ROLE: "seo",
-      AGENT_WORKER_ID: "seo-revision-" + marker,
+      AGENT_WORKER_ID: "test-seo",
       OPENAI_API_KEY: "test-key-never-used",
       AGENT_MODEL: "gpt-4.1-mini",
       AGENT_WEB_SEARCH_ENABLED: "false",
@@ -311,7 +311,7 @@ test("Agent HQ routes QA REVISE through coordinator revision and a fresh QA PASS
     const qaRun = runNode("scripts/agent-hq-worker.mjs", ["--once"], {
       DATABASE_URL: qaUrl,
       AGENT_ROLE: "qa_security",
-      AGENT_WORKER_ID: "qa-revision-" + marker,
+      AGENT_WORKER_ID: "test-qa_security",
       OPENAI_API_KEY: "test-key-never-used",
       AGENT_MODEL: "gpt-4.1-mini",
       AGENT_WEB_SEARCH_ENABLED: "false",
