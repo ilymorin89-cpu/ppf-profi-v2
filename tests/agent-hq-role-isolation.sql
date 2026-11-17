@@ -46,6 +46,17 @@ BEGIN
        OR has_column_privilege(role_name,'public.agent_runs','cost_microusd','UPDATE') THEN
       RAISE EXCEPTION 'worker role % has forbidden direct UPDATE privileges',role_name;
     END IF;
+
+    IF EXISTS (SELECT 1 FROM pg_auth_members m
+      JOIN pg_roles member_role ON member_role.oid=m.member
+      WHERE member_role.rolname=role_name) THEN
+      RAISE EXCEPTION 'worker LOGIN % must not be a member of any PostgreSQL role',role_name;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM public.agent_worker_principals p
+      WHERE p.login_role=role_name AND p.role=substr(role_name,7) AND p.enabled) THEN
+      RAISE EXCEPTION 'worker LOGIN % is not bound to its expected enabled principal',role_name;
+    END IF;
   END LOOP;
 
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public'
