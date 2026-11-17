@@ -79,6 +79,8 @@ REVOKE ALL ON public.agent_runs,public.agent_budget_reservations,
   public.agent_budget_ledger,public.agent_budget_settlements FROM agent_hq_budget_owner;
 GRANT SELECT ON public.agent_budget_reservations,
   public.agent_budget_ledger,public.agent_budget_settlements TO agent_hq_budget_owner;
+-- INSERT ... RETURNING id requires SELECT on the returned identity column only.
+GRANT SELECT (id) ON public.agent_runs TO agent_hq_budget_owner;
 GRANT INSERT (task_id,role,worker_id,provider,model,status,cost_microusd)
   ON public.agent_runs TO agent_hq_budget_owner;
 GRANT UPDATE (status,input_tokens,output_tokens,cost_microusd,error,finished_at)
