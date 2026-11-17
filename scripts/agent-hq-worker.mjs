@@ -314,12 +314,18 @@ async function runTask(task) {
           if (!allowedRoles.includes(args.role) || args.role === "coordinator" || typeof args.title !== "string" || typeof args.objective !== "string") {
             throw new Error("Invalid delegate_task arguments");
           }
-          const [child] = await sql`INSERT INTO agent_tasks
-            (parent_task_id,assigned_role,title,objective,expected_output,acceptance_criteria,priority,created_by)
-            VALUES (${task.id},${args.role},${args.title.slice(0,240)},${args.objective.slice(0,8000)},
-              'Evidence-backed result with findings and next action',${JSON.stringify(args.acceptance_criteria || [])}::jsonb,
-              ${Math.max(1,Math.min(1000,Number(args.priority) || 100))},'coordinator')
-            RETURNING id,assigned_role,title,status`;
+          const child = await sql.begin(async tx => {
+            await tx`INSERT INTO agent_tasks
+              (parent_task_id,assigned_role,title,objective,expected_output,acceptance_criteria,priority,created_by)
+              VALUES (${task.id},${args.role},${args.title.slice(0,240)},${args.objective.slice(0,8000)},
+                'Evidence-backed result with findings and next action',${JSON.stringify(args.acceptance_criteria || [])}::jsonb,
+                ${Math.max(1,Math.min(1000,Number(args.priority) || 100))},'coordinator')`;
+            // RETURNING would require the coordinator to SELECT the new child
+            // before the supervisor grants scoped visibility. currval stays on
+            // this connection and does not bypass row-level security.
+            const [created] = await tx`SELECT currval('agent_tasks_id_seq') AS id`;
+            return { id: created.id, assigned_role: args.role, title: args.title.slice(0,240), status: "queued" };
+          });
           result = child;
         } else {
           throw new Error(`Unsupported tool: ${call.name}`);
