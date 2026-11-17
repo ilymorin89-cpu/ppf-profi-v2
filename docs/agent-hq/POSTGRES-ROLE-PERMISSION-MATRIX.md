@@ -24,6 +24,33 @@ A procedure-only design remains an alternative if safe row policies cannot expre
 | agent_supervisor | lifecycle service | documented lifecycle operations and scoped grants |
 | agent_operator | human approval CLI | guarded approval decisions only |
 
+
+### Full worker LOGIN roster now covered by the disposable CI identity map
+
+| Logical worker role | PostgreSQL LOGIN |
+|---|---|
+| coordinator | agent_coordinator |
+| web_engineer | agent_web_engineer |
+| seo | agent_seo |
+| geo | agent_geo |
+| growth | agent_growth |
+| analytics | agent_analytics |
+| qa_security | agent_qa_security |
+| vk_strategist | agent_vk_strategist |
+| copywriter | agent_copywriter |
+| designer | agent_designer |
+| image_generator | agent_image_generator |
+| storyteller | agent_storyteller |
+| community_manager | agent_community_manager |
+| content_seo | agent_content_seo |
+| ads_manager | agent_ads_manager |
+| trend_scout | agent_trend_scout |
+| auto_news_editor | agent_auto_news_editor |
+| auto_law_monitor | agent_auto_law_monitor |
+| fact_checker | agent_fact_checker |
+
+The role matrix currently proves each LOGIN maps from authenticated `session_user` to its logical role; sees only its own task plus exact QA/coordinator task grants; sees only its own artifacts plus the exact QA/coordinator artifact grants; cannot change task routing identity or budget ownership; reads only messages addressed to itself; and cannot insert a message under another role's sender identity. The operator approval CLI is separately exercised through its own LOGIN. This is a deliberately bounded acceptance slice, not yet a full per-operation/per-column grant audit.
+
 ## Data permission matrix
 
 | Table | Specialist | Coordinator | QA | Supervisor | Operator |
@@ -109,7 +136,7 @@ Supervisor must not be superuser, table owner, BYPASSRLS, CREATEROLE or CREATEDB
 
 A disposable PostgreSQL 16 E2E test must run actual worker and supervisor paths using role-specific URLs and deterministic mocked Responses API. No network call or model spend. Assert coordinator -> specialists -> QA -> supervisor consolidation, failure/blocked paths, duplicate supervisor runs, expired leases, concurrent claims, and every denial above.
 
-The SQL harness alone is insufficient. Use at least two specialist logins to prove cross-role isolation. Create each test database empty and discard it after the run.
+The SQL harness alone is insufficient. The current disposable CI matrix provisions all 19 worker LOGINs and verifies per-role task visibility plus message-sender anti-spoofing. The integration suite also exercises the operator approval path through a separate LOGIN. Create each test database empty and discard it after the run.
 
 ## Rollout gates
 
@@ -133,4 +160,14 @@ The disposable CI harness now implements and exercises:
 
 The E2E test now executes actual coordinator, SEO, QA and supervisor processes using their separate CI PostgreSQL logins. Responses API output is deterministic and mocked in the test process; no HTTP request, API key, model spend or web search occurs. The test validates delegation, specialist completion, supervisor-issued QA access, QA PASS, and final consolidation.
 
-**Important limits:** this is still a CI-only authorization harness, not a deployable runtime migration. The test helper functions are owned by the disposable CI database owner; production must use a dedicated non-login, narrowly privileged function owner with fixed search_path and reviewed grants. Only the four core identities above are currently exercised; the full specialist roster, operator approval identity, all worker/bus commands, column-by-column lifecycle transitions, DDL/sequence/unknown-login tests and production-grade function ownership remain open. Do not copy this harness to a live database.
+The supervisor CLI acceptance suite now verifies:
+- repeated supervisor passes do not create duplicate QA tasks;
+- a completed QA task with no explicit PASS/REVISE verdict blocks the parent;
+- expired worker leases are recovered and lease ownership is cleared;
+- two concurrent supervisor processes create exactly one QA task and one scoped QA grant;
+- QA REVISE blocks the parent and notifies the coordinator;
+- exhausted specialist work in dead_letter blocks the parent and notifies the coordinator.
+
+These tests run the actual supervisor CLI against disposable PostgreSQL using the distinct supervisor LOGIN. They do not yet cover every crash/restart boundary or all possible lease races.
+
+**Important limits:** this is still a CI-only authorization harness, not a deployable runtime migration. The test helper functions are owned by the disposable CI database owner; production must use a dedicated non-login, narrowly privileged function owner with fixed search_path and reviewed grants. All 19 worker identities now have disposable CI LOGINs and are tested for own-task visibility and message-sender anti-spoofing; the separate operator approval CLI path is also exercised. These tests do not yet cover every worker/bus SQL command, every mutable column, DDL/sequence/unknown-login misuse, or all supervisor concurrency/restart/QA-revise paths. Production-grade function ownership and production RLS migration remain open. Do not copy this harness to a live database.

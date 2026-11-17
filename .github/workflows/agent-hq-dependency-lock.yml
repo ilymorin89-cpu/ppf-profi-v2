@@ -3,14 +3,21 @@ name: Agent HQ dependency security and acceptance
 on:
   push:
     branches: ["agent-hq/enable-research-tools"]
-    paths: [".github/workflows/agent-hq-dependency-lock.yml"]
+    paths:
+      - ".github/workflows/agent-hq-dependency-lock.yml"
+      - "package.json"
+      - "package-lock.json"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   validate-and-refresh:
     runs-on: ubuntu-latest
+    env:
+      AGENT_HQ_TEST_DATABASE_URL: postgres://agent_test:agent_test@localhost:5432/agent_hq_test
+      DATABASE_URL: postgres://build:build@127.0.0.1:5432/build_placeholder
+      NEXT_TELEMETRY_DISABLED: "1"
     services:
       postgres:
         image: postgres:16
@@ -25,55 +32,41 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
-    env:
-      AGENT_HQ_TEST_DATABASE_URL: postgres://agent_test:agent_test@localhost:5432/agent_hq_test
-      DATABASE_URL: postgres://build:build@127.0.0.1:5432/build_placeholder
-      NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: agent-hq/enable-research-tools
-          persist-credentials: true
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - name: Update patched framework and React versions and resolve lockfile
+      - name: Resolve patched dependency candidates (workspace only)
         run: |
           npm pkg set 'dependencies.next=16.4.6' 'dependencies.react=19.3.1' 'dependencies.react-dom=19.3.1' 'devDependencies.eslint-config-next=16.4.6'
           npm install --package-lock-only --ignore-scripts --no-audit --no-fund
           npm ci --ignore-scripts --no-audit --no-fund
-      - name: Apply non-breaking dependency security fixes
+      - name: Apply non-breaking dependency security fixes (workspace only)
         run: |
           npm audit fix --ignore-scripts --no-fund || echo 'Some advisories require manual review; severity gate below decides whether the candidate can proceed.'
           npm ci --ignore-scripts --no-audit --no-fund
       - name: Audit dependency tree (fail on high or critical advisories)
         run: npm audit --audit-level=high
-      - name: Apply Agent HQ migrations to disposable PostgreSQL
+      - name: Apply Agent HQ migrations and disposable role-isolation harness
         run: |
           psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0003_agent_hq.sql
           psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0004_agent_budget.sql
           psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0005_agent_approval_idempotency.sql
           psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0006_agent_web_search_budget.sql
+          psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0007_agent_task_access.sql
+          psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/agent-hq-role-isolation.sql
       - name: Run Agent HQ syntax and integration tests
         run: |
           node --check scripts/agent-hq-bus.mjs
           node --check scripts/agent-hq-worker.mjs
           node --check scripts/agent-hq-supervisor.mjs
+          node --check scripts/agent-hq-launch.mjs
           npm run agent-hq:test
       - name: Verify systemd and Docker Compose
         run: |
           systemd-analyze verify deploy/systemd/agent-hq-worker@.service deploy/systemd/agent-hq-supervisor.service
           docker compose -f docker-compose.yml config --quiet
-      - name: Build website with patched dependencies
+      - name: Build website with patched dependency candidates
         run: npm run build
-      - name: Commit lockfile-backed security updates to isolated branch
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add package.json package-lock.json
-          if git diff --cached --quiet; then echo 'No dependency changes'; exit 0; fi
-          git commit -m 'fix(deps): patch Next.js and React security releases'
-          git fetch origin agent-hq/enable-research-tools
-          git rebase origin/agent-hq/enable-research-tools
-          git push origin HEAD:agent-hq/enable-research-tools

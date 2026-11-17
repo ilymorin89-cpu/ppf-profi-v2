@@ -1,0 +1,46 @@
+name: Agent HQ recovery proof
+
+on:
+  pull_request:
+    paths:
+      - "scripts/agent-hq-recovery-proof.sh"
+      - "drizzle/0003_agent_hq.sql"
+      - "drizzle/0004_agent_budget.sql"
+      - "drizzle/0005_agent_approval_idempotency.sql"
+      - "drizzle/0006_agent_web_search_budget.sql"
+      - "drizzle/0007_agent_task_access.sql"
+      - "drizzle/0008_agent_budget_trusted_settlement.sql"
+      - "drizzle/0009_agent_hq_runtime_rls.sql"
+      - "drizzle/0010_agent_hq_authenticated_worker_identity.sql"
+      - "tests/agent-hq-provision-test-roles.sql"
+      - "tests/agent-hq-register-test-workers.sql"
+      - "tests/agent-hq-role-isolation.sql"
+      - ".github/workflows/agent-hq-recovery-proof.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  backup-restore-rollback:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: agent_test
+          POSTGRES_PASSWORD: agent_test
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U agent_test -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      ADMIN_URL: postgres://agent_test:agent_test@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prove pre-migration rollback restore and full Agent HQ backup round-trip
+        shell: bash
+        run: bash scripts/agent-hq-recovery-proof.sh
