@@ -195,6 +195,17 @@ AS $artifact_check$
     AND EXISTS (SELECT 1 FROM public.agent_tasks t
       WHERE t.id=p_task_id AND t.assigned_role=p_created_by)
 $artifact_check$;
+-- In CI, model the production ownership boundary: helper functions are owned
+-- by a dedicated NOLOGIN role, never by the disposable database/schema owner.
+GRANT USAGE,CREATE ON SCHEMA public TO agent_hq_fn_owner_ci;
+GRANT SELECT ON public.agent_tasks,public.agent_task_access TO agent_hq_fn_owner_ci;
+ALTER FUNCTION public.agent_has_task_access(BIGINT) OWNER TO agent_hq_fn_owner_ci;
+ALTER FUNCTION public.agent_can_grant_task_access(TEXT) OWNER TO agent_hq_fn_owner_ci;
+ALTER FUNCTION public.agent_is_valid_coordinator_parent(BIGINT) OWNER TO agent_hq_fn_owner_ci;
+ALTER FUNCTION public.agent_role_for_session() OWNER TO agent_hq_fn_owner_ci;
+ALTER FUNCTION public.agent_can_insert_own_artifact(BIGINT,TEXT) OWNER TO agent_hq_fn_owner_ci;
+REVOKE CREATE ON SCHEMA public FROM agent_hq_fn_owner_ci;
+
 REVOKE ALL ON FUNCTION public.agent_can_insert_own_artifact(BIGINT,TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.agent_can_insert_own_artifact(BIGINT,TEXT)
   TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
@@ -224,6 +235,10 @@ ALTER TABLE agent_budget_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_budget_config FORCE ROW LEVEL SECURITY;
 ALTER TABLE agent_task_access ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_task_access FORCE ROW LEVEL SECURITY;
+
+-- The NOLOGIN function owner gets only the row reads required by reviewed helpers.
+CREATE POLICY task_fn_owner_read ON agent_tasks FOR SELECT TO agent_hq_fn_owner_ci USING (true);
+CREATE POLICY task_access_fn_owner_read ON agent_task_access FOR SELECT TO agent_hq_fn_owner_ci USING (true);
 
 CREATE POLICY task_read_explicit_access ON agent_tasks FOR SELECT USING (
   public.agent_has_task_access(agent_tasks.id)
