@@ -81,6 +81,7 @@ jobs:
           node --check scripts/agent-hq-bus.mjs
           node --check scripts/agent-hq-worker.mjs
           node --check scripts/agent-hq-supervisor.mjs
+          node --check scripts/agent-hq-launch.mjs
           node --check tests/agent-hq.integration.test.mjs
       - name: Run PostgreSQL integration tests
         run: npm run agent-hq:test
