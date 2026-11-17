@@ -121,6 +121,12 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
         VALUES (${seoTask.id},${randomUUID()},'qa_security','seo','status','forged',${"m-" + marker + "-forged"})`,
       error => ["42501","23514"].includes(error.code)
     );
+    await assert.rejects(
+      seo`INSERT INTO agent_messages (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
+        VALUES (${qaTask.id},${randomUUID()},'seo','qa_security','status','cross-task',${"m-" + marker + "-cross"})`,
+      error => ["42501","23514"].includes(error.code),
+      "SEO cannot attach a message to another role's task"
+    );
 
     const [seoRun] = await admin`INSERT INTO agent_runs (task_id,role,worker_id,provider,model,status)
       VALUES (${seoTask.id},'seo','seo-ci','test','test','succeeded') RETURNING id`;
@@ -151,6 +157,12 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
       seo`INSERT INTO agent_approvals (task_id,action,requested_by,payload,status)
         VALUES (${seoTask.id},'other','qa_security','{}'::jsonb,'pending')`,
       error => ["42501","23514"].includes(error.code)
+    );
+    await assert.rejects(
+      seo`INSERT INTO agent_approvals (task_id,action,requested_by,payload,status)
+        VALUES (${seoTask.id},'other','seo','{}'::jsonb,'approved')`,
+      error => ["42501","23514"].includes(error.code),
+      "Worker may request approval only in pending state"
     );
 
     await seo`SELECT set_config('agent.role','qa_security',false)`;
