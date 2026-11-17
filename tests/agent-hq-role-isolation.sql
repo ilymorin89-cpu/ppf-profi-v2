@@ -43,10 +43,6 @@ GRANT INSERT (parent_task_id,title,objective,expected_output,acceptance_criteria
 GRANT INSERT (task_id,conversation_id,from_role,to_role,kind,body,evidence,in_reply_to,idempotency_key)
   ON agent_messages TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
 
-GRANT INSERT (task_id,role,worker_id,provider,model,status)
-  ON agent_runs TO agent_hq_budget_owner_ci;
-GRANT UPDATE (status,error,finished_at)
-  ON agent_runs TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
 
 GRANT INSERT (task_id,created_by,artifact_type,title,content,evidence)
   ON agent_artifacts TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
@@ -564,6 +560,8 @@ CREATE POLICY message_insert_sender ON agent_messages FOR INSERT WITH CHECK (
   )
 );
 
+CREATE POLICY run_budget_owner_insert ON agent_runs FOR INSERT TO agent_hq_budget_owner_ci WITH CHECK(true);
+CREATE POLICY run_budget_owner_update ON agent_runs FOR UPDATE TO agent_hq_budget_owner_ci USING(true) WITH CHECK(true);
 CREATE POLICY run_read_own_role ON agent_runs FOR SELECT USING (
   session_user='agent_supervisor' OR role = COALESCE(public.agent_role_for_session(), '__denied__')
 );
