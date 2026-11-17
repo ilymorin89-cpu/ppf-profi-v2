@@ -17,6 +17,7 @@ Scope: isolated Agent HQ branch only. Production website, production database `d
 - [x] 11. Add deterministic idempotency for agent messages and deduplication for pending approvals.
 - [x] 12. Test supervisor parent → specialist → QA → consolidated artifact lifecycle (real CLI E2E test; CI run 44068858073 passed).
 - [x] 13. Test approval request creation, listing, approval and rejection end-to-end (real CLI E2E test; CI run 44068858073 passed).
+- [x] 13a. Re-run both PR and push workflows at head `a7a737da3a1a9915f488af0faa0e261ecdaf8cd6`; runs `44070528396` and `44070516702` both passed `syntax` and `website-build` on 2026-11-17.
 - [ ] 14. Validate model support for hosted web search using a controlled, non-production test.
 - [ ] 15. Reconcile token and hosted-search charges against provider billing; code now caps built-in tool calls at 5 per response × 4 model turns and reserves up to 20 search calls before execution.
 - [ ] 16. Complete full role/permission/data-exposure review; CLI role allowlists and OS-UID approval gating are implemented and covered by tests, but DB-enforced per-role isolation remains open.
