@@ -48,6 +48,30 @@ GRANT INSERT (task_id,principal,access_reason) ON agent_task_access TO agent_sup
 GRANT USAGE,SELECT ON SEQUENCE agent_tasks_id_seq,agent_messages_id_seq,agent_runs_id_seq,agent_artifacts_id_seq,agent_approvals_id_seq
   TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
 
+-- CI-only SECURITY DEFINER helper avoids recursive RLS evaluation between
+-- agent_tasks and agent_task_access. Production owner must be a dedicated,
+-- non-login, narrowly privileged function owner (not a superuser).
+CREATE OR REPLACE FUNCTION public.agent_has_task_access(p_task_id BIGINT)
+RETURNS BOOLEAN
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $
+  SELECT CASE session_user
+    WHEN 'agent_qa_security' THEN EXISTS (
+      SELECT 1 FROM public.agent_task_access a WHERE a.task_id=p_task_id AND a.principal='qa_security'
+    )
+    WHEN 'agent_coordinator' THEN EXISTS (
+      SELECT 1 FROM public.agent_task_access a WHERE a.task_id=p_task_id AND a.principal='coordinator'
+    )
+    ELSE FALSE
+  END
+$;
+REVOKE ALL ON FUNCTION public.agent_has_task_access(BIGINT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.agent_has_task_access(BIGINT)
+  TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
+
 ALTER TABLE agent_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_tasks FORCE ROW LEVEL SECURITY;
 ALTER TABLE agent_messages ENABLE ROW LEVEL SECURITY;
@@ -64,13 +88,7 @@ ALTER TABLE agent_task_access ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_task_access FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY task_read_explicit_access ON agent_tasks FOR SELECT USING (
-  EXISTS (SELECT 1 FROM agent_task_access access
-    WHERE access.task_id=agent_tasks.id
-      AND access.principal=CASE session_user
-        WHEN 'agent_qa_security' THEN 'qa_security'
-        WHEN 'agent_coordinator' THEN 'coordinator'
-        WHEN 'agent_supervisor' THEN 'supervisor'
-        ELSE '__denied__' END)
+  public.agent_has_task_access(agent_tasks.id)
 );
 CREATE POLICY task_read_own_role ON agent_tasks FOR SELECT USING (
   session_user='agent_supervisor' OR assigned_role = CASE session_user
@@ -150,13 +168,7 @@ CREATE POLICY task_access_insert_supervisor ON agent_task_access FOR INSERT
   WITH CHECK (session_user='agent_supervisor' AND principal IN ('qa_security','coordinator'));
 
 CREATE POLICY artifact_read_explicit_access ON agent_artifacts FOR SELECT USING (
-  EXISTS (SELECT 1 FROM agent_task_access access
-    WHERE access.task_id=agent_artifacts.task_id
-      AND access.principal=CASE session_user
-        WHEN 'agent_qa_security' THEN 'qa_security'
-        WHEN 'agent_coordinator' THEN 'coordinator'
-        WHEN 'agent_supervisor' THEN 'supervisor'
-        ELSE '__denied__' END)
+  public.agent_has_task_access(agent_artifacts.task_id)
 );
 CREATE POLICY artifact_read_own_task ON agent_artifacts FOR SELECT USING (
   session_user='agent_supervisor' OR EXISTS (
