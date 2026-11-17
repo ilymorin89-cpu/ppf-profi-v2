@@ -512,18 +512,27 @@ test("Agent HQ bus send derives sender from authenticated PostgreSQL LOGIN", asy
   const marker = randomUUID();
   const ownBody = "authenticated sender " + marker;
   const forgedBody = "forged sender " + marker;
+  let taskId;
   try {
-    const own = runNode("scripts/agent-hq-bus.mjs", ["send","seo","coordinator","-","status",ownBody], { DATABASE_URL: seoUrl });
+    const [task] = await sql`INSERT INTO agent_tasks
+      (title,objective,expected_output,assigned_role,created_by)
+      VALUES (${"Bus sender auth " + marker},'Verify authenticated sender identity',
+        'A message from the matching role','seo','owner')
+      RETURNING id`;
+    taskId = task.id;
+    const own = runNode("scripts/agent-hq-bus.mjs", ["send","seo","coordinator",String(taskId),"status",ownBody], { DATABASE_URL: seoUrl });
     assert.equal(own.status, 0, own.stderr || own.stdout);
-    const forged = runNode("scripts/agent-hq-bus.mjs", ["send","coordinator","seo","-","status",forgedBody], { DATABASE_URL: seoUrl });
+    const forged = runNode("scripts/agent-hq-bus.mjs", ["send","coordinator","seo",String(taskId),"status",forgedBody], { DATABASE_URL: seoUrl });
     assert.notEqual(forged.status, 0, "A worker must not claim another role as the sender.");
     assert.match(forged.stderr, /authenticated PostgreSQL LOGIN/i);
-    const rows = await sql`SELECT id,from_role,to_role FROM agent_messages WHERE body=${ownBody}`;
+    const rows = await sql`SELECT id,task_id,from_role,to_role FROM agent_messages WHERE body=${ownBody}`;
     assert.equal(rows.length, 1);
+    assert.equal(String(rows[0].task_id), String(taskId));
     assert.equal(rows[0].from_role, "seo");
     assert.equal(rows[0].to_role, "coordinator");
   } finally {
     await sql`DELETE FROM agent_messages WHERE body IN (${ownBody},${forgedBody})`;
+    if (taskId) await sql`DELETE FROM agent_tasks WHERE id=${taskId}`;
     await sql.end({ timeout: 5 });
   }
 });
