@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-: "${AGENT_HQ_TEST_DATABASE_URL:=postgres://agent_test:agent_test@postgres:5432/agent_hq_test}"
+AGENT_HQ_TEST_DATABASE_URL="postgres://agent_test:agent_test@postgres:5432/agent_hq_test"
 export AGENT_HQ_TEST_DATABASE_URL
 
 echo "Applying Agent HQ migrations to disposable agent_hq_test..."
