@@ -1,6 +1,6 @@
 import postgres from "postgres";
 import { createHash, randomUUID } from "node:crypto";
-import { calculateRunCost, mayExecuteToolCalls, parseApprovalPayload, uniqueCitations } from "./agent-hq-helpers.mjs";
+import { mayExecuteToolCalls, parseApprovalPayload, uniqueCitations } from "./agent-hq-helpers.mjs";
 
 const role = process.env.AGENT_ROLE;
 const workerId = process.env.AGENT_WORKER_ID || `${role || "worker"}-${process.pid}`;
