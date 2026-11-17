@@ -558,7 +558,7 @@ CREATE POLICY run_read_own_role ON agent_runs FOR SELECT USING (
 -- CI-only definer owner may read aggregate inputs, but no runtime LOGIN is a member of this role.
 CREATE POLICY run_budget_aggregate_fn_owner ON agent_runs FOR SELECT TO agent_hq_fn_owner_ci USING (true);
 CREATE POLICY run_insert_own_role ON agent_runs FOR INSERT WITH CHECK (
-  session_user='agent_supervisor' OR (
+  session_user='agent_hq_budget_owner_ci' OR (
     role = COALESCE(public.agent_role_for_session(), '__denied__')
     AND status='running'
     AND EXISTS (SELECT 1 FROM agent_tasks t WHERE t.id=agent_runs.task_id AND t.assigned_role=role)
