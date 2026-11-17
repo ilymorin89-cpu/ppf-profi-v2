@@ -124,6 +124,8 @@ END
 $grant_helpers$;
 GRANT EXECUTE ON FUNCTION public.agent_can_grant_task_access(TEXT) TO agent_supervisor;
 GRANT EXECUTE ON FUNCTION public.agent_is_valid_coordinator_parent(BIGINT) TO agent_coordinator,agent_supervisor;
+GRANT CONNECT ON DATABASE current_database() TO agent_operator;
+GRANT USAGE ON SCHEMA public TO agent_operator;
 GRANT EXECUTE ON FUNCTION public.agent_role_for_session() TO agent_operator;
 
 -- The function owner receives only the reads needed by the SECURITY DEFINER helpers.
