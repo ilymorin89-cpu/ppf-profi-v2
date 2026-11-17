@@ -21,6 +21,29 @@ function run(args, extraEnv = {}) {
   });
 }
 
+const preflight = path.join(root, "scripts", "agent-hq-test-preflight.mjs");
+function runPreflight(extraEnv = {}) {
+  return spawnSync(process.execPath, [preflight], {
+    cwd: root,
+    encoding: "utf8",
+    env: { PATH: process.env.PATH, SystemRoot: process.env.SystemRoot, WINDIR: process.env.WINDIR, ...extraEnv }
+  });
+}
+const validPreflightEnv = {
+  NODE_ENV: "test",
+  AGENT_HQ_WORKERS_ENABLED: "true",
+  AGENT_ROLE: "seo",
+  DATABASE_URL: "postgres://agent_seo:test@127.0.0.1:5432/agent_hq_test",
+  OPENAI_API_KEY: "test-no-provider-call",
+  AGENT_MODEL: "test-model",
+  AGENT_WEB_SEARCH_ENABLED: "false",
+  AGENT_HQ_TEST_RESPONSES_JSON: JSON.stringify({
+    id: "deterministic-fixture",
+    usage: { input_tokens: 1, output_tokens: 1 },
+    output: [{ type: "message", content: [{ type: "output_text", text: "test fixture" }] }]
+  })
+};
+
 const allWorkerRoles = [
   "coordinator","web_engineer","seo","geo","growth","analytics","qa_security","vk_strategist",
   "copywriter","designer","image_generator","storyteller","community_manager","content_seo",
@@ -193,4 +216,45 @@ test("no-spend simulator rejects roles without audited launch authorization", ()
   const result = runSimulation(["check", "web_engineer"], simulationUrls);
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /Unsupported simulation role/);
+});
+
+
+test("worker test preflight accepts only a deterministic fixture and local disposable DB", () => {
+  const result = runPreflight(validPreflightEnv);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /no-spend test preflight passed for seo/);
+});
+
+test("worker test preflight rejects remote DB hosts and production database names", () => {
+  const remote = runPreflight({
+    ...validPreflightEnv,
+    DATABASE_URL: "postgres://agent_seo:test@db.example.com:5432/agent_hq_test"
+  });
+  assert.notEqual(remote.status, 0);
+  assert.match(remote.stderr, /Only local disposable PostgreSQL hosts are allowed/);
+  const production = runPreflight({
+    ...validPreflightEnv,
+    DATABASE_URL: "postgres://agent_seo:test@127.0.0.1:5432/production"
+  });
+  assert.notEqual(production.status, 0);
+  assert.match(production.stderr, /Database name must be agent_hq_test/);
+});
+
+test("worker test preflight rejects live credentials and web search", () => {
+  const liveKey = runPreflight({ ...validPreflightEnv, OPENAI_API_KEY: "real-looking-secret" });
+  assert.notEqual(liveKey.status, 0);
+  assert.match(liveKey.stderr, /non-secret placeholder API key/);
+  const search = runPreflight({ ...validPreflightEnv, AGENT_WEB_SEARCH_ENABLED: "true" });
+  assert.notEqual(search.status, 0);
+  assert.match(search.stderr, /Web search must be disabled/);
+});
+
+test("supervisor test preflight requires its own login and local disposable DB", () => {
+  const result = runPreflight({
+    NODE_ENV: "test",
+    AGENT_HQ_WORKERS_ENABLED: "true",
+    AGENT_ROLE: "supervisor",
+    DATABASE_URL: "postgres://agent_supervisor:test@127.0.0.1:5432/agent_hq_test"
+  });
+  assert.equal(result.status, 0, result.stderr);
 });
