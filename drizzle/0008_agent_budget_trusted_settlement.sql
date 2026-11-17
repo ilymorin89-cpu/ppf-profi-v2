@@ -172,6 +172,7 @@ BEGIN
     RAISE EXCEPTION 'invalid budget reservation request' USING ERRCODE='22023';
   END IF;
 
+  PERFORM pg_advisory_xact_lock(781234,1);
   SELECT * INTO v_existing FROM public.agent_budget_reservations
     WHERE idempotency_key=p_idempotency_key;
   IF FOUND THEN
@@ -189,12 +190,11 @@ BEGIN
 
   SELECT * INTO v_task FROM public.agent_tasks
     WHERE id=p_task_id AND assigned_role=v_role AND status IN ('claimed','running')
-      AND lease_owner=p_worker_id AND lease_until>clock_timestamp()
-    FOR UPDATE;
+      AND lease_owner=p_worker_id AND lease_until>clock_timestamp();
   IF NOT FOUND THEN RAISE EXCEPTION 'task lease not owned by caller' USING ERRCODE='42501'; END IF;
 
   -- One locked budget row serializes every reservation transaction.
-  SELECT * INTO v_budget FROM public.agent_budget_config WHERE id=1 FOR UPDATE;
+  SELECT * INTO v_budget FROM public.agent_budget_config WHERE id=1;
   -- Recheck idempotency after the serialized budget lock to handle concurrent retries.
   SELECT * INTO v_existing FROM public.agent_budget_reservations WHERE idempotency_key=p_idempotency_key;
   IF FOUND THEN
@@ -283,7 +283,7 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'reservation not owned by caller' USING ERRCODE='42501'; END IF;
   SELECT * INTO v_task FROM public.agent_tasks
     WHERE id=v_res.task_id AND assigned_role=v_role AND lease_owner=v_res.worker_id
-      AND status IN ('claimed','running') FOR UPDATE;
+      AND status IN ('claimed','running');
   IF NOT FOUND THEN RAISE EXCEPTION 'settlement requires the original active task lease' USING ERRCODE='42501'; END IF;
   IF v_res.state='settled' THEN
     SELECT * INTO v_existing FROM public.agent_budget_settlements WHERE reservation_id=v_res.id;
