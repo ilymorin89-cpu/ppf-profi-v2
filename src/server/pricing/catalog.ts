@@ -37,7 +37,10 @@ function parseBool(v: string | undefined): boolean {
   return (v || "").trim().toLowerCase() === "yes";
 }
 
+let carsCache: CarEntry[] | null = null;
+
 export function getCars(): CarEntry[] {
+  if (carsCache !== null) return carsCache;
   const filePath = path.join(process.cwd(), "data", "pricing-cars.csv");
   if (!fs.existsSync(filePath)) return [];
   const raw = fs.readFileSync(filePath, "utf8").replace(/^\uFEFF/, "");
@@ -69,7 +72,8 @@ export function getCars(): CarEntry[] {
       tier: (c[idx.tier] || "").trim(),
     });
   }
-  return rows;
+  carsCache = rows;
+  return carsCache;
 }
 
 export function getCar(code: string): CarEntry | undefined {
