@@ -33,7 +33,6 @@ x-agent-hq-worker: &agent-hq-worker
     - no-new-privileges:true
 
 services:
-services:
   gateway:
     profiles: ["optional-health"]
     build:
