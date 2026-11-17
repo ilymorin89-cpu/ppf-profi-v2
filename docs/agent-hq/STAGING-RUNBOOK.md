@@ -166,6 +166,23 @@ sudo systemctl enable --now agent-hq-supervisor
 
 Do not enable all roles by default. Add specialists only when a test requires them. Review logs with `journalctl -u agent-hq-worker@coordinator -f` and `journalctl -u agent-hq-supervisor -f`. To stop staging, stop and disable each enabled worker instance and the supervisor before disabling the budget.
 
+## 9. Install read-only staging monitoring
+
+The monitor is pinned to `agent_hq_staging`, requires TLS and the authenticated `agent_supervisor` LOGIN, and performs read-only checks for the 19 worker principals, budget safety, expired leases and unknown/active reservations. It emits a JSON result to the system journal and exits non-zero on critical conditions. It does not send external notifications.
+
+Create `/etc/ppf-agent-hq/monitor.env` using the secret manager with a staging-only `DATABASE_URL` authenticated as `agent_supervisor`; do not reuse a production URL. Install and enable the timer:
+
+```sh
+sudo install -o root -g root -m 0644 deploy/systemd/agent-hq-monitor.service /etc/systemd/system/
+sudo install -o root -g root -m 0644 deploy/systemd/agent-hq-monitor.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now agent-hq-monitor.timer
+sudo systemctl start agent-hq-monitor.service
+sudo journalctl -u agent-hq-monitor.service --since "10 minutes ago"
+```
+
+A successful check prints `"status": "OK"`. A `CRITICAL` result or non-zero service result requires operator investigation. Configure the host's existing monitoring/alerting platform to alert on failed `agent-hq-monitor.service` runs and repeated worker/supervisor restarts. No webhook, email, Telegram or other external alert destination is configured by this repository.
+
 ## Database role isolation status
 
 The current branch contains a disposable-CI-only RLS harness at `tests/agent-hq-role-isolation.sql` and negative tests using distinct PostgreSQL logins. Migration `0007_agent_task_access.sql` creates the scoped access registry; the supervisor grants coordinator visibility to a parent's child tasks and QA visibility to sibling specialist tasks before QA runs. Supervisor lifecycle tests assert these grants. This migration does **not** enable RLS or create role logins. The RLS policies remain a CI prototype and do not yet cover every runtime operation/column with final least privilege. Do not connect live workers or enable RLS until role-specific PostgreSQL logins, table/sequence grants, column-level restrictions, and end-to-end tests for claim, heartbeat, messages, runs, artifacts, approvals and supervisor lifecycle have been reviewed on a disposable staging database. The compose variables are deliberately separate and default empty.
