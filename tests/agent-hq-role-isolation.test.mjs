@@ -1037,3 +1037,115 @@ test("Agent HQ budget function owner has only the column privileges required by 
     await admin.end();
   }
 });
+
+
+test("expired worker leases recover through the trusted supervisor function without unsafe retries", {
+  skip: !adminUrl || !roleUrls.seo || !roleUrls.supervisor
+}, async () => {
+  const admin = postgres(adminUrl, { max: 3 });
+  const seo = postgres(roleUrls.seo, { max: 1 });
+  const supervisor = postgres(roleUrls.supervisor, { max: 1 });
+  const marker = randomUUID();
+  let previousBudget;
+  const taskIds = [];
+  try {
+    [previousBudget] = await admin`SELECT * FROM agent_budget_config WHERE id=1`;
+    await admin`UPDATE agent_budget_config SET enabled=true,
+      daily_cap_microusd=10000000,monthly_cap_microusd=10000000,
+      per_run_cap_microusd=1000000,
+      input_price_per_million_microusd=1000000,
+      output_price_per_million_microusd=1000000,
+      web_search_price_microusd_per_call=0 WHERE id=1`;
+
+    await assert.rejects(
+      seo`SELECT * FROM public.agent_budget_recover_expired_tasks()`,
+      error => error.code === "42501",
+      "A worker must not invoke supervisor-only lease recovery"
+    );
+
+    const [reservedTask] = await admin`INSERT INTO agent_tasks
+      (assigned_role,title,objective,expected_output,created_by,status,attempts,max_attempts,lease_owner,lease_until)
+      VALUES ('seo',${"Expired active reservation " + marker},'Test lease recovery','Evidence',
+        'integration-test','claimed',1,3,'test-seo',now()+interval '5 minutes')
+      RETURNING id`;
+    taskIds.push(reservedTask.id);
+
+    const [reservation] = await seo`SELECT * FROM public.agent_budget_reserve(
+      ${reservedTask.id},'test-seo','test_stub','recovery-test-model',
+      1000,256,1,0,${"recovery-reserve-" + marker})`;
+    assert.ok(reservation.reservation_id);
+
+    await admin`UPDATE agent_tasks SET lease_until=now()-interval '1 second'
+      WHERE id=${reservedTask.id}`;
+    const [lateHeartbeat] = await seo`SELECT public.agent_task_heartbeat(
+      ${reservedTask.id},'test-seo') AS renewed`;
+    assert.equal(lateHeartbeat.renewed, false,
+      "An expired lease must not be resurrected by a late worker heartbeat");
+
+    const [retryableTask] = await admin`INSERT INTO agent_tasks
+      (assigned_role,title,objective,expected_output,created_by,status,attempts,max_attempts,lease_owner,lease_until)
+      VALUES ('seo',${"Expired retryable " + marker},'Test safe retry','Evidence',
+        'integration-test','running',1,3,'test-seo',now()-interval '1 second')
+      RETURNING id`;
+    taskIds.push(retryableTask.id);
+
+    const [exhaustedTask] = await admin`INSERT INTO agent_tasks
+      (assigned_role,title,objective,expected_output,created_by,status,attempts,max_attempts,lease_owner,lease_until)
+      VALUES ('seo',${"Expired exhausted " + marker},'Test dead letter','Evidence',
+        'integration-test','running',3,3,'test-seo',now()-interval '1 second')
+      RETURNING id`;
+    taskIds.push(exhaustedTask.id);
+
+    const recovered = await supervisor`SELECT * FROM public.agent_budget_recover_expired_tasks()`;
+    const byId = new Map(recovered.map(row => [String(row.task_id), row]));
+
+    const activeReservationRecovery = byId.get(String(reservedTask.id));
+    assert.equal(activeReservationRecovery?.recovery_status, "blocked");
+    assert.equal(activeReservationRecovery?.has_open_reservation, true);
+
+    const retryRecovery = byId.get(String(retryableTask.id));
+    assert.equal(retryRecovery?.recovery_status, "queued");
+    assert.equal(retryRecovery?.has_open_reservation, false);
+
+    const exhaustedRecovery = byId.get(String(exhaustedTask.id));
+    assert.equal(exhaustedRecovery?.recovery_status, "dead_letter");
+    assert.equal(exhaustedRecovery?.has_open_reservation, false);
+
+    const persisted = await admin`SELECT id,status,lease_owner,lease_until
+      FROM agent_tasks WHERE id = ANY(${taskIds}::bigint[]) ORDER BY id`;
+    const persistedById = new Map(persisted.map(row => [String(row.id), row]));
+    assert.equal(persistedById.get(String(reservedTask.id)).status, "blocked");
+    assert.equal(persistedById.get(String(reservedTask.id)).lease_owner, null);
+    assert.equal(persistedById.get(String(retryableTask.id)).status, "queued");
+    assert.equal(persistedById.get(String(retryableTask.id)).lease_until, null);
+    assert.equal(persistedById.get(String(exhaustedTask.id)).status, "dead_letter");
+
+    const [openReservation] = await admin`SELECT state FROM agent_budget_reservations
+      WHERE id=${reservation.reservation_id}`;
+    assert.equal(openReservation.state, "active",
+      "Recovery must retain the reservation for operator reconciliation, not silently release it");
+
+    const repeated = await supervisor`SELECT * FROM public.agent_budget_recover_expired_tasks()`;
+    assert.equal(repeated.length, 0, "A second recovery pass must not process already recovered tasks");
+  } finally {
+    if (taskIds.length) {
+      await admin`DELETE FROM agent_budget_ledger WHERE reservation_id IN
+        (SELECT id FROM agent_budget_reservations WHERE task_id = ANY(${taskIds}::bigint[]))`;
+      await admin`DELETE FROM agent_budget_settlements WHERE reservation_id IN
+        (SELECT id FROM agent_budget_reservations WHERE task_id = ANY(${taskIds}::bigint[]))`;
+      await admin`DELETE FROM agent_budget_reservations WHERE task_id = ANY(${taskIds}::bigint[])`;
+      await admin`DELETE FROM agent_runs WHERE task_id = ANY(${taskIds}::bigint[])`;
+      await admin`DELETE FROM agent_tasks WHERE id = ANY(${taskIds}::bigint[])`;
+    }
+    if (previousBudget) await admin`UPDATE agent_budget_config SET
+      enabled=${previousBudget.enabled},
+      daily_cap_microusd=${previousBudget.daily_cap_microusd},
+      monthly_cap_microusd=${previousBudget.monthly_cap_microusd},
+      per_run_cap_microusd=${previousBudget.per_run_cap_microusd},
+      input_price_per_million_microusd=${previousBudget.input_price_per_million_microusd},
+      output_price_per_million_microusd=${previousBudget.output_price_per_million_microusd},
+      web_search_price_microusd_per_call=${previousBudget.web_search_price_microusd_per_call}
+      WHERE id=1`;
+    await Promise.all([admin.end(),seo.end(),supervisor.end()]);
+  }
+});
