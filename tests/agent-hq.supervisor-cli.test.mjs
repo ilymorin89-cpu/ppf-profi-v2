@@ -520,6 +520,17 @@ test("Agent HQ bus send derives sender from authenticated PostgreSQL LOGIN", asy
         'A message from the matching role','seo','owner')
       RETURNING id`;
     taskId = task.id;
+    const seo = postgres(seoUrl, { max: 1, idle_timeout: 5 });
+    try {
+      const [identity] = await seo`SELECT session_user AS login, public.agent_role_for_session() AS role`;
+      assert.equal(identity.login, "agent_seo");
+      assert.equal(identity.role, "seo");
+      const visibleTask = await seo`SELECT id,assigned_role FROM agent_tasks WHERE id=${taskId}`;
+      assert.equal(visibleTask.length, 1, "SEO LOGIN must see its own task before sending a task-scoped message.");
+      assert.equal(visibleTask[0].assigned_role, "seo");
+    } finally {
+      await seo.end({ timeout: 5 });
+    }
     const own = runNode("scripts/agent-hq-bus.mjs", ["send","seo","coordinator",String(taskId),"status",ownBody], { DATABASE_URL: seoUrl });
     assert.equal(own.status, 0, own.stderr || own.stdout);
     const forged = runNode("scripts/agent-hq-bus.mjs", ["send","coordinator","seo",String(taskId),"status",forgedBody], { DATABASE_URL: seoUrl });
