@@ -1,6 +1,7 @@
 import postgres from "postgres";
 import { createHash, randomUUID } from "node:crypto";
 import { mayExecuteToolCalls, parseApprovalPayload, uniqueCitations } from "./agent-hq-helpers.mjs";
+import { createWorkerLifecycle } from "./agent-hq-worker-lifecycle.mjs";
 
 const role = process.env.AGENT_ROLE;
 const apiKey = process.env.OPENAI_API_KEY;
@@ -37,7 +38,9 @@ if (process.env.AGENT_WORKER_ID && process.env.AGENT_WORKER_ID !== workerId) {
   await sql.end({ timeout: 5 });
   throw new Error("AGENT_WORKER_ID does not match the authenticated PostgreSQL worker principal; environment identity is not trusted.");
 }
-let stopping = false;
+const lifecycle = createWorkerLifecycle();
+process.once("SIGTERM", () => lifecycle.requestStop("SIGTERM"));
+process.once("SIGINT", () => lifecycle.requestStop("SIGINT"));
 const roleInstructions = {
   coordinator: "Coordinate work. Break objectives into verifiable subtasks and route them to the correct specialist. Do not claim work was done unless evidence is present.",
   web_engineer: "Inspect and reason about website engineering tasks. Never claim to have changed or deployed code unless a tool result proves it.",
@@ -62,7 +65,7 @@ const roleInstructions = {
 const instructions = roleInstructions[role] || "Complete the assigned specialist task rigorously. State evidence, uncertainty, limitations and next action.";
 
 let testResponseIndex = 0;
-async function requestModel(payload) {
+async function requestModel(payload, signal) {
   // Test mode is fail-closed: never fall through to the hosted provider.
   // A deterministic fixture is mandatory to exercise the real worker/DB path.
   if (process.env.NODE_ENV === "test") {
@@ -79,7 +82,7 @@ async function requestModel(payload) {
     method: "POST",
     headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(120_000)
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(120_000)]) : AbortSignal.timeout(120_000)
   });
 }
 
@@ -126,13 +129,15 @@ async function runTask(task) {
     }
     throw error;
   }
+  const requestAbortController = new AbortController();
+  lifecycle.setActiveRequest(requestAbortController);
   const heartbeat = setInterval(async () => {
     try {
       const [lease] = await sql`SELECT public.agent_task_heartbeat(${task.id},${workerId}) AS ok`;
-      if (!lease?.ok) stopping = true;
+      if (!lease?.ok) lifecycle.loseLease("Task lease was lost; aborting active provider request");
     } catch (error) {
       console.error("Heartbeat failed:", error instanceof Error ? error.message : error);
-      stopping = true;
+      lifecycle.loseLease(error instanceof Error ? error : new Error("Heartbeat failed"));
     }
   }, 45_000);
   heartbeat.unref?.();
@@ -223,7 +228,7 @@ async function runTask(task) {
         tools,
         max_output_tokens: maxOutputTokens,
         max_tool_calls: maxBuiltInToolCallsPerTurn
-      });
+      }, requestAbortController.signal);
       if (!response.ok) {
         const detail = (await response.text()).slice(0, 1200);
         throw new Error(`OpenAI API ${response.status}: ${detail}`);
@@ -253,6 +258,7 @@ async function runTask(task) {
       if (!mayExecuteToolCalls(turn, maxModelTurns)) throw new Error("Tool-call turn limit reached before a final answer; no further tool actions were executed");
       const outputs = [];
       for (const call of calls) {
+        if (lifecycle.stopping) throw new Error("Worker stopping or task lease lost; tool execution cancelled");
         const args = JSON.parse(call.arguments || "{}");
         let result;
         if (call.name === "github_read_file") {
@@ -340,6 +346,7 @@ async function runTask(task) {
       result = "Delegation submitted. The supervisor will inspect child tasks, wait for completion and independent QA, then consolidate the result.";
     }
     if (!result) throw new Error("Model returned no text output");
+    if (lifecycle.stopping) throw new Error("Worker stopping or task lease lost; result will not be committed");
     const providerReference = typeof data?.id === "string" ? data.id : null;
     const settlementKey = "agent-settle-" + createHash("sha256")
       .update(JSON.stringify([run.id, totalInputTokens, totalOutputTokens, totalWebSearchCalls, providerReference])).digest("hex");
@@ -386,6 +393,7 @@ async function runTask(task) {
     console.error(`Task ${task.id} failed:`, message);
   } finally {
     clearInterval(heartbeat);
+    lifecycle.clearActiveRequest(requestAbortController);
   }
 }
 
@@ -395,7 +403,7 @@ try {
     throw new Error("Agent budget is disabled or has zero caps; worker will not claim tasks");
   }
   const once = process.argv.includes("--once");
-  while (!stopping) {
+  while (!lifecycle.stopping) {
     const task = await claim();
     if (task) {
       try { await runTask(task); }
