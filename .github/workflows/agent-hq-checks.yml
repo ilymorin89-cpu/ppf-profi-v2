@@ -147,6 +147,8 @@ jobs:
           node --check scripts/agent-hq-test-assert.mjs
           node --check scripts/agent-hq-db-connectivity-check.mjs
           node --test tests/agent-hq-db-connectivity-check.test.mjs
+          node --check scripts/agent-hq-db-connectivity-check.mjs
+          node --test tests/agent-hq-db-connectivity-check.test.mjs
           node --check tests/agent-hq.integration.test.mjs
           node --check tests/agent-hq.role-matrix.test.mjs
       - name: Run PostgreSQL integration tests
