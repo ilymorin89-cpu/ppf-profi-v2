@@ -161,6 +161,25 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
 
     const coordinatorOwn = await coordinator`SELECT id FROM agent_tasks WHERE id=${parentTask.id}`;
     assert.equal(coordinatorOwn.length, 1);
+    const [delegated] = await coordinator`INSERT INTO agent_tasks
+      (parent_task_id,assigned_role,title,objective,expected_output,created_by)
+      VALUES (${parentTask.id},'seo','Delegated child','Do bounded work','Evidence','coordinator')
+      RETURNING id`;
+    assert.ok(delegated, "Coordinator can create a child under its own parent");
+    await assert.rejects(
+      coordinator`INSERT INTO agent_tasks
+        (assigned_role,title,objective,expected_output,created_by)
+        VALUES ('seo','Orphan child','No parent','Evidence','coordinator')`,
+      error => ["42501","23514"].includes(error.code),
+      "Coordinator cannot create an unparented task"
+    );
+    await assert.rejects(
+      coordinator`INSERT INTO agent_tasks
+        (parent_task_id,assigned_role,title,objective,expected_output,created_by)
+        VALUES (${parentTask.id},'seo','Forged child','No','Evidence','seo')`,
+      error => ["42501","23514"].includes(error.code),
+      "Coordinator cannot forge task creator"
+    );
     const allTasks = await supervisor`SELECT id FROM agent_tasks WHERE id IN (${seoTask.id},${qaTask.id},${parentTask.id})`;
     assert.equal(allTasks.length, 3, "Supervisor has its narrowly designated lifecycle visibility");
   } finally {
