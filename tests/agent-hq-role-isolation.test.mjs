@@ -624,6 +624,140 @@ test("Agent HQ operator reconciles an unknown reservation exactly once after lea
   }
 });
 
+
+test("Agent HQ enforces monthly, task and per-run reservation caps", {
+  skip: !adminUrl || !roleUrls.seo
+}, async () => {
+  const admin=postgres(adminUrl,{max:2});
+  const seo=postgres(roleUrls.seo,{max:1});
+  let oldBudget;
+  const taskIds=[];
+  try {
+    [oldBudget]=await admin`SELECT * FROM agent_budget_config WHERE id=1`;
+    await admin`UPDATE agent_budget_config SET enabled=true,daily_cap_microusd=100000,
+      monthly_cap_microusd=1103,per_run_cap_microusd=5000,
+      input_price_per_million_microusd=100000,output_price_per_million_microusd=100000,
+      web_search_price_microusd_per_call=0 WHERE id=1`;
+    const createTask=async (budgetLimit,workerId) => {
+      const [task]=await admin`INSERT INTO agent_tasks
+        (assigned_role,title,objective,expected_output,created_by,status,lease_owner,lease_until,budget_limit_microusd)
+        VALUES ('seo','budget cap test','test','test','integration-test','claimed',${workerId},
+          now()+interval '5 minutes',${budgetLimit}) RETURNING id`;
+      taskIds.push(task.id);
+      return task.id;
+    };
+    const reserve=async (taskId,workerId,key) => seo`SELECT * FROM agent_budget_reserve(
+      ${taskId},${workerId},'test_stub','test-model',10000,1024,1,0,${key})`;
+    const firstTask=await createTask(5000,"seo-monthly-cap-a");
+    const [first]=await reserve(firstTask,"seo-monthly-cap-a","monthly-cap-a-"+randomUUID());
+    assert.equal(Number(first.reserved_microusd),1103);
+    const secondTask=await createTask(5000,"seo-monthly-cap-b");
+    await assert.rejects(
+      reserve(secondTask,"seo-monthly-cap-b","monthly-cap-b-"+randomUUID()),
+      e=>e.code==="P0001",
+      "A second reservation must be rejected at the monthly cap"
+    );
+
+    await admin`UPDATE agent_budget_config SET monthly_cap_microusd=100000 WHERE id=1`;
+    const taskLimited=await createTask(1102,"seo-task-cap");
+    await assert.rejects(
+      reserve(taskLimited,"seo-task-cap","task-cap-"+randomUUID()),
+      e=>e.code==="P0001",
+      "A reservation must not exceed the task-level budget"
+    );
+
+    await admin`UPDATE agent_budget_config SET per_run_cap_microusd=1102 WHERE id=1`;
+    const runLimited=await createTask(5000,"seo-run-cap");
+    await assert.rejects(
+      reserve(runLimited,"seo-run-cap","run-cap-"+randomUUID()),
+      e=>e.code==="P0001",
+      "A reservation must not exceed the per-run budget"
+    );
+  } finally {
+    if(taskIds.length) {
+      await admin`DELETE FROM agent_budget_ledger WHERE reservation_id IN
+        (SELECT id FROM agent_budget_reservations WHERE task_id=ANY(${taskIds}))`;
+      await admin`DELETE FROM agent_budget_settlements WHERE reservation_id IN
+        (SELECT id FROM agent_budget_reservations WHERE task_id=ANY(${taskIds}))`;
+      await admin`DELETE FROM agent_budget_reservations WHERE task_id=ANY(${taskIds})`;
+      await admin`DELETE FROM agent_runs WHERE task_id=ANY(${taskIds})`;
+      await admin`DELETE FROM agent_tasks WHERE id=ANY(${taskIds})`;
+    }
+    if(oldBudget) await admin`UPDATE agent_budget_config SET enabled=${oldBudget.enabled},
+      daily_cap_microusd=${oldBudget.daily_cap_microusd},monthly_cap_microusd=${oldBudget.monthly_cap_microusd},
+      per_run_cap_microusd=${oldBudget.per_run_cap_microusd},
+      input_price_per_million_microusd=${oldBudget.input_price_per_million_microusd},
+      output_price_per_million_microusd=${oldBudget.output_price_per_million_microusd},
+      web_search_price_microusd_per_call=${oldBudget.web_search_price_microusd_per_call} WHERE id=1`;
+    await Promise.all([seo.end(),admin.end()]);
+  }
+});
+
+test("Agent HQ operator can reconcile a reservation with confirmed zero provider charge", {
+  skip: !adminUrl || !roleUrls.seo || !roleUrls.operator
+}, async () => {
+  const admin=postgres(adminUrl,{max:2});
+  const seo=postgres(roleUrls.seo,{max:1});
+  const operator=postgres(roleUrls.operator,{max:1});
+  let oldBudget;
+  let taskId;
+  try {
+    [oldBudget]=await admin`SELECT * FROM agent_budget_config WHERE id=1`;
+    await admin`UPDATE agent_budget_config SET enabled=true,daily_cap_microusd=100000,
+      monthly_cap_microusd=500000,per_run_cap_microusd=5000,
+      input_price_per_million_microusd=100000,output_price_per_million_microusd=100000,
+      web_search_price_microusd_per_call=0 WHERE id=1`;
+    const workerId="seo-no-charge-worker";
+    const marker=randomUUID();
+    const [task]=await admin`INSERT INTO agent_tasks
+      (assigned_role,title,objective,expected_output,created_by,status,lease_owner,lease_until,budget_limit_microusd)
+      VALUES ('seo','no-charge reconciliation','test','test','integration-test','claimed',${workerId},
+        now()+interval '5 minutes',5000) RETURNING id`;
+    taskId=task.id;
+    const [reservation]=await seo`SELECT * FROM agent_budget_reserve(
+      ${taskId},${workerId},'test_stub','test-model',10000,1024,1,0,${"no-charge-reserve-"+marker})`;
+    await seo`SELECT agent_budget_mark_unknown(
+      ${reservation.reservation_id},${workerId},'provider outcome ambiguous',${"no-charge-unknown-"+marker})`;
+    await admin`UPDATE agent_tasks SET status='queued',lease_owner=NULL,lease_until=NULL WHERE id=${taskId}`;
+    const [first]=await operator`SELECT agent_budget_reconcile_no_charge(
+      ${reservation.reservation_id},'provider billing record confirms zero charge',${"no-charge-"+marker}) AS ok`;
+    const [repeat]=await operator`SELECT agent_budget_reconcile_no_charge(
+      ${reservation.reservation_id},'provider billing record confirms zero charge',${"no-charge-"+marker}) AS ok`;
+    assert.equal(first.ok,true);
+    assert.equal(repeat.ok,true);
+    const [state]=await admin`SELECT state FROM agent_budget_reservations WHERE id=${reservation.reservation_id}`;
+    assert.equal(state.state,"released");
+    const [run]=await admin`SELECT status,cost_microusd FROM agent_runs WHERE id=${reservation.run_id}`;
+    assert.equal(run.status,"cancelled");
+    assert.equal(String(run.cost_microusd),"0");
+    const [events]=await admin`SELECT count(*)::int AS n FROM agent_budget_ledger
+      WHERE reservation_id=${reservation.reservation_id} AND event_key=${"reconcile:"+ "no-charge-"+marker}`;
+    assert.equal(events.n,1);
+    await assert.rejects(
+      seo`SELECT agent_budget_reconcile_no_charge(${reservation.reservation_id},
+        'worker must not reconcile',${"no-charge-worker-"+marker})`,
+      e=>e.code==="42501"
+    );
+  } finally {
+    if(taskId) {
+      await admin`DELETE FROM agent_budget_ledger WHERE reservation_id IN
+        (SELECT id FROM agent_budget_reservations WHERE task_id=${taskId})`;
+      await admin`DELETE FROM agent_budget_settlements WHERE reservation_id IN
+        (SELECT id FROM agent_budget_reservations WHERE task_id=${taskId})`;
+      await admin`DELETE FROM agent_budget_reservations WHERE task_id=${taskId}`;
+      await admin`DELETE FROM agent_runs WHERE task_id=${taskId}`;
+      await admin`DELETE FROM agent_tasks WHERE id=${taskId}`;
+    }
+    if(oldBudget) await admin`UPDATE agent_budget_config SET enabled=${oldBudget.enabled},
+      daily_cap_microusd=${oldBudget.daily_cap_microusd},monthly_cap_microusd=${oldBudget.monthly_cap_microusd},
+      per_run_cap_microusd=${oldBudget.per_run_cap_microusd},
+      input_price_per_million_microusd=${oldBudget.input_price_per_million_microusd},
+      output_price_per_million_microusd=${oldBudget.output_price_per_million_microusd},
+      web_search_price_microusd_per_call=${oldBudget.web_search_price_microusd_per_call} WHERE id=1`;
+    await Promise.all([seo.end(),operator.end(),admin.end()]);
+  }
+});
+
 test("Agent HQ trusted budget tables and run accounting are inaccessible to workers", {
   skip: !adminUrl || !roleUrls.seo
 }, async () => {
