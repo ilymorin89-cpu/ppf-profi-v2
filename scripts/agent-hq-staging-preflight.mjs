@@ -50,11 +50,11 @@ try {
   const [privileged] = await sql`
     SELECT
       count(*) FILTER (WHERE rolname IN ('agent_supervisor','agent_operator') AND rolcanlogin AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole AND NOT rolbypassrls) AS valid_privileged_logins,
-      count(*) FILTER (WHERE rolname IN ('agent_hq_budget_owner','agent_hq_runtime_fn_owner') AND NOT rolcanlogin AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole AND NOT rolbypassrls) AS valid_function_owners
+      count(*) FILTER (WHERE rolname IN ('agent_hq_budget_owner','agent_hq_runtime_fn_owner','agent_hq_monitor_owner') AND NOT rolcanlogin AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole AND NOT rolbypassrls) AS valid_function_owners
     FROM pg_roles
   `;
   assert.equal(Number(privileged.valid_privileged_logins), 2, "Dedicated safe supervisor and operator LOGINs must exist");
-  assert.equal(Number(privileged.valid_function_owners), 2, "Function-owner roles must be NOLOGIN and least-privilege");
+  assert.equal(Number(privileged.valid_function_owners), 3, "Budget, runtime and monitor function-owner roles must be NOLOGIN and least-privilege");
   const [memberships] = await sql`
     SELECT count(*)::int AS count
     FROM pg_auth_members m
@@ -70,7 +70,7 @@ try {
     registeredWorkers:principals.length,
     distinctLogins:19,
     supervisorAndOperatorLogins:2,
-    functionOwnerRoles:2,
+    functionOwnerRoles:3,
     budgetEnabled:budget.enabled,
     paidCallsMade:0
   },null,2));
