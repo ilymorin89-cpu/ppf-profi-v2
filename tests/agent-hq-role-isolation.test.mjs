@@ -487,6 +487,9 @@ test("Agent HQ reservation and settlement are idempotent and bound to the origin
       ${first.reservation_id},${workerId},1000,500,0,${"settle-"+marker},'provider-test-ref') AS cost`;
     assert.equal(String(repeat.cost),String(settled.cost));
     await assert.rejects(seo`SELECT agent_budget_settle(
+      ${first.reservation_id},${workerId},1000,500,0,${"settle-"+marker},'different-provider-ref')`,
+      e=>e.code==="23505");
+    await assert.rejects(seo`SELECT agent_budget_settle(
       ${first.reservation_id},${workerId},1001,500,0,${"settle-other-"+marker},'provider-test-ref')`,
       e=>e.code==="23505");
     const [counts]=await admin`SELECT
@@ -543,6 +546,9 @@ test("Agent HQ releases a reservation only for its original worker and idempoten
       ${reservation.reservation_id},${workerId},'provider call not started',${"release-"+marker}) AS ok`;
     assert.equal(repeat.ok,true);
     await assert.rejects(seo`SELECT agent_budget_release(
+      ${reservation.reservation_id},${workerId},'different reason',${"release-"+marker})`,
+      e=>e.code==="23505");
+    await assert.rejects(seo`SELECT agent_budget_release(
       ${reservation.reservation_id},${workerId},'different reason',${"release-other-"+marker})`,
       e=>e.code==="23505");
     const [state]=await admin`SELECT state FROM agent_budget_reservations WHERE id=${reservation.reservation_id}`;
@@ -598,6 +604,9 @@ test("Agent HQ operator reconciles an unknown reservation exactly once after lea
     const [repeat]=await operator`SELECT agent_budget_reconcile_usage(
       ${reservation.reservation_id},1000,500,0,'provider-usage-confirmed',${"reconcile-"+marker}) AS cost`;
     assert.equal(String(repeat.cost),String(cost.cost));
+    await assert.rejects(operator`SELECT agent_budget_reconcile_usage(
+      ${reservation.reservation_id},1000,500,0,'different-provider-reference',${"reconcile-"+marker}) AS cost`,
+      e=>e.code==="23505");
     const [state]=await admin`SELECT state FROM agent_budget_reservations WHERE id=${reservation.reservation_id}`;
     assert.equal(state.state,"settled");
     const [run]=await admin`SELECT status,input_tokens,output_tokens,cost_microusd FROM agent_runs WHERE id=${reservation.run_id}`;
@@ -717,8 +726,15 @@ test("Agent HQ operator can reconcile a reservation with confirmed zero provider
     taskId=task.id;
     const [reservation]=await seo`SELECT * FROM agent_budget_reserve(
       ${taskId},${workerId},'test_stub','test-model',10000,1024,1,0,${"no-charge-reserve-"+marker})`;
-    await seo`SELECT agent_budget_mark_unknown(
-      ${reservation.reservation_id},${workerId},'provider outcome ambiguous',${"no-charge-unknown-"+marker})`;
+    const [unknownFirst]=await seo`SELECT agent_budget_mark_unknown(
+      ${reservation.reservation_id},${workerId},'provider outcome ambiguous',${"no-charge-unknown-"+marker}) AS ok`;
+    const [unknownRepeat]=await seo`SELECT agent_budget_mark_unknown(
+      ${reservation.reservation_id},${workerId},'provider outcome ambiguous',${"no-charge-unknown-"+marker}) AS ok`;
+    assert.equal(unknownFirst.ok,true);
+    assert.equal(unknownRepeat.ok,true);
+    await assert.rejects(seo`SELECT agent_budget_mark_unknown(
+      ${reservation.reservation_id},${workerId},'different provider outcome',${"no-charge-unknown-"+marker})`,
+      e=>e.code==="23505");
     await admin`UPDATE agent_tasks SET status='queued',lease_owner=NULL,lease_until=NULL WHERE id=${taskId}`;
     const [first]=await operator`SELECT agent_budget_reconcile_no_charge(
       ${reservation.reservation_id},'provider billing record confirms zero charge',${"no-charge-"+marker}) AS ok`;
@@ -726,6 +742,9 @@ test("Agent HQ operator can reconcile a reservation with confirmed zero provider
       ${reservation.reservation_id},'provider billing record confirms zero charge',${"no-charge-"+marker}) AS ok`;
     assert.equal(first.ok,true);
     assert.equal(repeat.ok,true);
+    await assert.rejects(operator`SELECT agent_budget_reconcile_no_charge(
+      ${reservation.reservation_id},'different confirmation evidence',${"no-charge-"+marker}) AS ok`,
+      e=>e.code==="23505");
     const [state]=await admin`SELECT state FROM agent_budget_reservations WHERE id=${reservation.reservation_id}`;
     assert.equal(state.state,"released");
     const [run]=await admin`SELECT status,cost_microusd FROM agent_runs WHERE id=${reservation.run_id}`;
