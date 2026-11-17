@@ -72,34 +72,29 @@ GRANT USAGE ON SCHEMA public TO agent_hq_budget_owner;
 REVOKE CREATE ON SCHEMA public FROM agent_hq_budget_owner;
 GRANT SELECT ON public.agent_tasks,public.agent_budget_config TO agent_hq_budget_owner;
 GRANT UPDATE (status,attempts,lease_owner,lease_until,updated_at,completed_at) ON public.agent_tasks TO agent_hq_budget_owner;
-GRANT SELECT,INSERT,UPDATE ON public.agent_runs TO agent_hq_budget_owner;
-GRANT SELECT,INSERT,UPDATE ON public.agent_budget_reservations TO agent_hq_budget_owner;
-GRANT SELECT,INSERT ON public.agent_budget_ledger,public.agent_budget_settlements TO agent_hq_budget_owner;
+-- Reset prior grants on re-application, then grant only the columns used by
+-- the reviewed SECURITY DEFINER routines. A function-owner compromise must
+-- not become unrestricted run or reservation mutation.
+REVOKE ALL ON public.agent_runs,public.agent_budget_reservations,
+  public.agent_budget_ledger,public.agent_budget_settlements FROM agent_hq_budget_owner;
+GRANT SELECT ON public.agent_budget_reservations,
+  public.agent_budget_ledger,public.agent_budget_settlements TO agent_hq_budget_owner;
+-- INSERT ... RETURNING id requires SELECT on the returned identity column only.
+GRANT SELECT (id) ON public.agent_runs TO agent_hq_budget_owner;
+GRANT INSERT (task_id,role,worker_id,provider,model,status,cost_microusd)
+  ON public.agent_runs TO agent_hq_budget_owner;
+GRANT UPDATE (status,input_tokens,output_tokens,cost_microusd,error,finished_at)
+  ON public.agent_runs TO agent_hq_budget_owner;
+GRANT INSERT ON public.agent_budget_reservations TO agent_hq_budget_owner;
+GRANT UPDATE (state,updated_at) ON public.agent_budget_reservations TO agent_hq_budget_owner;
+GRANT INSERT ON public.agent_budget_ledger,public.agent_budget_settlements TO agent_hq_budget_owner;
+GRANT SELECT ON public.agent_worker_principals TO agent_hq_budget_owner;
 CREATE OR REPLACE FUNCTION public.agent_budget_role_for_session()
-RETURNS TEXT LANGUAGE SQL STABLE SET search_path=pg_catalog
+RETURNS TEXT LANGUAGE SQL STABLE SET search_path=pg_catalog,public
 AS $role_map$
-  SELECT CASE session_user
-    WHEN 'agent_web_engineer' THEN 'web_engineer'
-    WHEN 'agent_geo' THEN 'geo'
-    WHEN 'agent_growth' THEN 'growth'
-    WHEN 'agent_analytics' THEN 'analytics'
-    WHEN 'agent_vk_strategist' THEN 'vk_strategist'
-    WHEN 'agent_copywriter' THEN 'copywriter'
-    WHEN 'agent_designer' THEN 'designer'
-    WHEN 'agent_image_generator' THEN 'image_generator'
-    WHEN 'agent_storyteller' THEN 'storyteller'
-    WHEN 'agent_community_manager' THEN 'community_manager'
-    WHEN 'agent_content_seo' THEN 'content_seo'
-    WHEN 'agent_ads_manager' THEN 'ads_manager'
-    WHEN 'agent_trend_scout' THEN 'trend_scout'
-    WHEN 'agent_auto_news_editor' THEN 'auto_news_editor'
-    WHEN 'agent_auto_law_monitor' THEN 'auto_law_monitor'
-    WHEN 'agent_fact_checker' THEN 'fact_checker'
-    WHEN 'agent_seo' THEN 'seo'
-    WHEN 'agent_qa_security' THEN 'qa_security'
-    WHEN 'agent_coordinator' THEN 'coordinator'
-    ELSE NULL
-  END
+  SELECT principal.role
+  FROM public.agent_worker_principals principal
+  WHERE principal.login_role=session_user::TEXT AND principal.enabled
 $role_map$;
 REVOKE ALL ON FUNCTION public.agent_budget_role_for_session() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.agent_budget_role_for_session() TO agent_hq_budget_owner;
@@ -167,6 +162,9 @@ DECLARE
   v_role TEXT;
 BEGIN
   v_role:=public.agent_budget_role_for_session();
+  IF p_worker_id IS DISTINCT FROM public.agent_worker_id_for_session() THEN
+    RAISE EXCEPTION 'worker ID does not match authenticated PostgreSQL principal' USING ERRCODE='42501';
+  END IF;
   IF v_role IS NULL OR p_worker_id IS NULL OR length(p_worker_id) NOT BETWEEN 1 AND 120 THEN
     RAISE EXCEPTION 'invalid worker task claim identity' USING ERRCODE='42501';
   END IF;
@@ -207,6 +205,9 @@ DECLARE
   v_reservation BIGINT;
 BEGIN
   v_role := public.agent_budget_role_for_session();
+  IF p_worker_id IS DISTINCT FROM public.agent_worker_id_for_session() THEN
+    RAISE EXCEPTION 'worker ID does not match authenticated PostgreSQL principal' USING ERRCODE='42501';
+  END IF;
   IF v_role IS NULL OR p_worker_id IS NULL OR p_worker_id='' OR p_provider IS NULL OR p_provider NOT IN ('openai','test_stub') OR p_model IS NULL OR p_model=''
      OR p_idempotency_key IS NULL OR length(p_idempotency_key) NOT BETWEEN 8 AND 160
      OR p_estimated_input_tokens NOT BETWEEN 1 AND 10000000
@@ -308,6 +309,9 @@ DECLARE
   v_cost BIGINT;
 BEGIN
   v_role:=public.agent_budget_role_for_session();
+  IF p_worker_id IS DISTINCT FROM public.agent_worker_id_for_session() THEN
+    RAISE EXCEPTION 'worker ID does not match authenticated PostgreSQL principal' USING ERRCODE='42501';
+  END IF;
   IF v_role IS NULL OR p_worker_id IS NULL OR p_worker_id='' OR p_input_tokens NOT BETWEEN 0 AND 100000000
      OR p_output_tokens NOT BETWEEN 0 AND 100000000 OR p_search_calls NOT BETWEEN 0 AND 512
      OR p_idempotency_key IS NULL OR length(p_idempotency_key) NOT BETWEEN 8 AND 160 THEN
@@ -367,6 +371,9 @@ AS $release$
 DECLARE v_role TEXT; v_res public.agent_budget_reservations%ROWTYPE;
 BEGIN
   v_role:=public.agent_budget_role_for_session();
+  IF p_worker_id IS DISTINCT FROM public.agent_worker_id_for_session() THEN
+    RAISE EXCEPTION 'worker ID does not match authenticated PostgreSQL principal' USING ERRCODE='42501';
+  END IF;
   IF v_role IS NULL OR p_worker_id IS NULL OR p_worker_id='' OR p_reason IS NULL OR length(p_reason) NOT BETWEEN 1 AND 500
      OR p_idempotency_key IS NULL OR length(p_idempotency_key) NOT BETWEEN 8 AND 160 THEN
     RAISE EXCEPTION 'invalid release request' USING ERRCODE='22023';
@@ -374,8 +381,10 @@ BEGIN
   SELECT * INTO v_res FROM public.agent_budget_reservations WHERE id=p_reservation_id AND role=v_role AND worker_id=p_worker_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'reservation not owned by caller' USING ERRCODE='42501'; END IF;
   IF v_res.state='released' THEN
-    IF EXISTS (SELECT 1 FROM public.agent_budget_ledger WHERE reservation_id=v_res.id AND event_key='release:'||p_idempotency_key) THEN RETURN true; END IF;
-    RAISE EXCEPTION 'reservation was released with a different idempotency key' USING ERRCODE='23505';
+    IF EXISTS (SELECT 1 FROM public.agent_budget_ledger
+      WHERE reservation_id=v_res.id AND event_key='release:'||p_idempotency_key
+        AND metadata->>'reason'=p_reason) THEN RETURN true; END IF;
+    RAISE EXCEPTION 'reservation was released with different idempotency evidence' USING ERRCODE='23505';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM public.agent_tasks t WHERE t.id=v_res.task_id
     AND t.assigned_role=v_role AND t.lease_owner=v_res.worker_id
@@ -400,6 +409,9 @@ AS $unknown$
 DECLARE v_role TEXT; v_res public.agent_budget_reservations%ROWTYPE;
 BEGIN
   v_role:=public.agent_budget_role_for_session();
+  IF p_worker_id IS DISTINCT FROM public.agent_worker_id_for_session() THEN
+    RAISE EXCEPTION 'worker ID does not match authenticated PostgreSQL principal' USING ERRCODE='42501';
+  END IF;
   IF v_role IS NULL OR p_worker_id IS NULL OR p_worker_id='' OR p_reason IS NULL OR length(p_reason) NOT BETWEEN 1 AND 500
      OR p_event_key IS NULL OR length(p_event_key) NOT BETWEEN 8 AND 160 THEN
     RAISE EXCEPTION 'invalid unknown reservation request' USING ERRCODE='22023';
@@ -407,8 +419,10 @@ BEGIN
   SELECT * INTO v_res FROM public.agent_budget_reservations WHERE id=p_reservation_id AND role=v_role AND worker_id=p_worker_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'reservation not owned by caller' USING ERRCODE='42501'; END IF;
   IF v_res.state='unknown' THEN
-    IF EXISTS (SELECT 1 FROM public.agent_budget_ledger WHERE reservation_id=v_res.id AND event_key='unknown:'||p_event_key) THEN RETURN true; END IF;
-    RAISE EXCEPTION 'reservation is already unknown under a different event key' USING ERRCODE='23505';
+    IF EXISTS (SELECT 1 FROM public.agent_budget_ledger
+      WHERE reservation_id=v_res.id AND event_key='unknown:'||p_event_key
+        AND metadata->>'reason'=p_reason) THEN RETURN true; END IF;
+    RAISE EXCEPTION 'reservation is already unknown with different event evidence' USING ERRCODE='23505';
   END IF;
   IF v_res.state IN ('settled','released') THEN RETURN true; END IF;
   IF v_res.state<>'active' THEN RAISE EXCEPTION 'reservation is not active' USING ERRCODE='55000'; END IF;
@@ -444,7 +458,8 @@ BEGIN
     SELECT * INTO v_existing FROM public.agent_budget_settlements WHERE reservation_id=v_res.id;
     IF v_existing.idempotency_key=p_idempotency_key
        AND v_existing.input_tokens=p_input_tokens AND v_existing.output_tokens=p_output_tokens
-       AND v_existing.web_search_calls=p_search_calls THEN
+       AND v_existing.web_search_calls=p_search_calls
+       AND v_existing.provider_reference IS NOT DISTINCT FROM p_provider_reference THEN
       RETURN v_existing.actual_cost_microusd;
     END IF;
     RAISE EXCEPTION 'reservation already reconciled with different evidence' USING ERRCODE='23505';
@@ -494,8 +509,14 @@ BEGIN
     RAISE EXCEPTION 'operator confirmation required for no-charge reconciliation' USING ERRCODE='42501';
   END IF;
   SELECT * INTO v_res FROM public.agent_budget_reservations WHERE id=p_reservation_id FOR UPDATE;
-  IF FOUND AND v_res.state='released' AND EXISTS (SELECT 1 FROM public.agent_budget_ledger WHERE reservation_id=v_res.id AND event_key='reconcile:'||p_idempotency_key) THEN
-    RETURN true;
+  IF FOUND AND v_res.state='released' THEN
+    IF EXISTS (SELECT 1 FROM public.agent_budget_ledger
+      WHERE reservation_id=v_res.id AND event_key='reconcile:'||p_idempotency_key
+        AND metadata->>'confirmation_reference'=p_confirmation_reference
+        AND metadata->>'confirmed_no_charge'='true') THEN
+      RETURN true;
+    END IF;
+    RAISE EXCEPTION 'reservation was reconciled with different no-charge evidence' USING ERRCODE='23505';
   END IF;
   IF NOT FOUND OR v_res.state NOT IN ('active','unknown') THEN
     RAISE EXCEPTION 'only active or unknown reservations can be reconciled' USING ERRCODE='55000';
@@ -612,6 +633,9 @@ AS $heartbeat$
 DECLARE v_role TEXT;
 BEGIN
   v_role:=public.agent_budget_role_for_session();
+  IF p_worker_id IS DISTINCT FROM public.agent_worker_id_for_session() THEN
+    RAISE EXCEPTION 'worker ID does not match authenticated PostgreSQL principal' USING ERRCODE='42501';
+  END IF;
   IF v_role IS NULL OR p_worker_id IS NULL OR p_worker_id='' THEN
     RAISE EXCEPTION 'invalid task heartbeat identity' USING ERRCODE='42501';
   END IF;
@@ -636,6 +660,9 @@ DECLARE
   v_target TEXT;
 BEGIN
   v_role:=public.agent_budget_role_for_session();
+  IF p_worker_id IS DISTINCT FROM public.agent_worker_id_for_session() THEN
+    RAISE EXCEPTION 'worker ID does not match authenticated PostgreSQL principal' USING ERRCODE='42501';
+  END IF;
   IF v_role IS NULL OR p_worker_id IS NULL OR p_worker_id=''
      OR p_transition NOT IN ('complete','blocked','retry','dead_letter') THEN
     RAISE EXCEPTION 'invalid task transition request' USING ERRCODE='22023';
