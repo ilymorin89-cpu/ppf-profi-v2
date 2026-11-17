@@ -364,7 +364,7 @@ async function runTask(task) {
         (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
         VALUES (${task.id},${randomUUID()},${role},'coordinator','result',${result.slice(0,12000)},${randomUUID()})`;
     });
-    console.log(JSON.stringify({ taskId: task.id, status: "done", inputTokens: usage.input_tokens || 0, outputTokens: usage.output_tokens || 0, webSearchCalls: totalWebSearchCalls, costMicrousd: actualCost }));
+    console.log(JSON.stringify({ taskId: task.id, status: "done", inputTokens: totalInputTokens, outputTokens: totalOutputTokens, webSearchCalls: totalWebSearchCalls, costMicrousd: actualCost }));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     let safeToRetry = false;
