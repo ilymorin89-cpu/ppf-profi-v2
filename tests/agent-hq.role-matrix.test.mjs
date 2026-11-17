@@ -32,6 +32,13 @@ test("every Agent HQ worker login sees only its own role and cannot forge messag
       (task_id,created_by,artifact_type,title,content)
       VALUES (${idByRole.get("geo")},'geo','result','GEO scoped artifact','Only coordinator and GEO may see this artifact') RETURNING id`;
     artifactIds.push(seoArtifact.id, geoArtifact.id);
+    const [seoRun] = await owner`INSERT INTO agent_runs
+      (task_id,role,worker_id,provider,model,status,cost_microusd)
+      VALUES (${idByRole.get("seo")},'seo','matrix-seo','ci','mock','running',100) RETURNING id`;
+    const [geoRun] = await owner`INSERT INTO agent_runs
+      (task_id,role,worker_id,provider,model,status,cost_microusd)
+      VALUES (${idByRole.get("geo")},'geo','matrix-geo','ci','mock','running',200) RETURNING id`;
+    const runIds = [seoRun.id, geoRun.id];
     await owner`INSERT INTO agent_task_access (task_id,principal,access_reason)
       VALUES (${idByRole.get("seo")},'qa_security','qa_review'),
              (${idByRole.get("geo")},'coordinator','coordinator_oversight')`;
@@ -45,6 +52,20 @@ test("every Agent HQ worker login sees only its own role and cannot forge messag
         const [identity] = await sql`SELECT session_user AS login, public.agent_role_for_session() AS mapped_role`;
         assert.equal(identity.login, "agent_" + role);
         assert.equal(identity.mapped_role, role);
+
+        // RLS intentionally hides other roles' run rows. A worker-side SUM is
+        // therefore role-local; global caps must use a trusted aggregate function.
+        const visibleRuns = await sql`SELECT id,role,cost_microusd FROM agent_runs
+          WHERE id = ANY(${runIds}::bigint[]) ORDER BY id`;
+        const expectedRuns = role === "seo" ? [seoRun] : role === "geo" ? [geoRun] : [];
+        assert.deepEqual(visibleRuns.map(row => String(row.id)).sort(),
+          expectedRuns.map(row => String(row.id)).sort(),
+          role + " must not read other roles' run rows; global budget totals need a separate trusted aggregate.");
+        const [visibleSpend] = await sql`SELECT COALESCE(SUM(cost_microusd),0) AS total
+          FROM agent_runs WHERE id = ANY(${runIds}::bigint[])`;
+        const expectedSpend = role === "seo" ? 100 : role === "geo" ? 200 : 0;
+        assert.equal(Number(visibleSpend.total), expectedSpend,
+          role + " must not aggregate another role's hidden run cost.");
 
         const visible = await sql`SELECT id,assigned_role FROM agent_tasks
           WHERE id = ANY(${taskIds}::bigint[]) ORDER BY id`;
@@ -112,6 +133,7 @@ test("every Agent HQ worker login sees only its own role and cannot forge messag
     }
   } finally {
     if (messageKeys.length) await owner`DELETE FROM agent_messages WHERE idempotency_key = ANY(${messageKeys}::varchar[])`;
+    if (runIds?.length) await owner`DELETE FROM agent_runs WHERE id = ANY(${runIds}::bigint[])`;
     if (artifactIds.length) await owner`DELETE FROM agent_artifacts WHERE id = ANY(${artifactIds}::bigint[])`;
     if (taskIds.length) await owner`DELETE FROM agent_tasks WHERE id = ANY(${taskIds}::bigint[])`;
     await owner.end({ timeout: 5 });
