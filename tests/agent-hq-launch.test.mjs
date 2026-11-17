@@ -3,34 +3,90 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { readFileSync } from "node:fs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const launcher = path.join(root, "scripts", "agent-hq-launch.mjs");
 
-function run(args) {
+function run(args, extraEnv = {}) {
   return spawnSync(process.execPath, [launcher, ...args], {
     cwd: root,
     encoding: "utf8",
     env: {
       PATH: process.env.PATH,
       SystemRoot: process.env.SystemRoot,
-      WINDIR: process.env.WINDIR
+      WINDIR: process.env.WINDIR,
+      ...extraEnv
     }
   });
 }
 
-test("research launch group fails closed before reading credentials", () => {
+const allWorkerRoles = [
+  "coordinator","web_engineer","seo","geo","growth","analytics","qa_security","vk_strategist",
+  "copywriter","designer","image_generator","storyteller","community_manager","content_seo",
+  "ads_manager","trend_scout","auto_news_editor","auto_law_monitor","fact_checker"
+];
+const allRoleEnv = Object.fromEntries(allWorkerRoles.map(role => [
+  "AGENT_HQ_DATABASE_URL_" + role.toUpperCase(),
+  "postgres://agent_" + role + ":test@127.0.0.1:5432/agent_hq_test"
+]));
+allRoleEnv.AGENT_HQ_DATABASE_URL_SUPERVISOR = "postgres://agent_supervisor:test@127.0.0.1:5432/agent_hq_test";
+
+test("research launch group requires audited per-role credentials", () => {
   const result = run(["check", "research"]);
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /roles without audited database authorization: web_engineer, analytics/);
-  assert.doesNotMatch(result.stderr, /Missing required settings/);
+  assert.match(result.stderr, /Missing required settings/);
+  assert.match(result.stderr, /AGENT_HQ_DATABASE_URL_WEB_ENGINEER/);
+  assert.match(result.stderr, /AGENT_HQ_DATABASE_URL_ANALYTICS/);
+  assert.doesNotMatch(result.stderr, /roles without audited database authorization/);
 });
 
-test("all launch group fails closed before reading credentials", () => {
+test("all launch group requires credentials for all 19 worker roles and supervisor", () => {
   const result = run(["check", "all"]);
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /roles without audited database authorization: community_manager, web_engineer, analytics/);
-  assert.doesNotMatch(result.stderr, /Missing required settings/);
+  assert.match(result.stderr, /Missing required settings/);
+  for (const role of ["COORDINATOR","GEO","GROWTH","VK_STRATEGIST","COPYWRITER","DESIGNER",
+    "IMAGE_GENERATOR","STORYTELLER","COMMUNITY_MANAGER","CONTENT_SEO","ADS_MANAGER",
+    "TREND_SCOUT","AUTO_NEWS_EDITOR","AUTO_LAW_MONITOR","FACT_CHECKER","SUPERVISOR"]) {
+    assert.match(result.stderr, new RegExp("AGENT_HQ_DATABASE_URL_" + role));
+  }
+  assert.doesNotMatch(result.stderr, /roles without audited database authorization/);
+});
+
+test("all role URLs are checked for duplicate PostgreSQL identities", () => {
+  const env = {
+    ...allRoleEnv,
+    OPENAI_API_KEY: "test-no-provider-call",
+    AGENT_MODEL: "test-model",
+    AGENT_HQ_WORKERS_ENABLED: "true",
+    AGENT_HQ_DATABASE_URL_FACT_CHECKER: allRoleEnv.AGENT_HQ_DATABASE_URL_SEO
+  };
+  const result = run(["check", "all"], env);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Database login reused by seo and fact_checker/);
+});
+
+test("launcher refuses live provider mode before starting Docker services", () => {
+  const env = {
+    ...allRoleEnv,
+    OPENAI_API_KEY: "not-a-real-key",
+    AGENT_MODEL: "test-model",
+    AGENT_HQ_WORKERS_ENABLED: "true",
+    NODE_ENV: "production"
+  };
+  const result = run(["start", "all"], env);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Worker start is restricted to no-spend test mode/);
+});
+
+test("Docker Compose defines one isolated worker service for every role", () => {
+  const compose = readFileSync(path.join(root, "docker-compose.yml"), "utf8");
+  for (const role of [...allWorkerRoles,"supervisor"]) {
+    assert.match(compose, new RegExp("^  " + role + ":$", "m"), "Missing Compose service for " + role);
+    if (role !== "supervisor") {
+      assert.match(compose, new RegExp("AGENT_HQ_DATABASE_URL_" + role.toUpperCase()));
+    }
+  }
 });
 
 test("unknown launch group is rejected", () => {
