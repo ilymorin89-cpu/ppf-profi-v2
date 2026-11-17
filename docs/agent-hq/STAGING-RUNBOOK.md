@@ -39,6 +39,7 @@ psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0003_agent_hq.sql
 psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0004_agent_budget.sql
 psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0005_agent_approval_idempotency.sql
 psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0006_agent_web_search_budget.sql
+psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0007_agent_task_access.sql
 ```
 
 Use a separate staging database URL for runtime. Verify that the budget row exists and remains disabled:
@@ -152,7 +153,7 @@ Do not enable all roles by default. Add specialists only when a test requires th
 
 ## Database role isolation status
 
-The current branch contains a disposable-CI-only RLS harness at `tests/agent-hq-role-isolation.sql` and negative tests using distinct PostgreSQL logins. This proves the prototype policy pattern on a fresh test database only. It is not a production/staging migration, does not provision real role credentials, and does not yet grant the coordinator/QA/supervisor all of their final least-privilege workflow permissions. Do not connect the runtime to role-specific URLs or enable workers until a reviewed staging migration and end-to-end tests cover every table and operation. The compose variables are deliberately separate and default empty.
+The current branch contains a disposable-CI-only RLS harness at `tests/agent-hq-role-isolation.sql` and negative tests using distinct PostgreSQL logins. Migration `0007_agent_task_access.sql` creates the scoped access registry; the supervisor grants coordinator visibility to a parent's child tasks and QA visibility to sibling specialist tasks before QA runs. Supervisor lifecycle tests assert these grants. This migration does **not** enable RLS or create role logins. The RLS policies remain a CI prototype and do not yet cover every runtime operation/column with final least privilege. Do not connect live workers or enable RLS until role-specific PostgreSQL logins, table/sequence grants, column-level restrictions, and end-to-end tests for claim, heartbeat, messages, runs, artifacts, approvals and supervisor lifecycle have been reviewed on a disposable staging database. The compose variables are deliberately separate and default empty.
 
 ## Not included yet
 
