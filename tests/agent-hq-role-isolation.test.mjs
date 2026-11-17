@@ -769,6 +769,15 @@ test("Agent HQ trusted budget tables and run accounting are inaccessible to work
       (assigned_role,title,objective,expected_output,created_by)
       VALUES ('seo','budget boundary ACL','test','test','integration-test') RETURNING id`;
     taskId=task.id;
+    await assert.rejects(seo`UPDATE agent_tasks SET status='done' WHERE id=${taskId}`,e=>e.code==="42501");
+    await assert.rejects(seo`UPDATE agent_tasks SET lease_owner='forged-worker' WHERE id=${taskId}`,e=>e.code==="42501");
+    const [taskLifecycleAcl]=await admin`SELECT
+      has_function_privilege('agent_seo','public.agent_task_heartbeat(bigint,text)','EXECUTE') AS heartbeat,
+      has_function_privilege('agent_seo','public.agent_task_transition(bigint,text,text)','EXECUTE') AS transition,
+      has_function_privilege('public','public.agent_task_heartbeat(bigint,text)','EXECUTE') AS public_heartbeat`;
+    assert.equal(taskLifecycleAcl.heartbeat,true);
+    assert.equal(taskLifecycleAcl.transition,true);
+    assert.equal(taskLifecycleAcl.public_heartbeat,false);
     const [run]=await admin`INSERT INTO agent_runs(task_id,role,worker_id,provider,model,status)
       VALUES (${taskId},'seo','seo-acl-test','test','test','running') RETURNING id`;
     await assert.rejects(seo`INSERT INTO agent_runs(task_id,role,worker_id,provider,model,status,cost_microusd)
@@ -788,8 +797,9 @@ test("Agent HQ trusted budget tables and run accounting are inaccessible to work
       JOIN pg_roles r ON r.oid=p.proowner
       WHERE n.nspname='public' AND p.proname IN
         ('agent_budget_reserve','agent_budget_settle','agent_budget_release',
-         'agent_budget_mark_unknown','agent_budget_reconcile_usage','agent_budget_reconcile_no_charge')`;
-    assert.equal(budgetFunctions.length,6);
+         'agent_budget_mark_unknown','agent_budget_reconcile_usage','agent_budget_reconcile_no_charge',
+         'agent_task_heartbeat','agent_task_transition')`;
+    assert.equal(budgetFunctions.length,8);
     assert.ok(budgetFunctions.every(fn=>fn.owner==="agent_hq_budget_owner" && fn.prosecdef &&
       Array.isArray(fn.proconfig) && fn.proconfig.some(value=>value.startsWith("search_path=pg_catalog"))));
     const [runtimeExec]=await admin`SELECT has_function_privilege('agent_seo',
