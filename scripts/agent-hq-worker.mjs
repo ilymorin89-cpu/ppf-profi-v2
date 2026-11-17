@@ -46,11 +46,15 @@ const roleInstructions = {
 };
 const instructions = roleInstructions[role] || "Complete the assigned specialist task rigorously. State evidence, uncertainty, limitations and next action.";
 
+let testResponseIndex = 0;
 async function requestModel(payload) {
   // Deterministic test seam: CI can exercise the real worker/DB path without
-  // network access, credentials, or provider spend. Never enabled in production.
+  // network access, credentials, or provider spend. An array scripts tool turns.
   if (process.env.NODE_ENV === "test" && process.env.AGENT_HQ_TEST_RESPONSES_JSON) {
-    const mocked = JSON.parse(process.env.AGENT_HQ_TEST_RESPONSES_JSON);
+    const configured = JSON.parse(process.env.AGENT_HQ_TEST_RESPONSES_JSON);
+    const mocked = Array.isArray(configured)
+      ? configured[Math.min(testResponseIndex++, configured.length - 1)]
+      : configured;
     return { ok: true, json: async () => mocked, text: async () => JSON.stringify(mocked) };
   }
   return fetch("https://api.openai.com/v1/responses", {
