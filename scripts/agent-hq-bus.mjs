@@ -11,7 +11,7 @@ if (!url) {
 }
 const sql = postgres(url, { max: 1, idle_timeout: 20 });
 let operatorSql;
-if (command === "approve" || command === "reject") {
+if (["approvals", "approve", "reject"].includes(command)) {
   const operatorUrl = process.env.AGENT_HQ_OPERATOR_DATABASE_URL;
   if (!operatorUrl) throw new Error("AGENT_HQ_OPERATOR_DATABASE_URL is required for approval decisions; shared DATABASE_URL is never used.");
   let mainUsername;
@@ -38,7 +38,23 @@ function taskId(value) {
   return id;
 }
 
+async function assertAuthenticatedRole(role) {
+  const [identity] = await sql`SELECT session_user AS login`;
+  if (identity?.login !== "agent_" + role) {
+    throw new Error("Command requires the authenticated PostgreSQL LOGIN agent_" + role + "; shared or elevated logins are forbidden.");
+  }
+}
+
+async function assertTaskRole(id) {
+  const [task] = await sql`SELECT assigned_role FROM agent_tasks WHERE id=${id}`;
+  if (!task?.assigned_role) throw new Error("Task is not visible to this authenticated role.");
+  await assertAuthenticatedRole(task.assigned_role);
+}
+
 async function main() {
+  if (["enqueue", "status", "recover"].includes(command)) {
+    throw new Error('Command "' + command + '" is disabled until a dedicated least-privilege authorization path is implemented.');
+  }
   if (command === "enqueue") {
     const [role, title, objective] = args;
     requireAgentRole(required(role, "role")); required(title, "title"); required(objective, "objective");
@@ -52,10 +68,7 @@ async function main() {
     const [from, to, rawTaskId, kind, ...bodyParts] = args;
     const body = bodyParts.join(" ");
     requireAgentRole(required(from, "fromRole"), "fromRole"); requireAgentRole(required(to, "toRole"), "toRole"); required(kind, "kind"); required(body, "message");
-    const [identity] = await sql`SELECT session_user AS login`;
-    if (identity?.login !== `agent_${from}`) {
-      throw new Error("Message sender must match the authenticated PostgreSQL LOGIN.");
-    }
+    await assertAuthenticatedRole(from);
     const allowed = ["request","result","question","objection","handoff","approval_request","status"];
     if (!allowed.includes(kind)) throw new Error("Unsupported message kind");
     const id = rawTaskId === "-" ? null : taskId(rawTaskId);
@@ -74,6 +87,7 @@ async function main() {
   }
   if (command === "inbox") {
     const role = requireAgentRole(required(args[0], "role"));
+    await assertAuthenticatedRole(role);
     const rows = await sql`SELECT id,task_id,from_role,to_role,kind,body,evidence,created_at
       FROM agent_messages WHERE to_role=${role} ORDER BY created_at DESC LIMIT 50`;
     console.log(JSON.stringify(rows, null, 2));
@@ -81,6 +95,7 @@ async function main() {
   }
   if (command === "claim") {
     const role = requireAgentRole(required(args[0], "role"));
+    await assertAuthenticatedRole(role);
     const workerId = required(args[1], "workerId");
     const rows = await sql.begin(async tx => tx`
       WITH candidate AS (
@@ -99,6 +114,7 @@ async function main() {
   if (command === "heartbeat") {
     const workerId = required(args[0], "workerId");
     const id = taskId(args[1]);
+    await assertTaskRole(id);
     const [task] = await sql`UPDATE agent_tasks SET status='running',
       lease_until=now()+interval '3 minutes', updated_at=now()
       WHERE id=${id} AND lease_owner=${workerId} AND status IN ('claimed','running')
@@ -111,6 +127,7 @@ async function main() {
     const workerId = required(args[0], "workerId");
     const id = taskId(args[1]);
     const result = required(args.slice(2).join(" "), "result");
+    await assertTaskRole(id);
     const completed = await sql.begin(async tx => {
       const [task] = await tx`UPDATE agent_tasks SET status='done',completed_at=now(),
         lease_owner=NULL,lease_until=NULL,updated_at=now()
@@ -130,6 +147,7 @@ async function main() {
     const workerId = required(args[0], "workerId");
     const id = taskId(args[1]);
     const reason = required(args.slice(2).join(" "), "failure reason");
+    await assertTaskRole(id);
     const [task] = await sql`UPDATE agent_tasks SET
       status=CASE WHEN attempts < max_attempts THEN 'queued' ELSE 'dead_letter' END,
       lease_owner=NULL,lease_until=NULL,updated_at=now()
@@ -162,8 +180,8 @@ async function main() {
     return;
   }
   if (command === "approvals") {
-    const rows = await sql`SELECT id,task_id,action,requested_by,payload,created_at
-      FROM agent_approvals WHERE status='pending' ORDER BY created_at ASC LIMIT 100`;
+    const rows = await operatorSql`SELECT id,task_id,action,status,decided_by,decision_note,decided_at
+      FROM agent_approvals WHERE status='pending' ORDER BY id ASC LIMIT 100`;
     console.log(JSON.stringify(rows, null, 2));
     return;
   }
@@ -206,7 +224,7 @@ async function main() {
 Commands:
   enqueue <role> <title> <objective>
   send <fromRole> <toRole> <taskId|-> <kind> <message>
-  approvals
+  approvals (requires distinct agent_operator LOGIN)
   approve <approvalId> [note] (requires root-owned /etc/ppf-agent-hq/approver-uids)
   reject <approvalId> [note] (requires root-owned /etc/ppf-agent-hq/approver-uids)
   inbox <role>
@@ -214,8 +232,9 @@ Commands:
   heartbeat <workerId> <taskId>
   complete <workerId> <taskId> <result>
   fail <workerId> <taskId> <reason>
-  recover
+  recover (disabled pending least-privilege lifecycle function)
 
+Global enqueue/status/recover commands are fail-closed until separately authorized; approvals uses the isolated agent_operator LOGIN.
 This is a PostgreSQL task/message transport. It does not call an LLM or run workers by itself.`);
 }
 try { await main(); } catch (error) { console.error(error instanceof Error ? error.message : error); process.exitCode=1; }

@@ -35,7 +35,7 @@ These counts are a review index, not proof of exhaustive runtime coverage. Condi
 5. **Approvals:** worker may create pending requests but must not decide them. `approve/reject` uses `AGENT_HQ_OPERATOR_DATABASE_URL` and a root-owned UID allowlist in the CLI. Production acceptance must verify OS UID allowlist ownership/mode, DB LOGIN separation, pending-only update, actor derivation, duplicate decision rejection, and direct UPDATE denial for all other roles.
 6. **Budget:** worker takes a transaction advisory lock, reads caps/prices, estimates maximum cost and inserts a reservation in `agent_runs`; later it writes provider-reported usage/cost. Current design must still prove atomic settlement/reconciliation under concurrency, retries, provider failures, price changes, and web-search usage. CI mocks prove no live billing.
 7. **Sequences and helper functions:** review `currval`, all sequence grants, SECURITY DEFINER helper owners, function EXECUTE grants, fixed `search_path`, PUBLIC revocation and function argument validation. CI helper ownership by database owner is not a production ownership model.
-8. **Bus operational commands:** `recover`, `status`, `approvals`, `enqueue`, `claim`, `complete`, `fail` and `send` must not inherit a broad database-owner connection in production.
+8. **Bus operational commands:** `claim`, `complete`, `fail`, `inbox` and `send` must bind to the authenticated role LOGIN. Global `enqueue`, `status` and `recover` remain disabled until narrow operator/supervisor functions and read paths exist; `approvals` is restricted to the separate `agent_operator` LOGIN.
 
 ## Current test coverage and limits
 
@@ -45,9 +45,14 @@ These tests do **not** prove production authorization:
 - helper functions in the test harness are owned by the disposable database owner;
 - there is no reviewed production non-login function owner and no production RLS migration;
 - the role-matrix test now covers a broader slice of row visibility and immutable columns, but still does not exercise every SQL template or every mutable column;
-- bus `send` still accepts a caller-provided sender role at the CLI layer;
+- bus `send`, `inbox`, and `claim` verify the authenticated PostgreSQL LOGIN against the requested role; heartbeat/complete/fail resolve the task's visible role and enforce the matching LOGIN.
+- Global bus `enqueue`, `status`, and `recover` commands fail closed until dedicated least-privilege service paths are implemented; `approvals` now uses the distinct `agent_operator` LOGIN and never the general `DATABASE_URL`.
 - the supervisor lifecycle suite still does not cover restart mid-flow, every parent-specific artifact access boundary, or all lease races;
 - provider billing reconciliation is not proven by local estimates or mocked tests.
+
+### Bus CLI hardening follow-up
+
+The bus CLI now derives the permitted role from PostgreSQL `session_user` for `send`, `inbox`, and `claim`; `heartbeat`, `complete`, and `fail` first resolve the task through the caller's visible row scope and then require the matching role LOGIN. Global `enqueue`, `status`, `approvals`, and `recover` commands are disabled until dedicated least-privilege operator/supervisor paths are implemented. A focused CLI test rejects global commands and mismatched role arguments. This is a fail-closed reduction of the CLI surface, not a production RLS implementation.
 
 ## Required production design before any migration
 
