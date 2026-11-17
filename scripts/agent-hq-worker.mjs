@@ -342,7 +342,7 @@ async function runTask(task) {
     const settlementKey = "agent-settle-" + createHash("sha256")
       .update(JSON.stringify([run.id, totalInputTokens, totalOutputTokens, totalWebSearchCalls])).digest("hex");
     const [settlement] = await sql`SELECT public.agent_budget_settle(
-      ${run.reservationId}, ${totalInputTokens}, ${totalOutputTokens},
+      ${run.reservationId}, ${workerId}, ${totalInputTokens}, ${totalOutputTokens},
       ${totalWebSearchCalls}, ${settlementKey}, NULL
     ) AS cost`;
     if (!settlement) throw new Error("Trusted budget settlement returned no result");
@@ -366,7 +366,7 @@ async function runTask(task) {
     const message = error instanceof Error ? error.message : String(error);
     if (run?.reservationId) {
       try {
-        await sql`SELECT public.agent_budget_mark_unknown(${run.reservationId}, ${message.slice(0,500)}, ${"agent-unknown-" + run.id})`;
+        await sql`SELECT public.agent_budget_mark_unknown(${run.reservationId}, ${workerId}, ${message.slice(0,500)}, ${"agent-unknown-" + run.id})`;
       } catch (budgetError) {
         console.error("Budget reservation remains held for reconciliation:", budgetError instanceof Error ? budgetError.message : budgetError);
       }
