@@ -77,7 +77,7 @@ GRANT UPDATE (status,attempts,lease_owner,lease_until,updated_at,completed_at) O
 -- not become unrestricted run or reservation mutation.
 REVOKE ALL ON public.agent_runs,public.agent_budget_reservations,
   public.agent_budget_ledger,public.agent_budget_settlements FROM agent_hq_budget_owner;
-GRANT SELECT ON public.agent_runs,public.agent_budget_reservations,
+GRANT SELECT ON public.agent_budget_reservations,
   public.agent_budget_ledger,public.agent_budget_settlements TO agent_hq_budget_owner;
 GRANT INSERT (task_id,role,worker_id,provider,model,status,cost_microusd)
   ON public.agent_runs TO agent_hq_budget_owner;
