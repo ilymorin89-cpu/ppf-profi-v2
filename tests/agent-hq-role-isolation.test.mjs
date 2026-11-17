@@ -11,7 +11,8 @@ const roleUrls = {
   seo: process.env.AGENT_HQ_ROLE_TEST_URL_SEO,
   qa: process.env.AGENT_HQ_ROLE_TEST_URL_QA,
   coordinator: process.env.AGENT_HQ_ROLE_TEST_URL_COORDINATOR,
-  supervisor: process.env.AGENT_HQ_ROLE_TEST_URL_SUPERVISOR
+  supervisor: process.env.AGENT_HQ_ROLE_TEST_URL_SUPERVISOR,
+  operator: process.env.AGENT_HQ_ROLE_TEST_URL_OPERATOR
 };
 
 test("Agent HQ database roles are isolated by authenticated PostgreSQL identity", {
@@ -451,6 +452,64 @@ test("Agent HQ reservation and settlement are idempotent and bound to the origin
       output_price_per_million_microusd=${oldBudget.output_price_per_million_microusd},
       web_search_price_microusd_per_call=${oldBudget.web_search_price_microusd_per_call} WHERE id=1`;
     await Promise.all([seo.end(),admin.end()]);
+  }
+});
+
+test("Agent HQ operator reconciles an unknown reservation exactly once after lease expiry", {
+  skip: !adminUrl || !roleUrls.seo || !roleUrls.operator
+}, async () => {
+  const admin=postgres(adminUrl,{max:2});
+  const seo=postgres(roleUrls.seo,{max:1});
+  const operator=postgres(roleUrls.operator,{max:1});
+  let oldBudget;
+  let taskId;
+  try {
+    [oldBudget]=await admin`SELECT * FROM agent_budget_config WHERE id=1`;
+    await admin`UPDATE agent_budget_config SET enabled=true,daily_cap_microusd=100000,
+      monthly_cap_microusd=500000,per_run_cap_microusd=5000,
+      input_price_per_million_microusd=100000,output_price_per_million_microusd=100000,
+      web_search_price_microusd_per_call=0 WHERE id=1`;
+    const workerId="seo-reconcile-worker";
+    const marker=randomUUID();
+    const [task]=await admin`INSERT INTO agent_tasks(assigned_role,title,objective,expected_output,created_by,
+      status,lease_owner,lease_until,budget_limit_microusd)
+      VALUES('seo','budget reconcile','test','test','integration-test','claimed',${workerId},
+        now()+interval '5 minutes',5000) RETURNING id`;
+    taskId=task.id;
+    const [reservation]=await seo`SELECT * FROM agent_budget_reserve(
+      ${taskId},${workerId},'test_stub','test-model',10000,1024,1,0,${"reconcile-reserve-"+marker})`;
+    await seo`SELECT agent_budget_mark_unknown(
+      ${reservation.reservation_id},${workerId},'provider response timed out',${"unknown-"+marker})`;
+    await admin`UPDATE agent_tasks SET status='queued',lease_owner=NULL,lease_until=NULL WHERE id=${taskId}`;
+    const [cost]=await operator`SELECT agent_budget_reconcile_usage(
+      ${reservation.reservation_id},1000,500,0,'provider-usage-confirmed',${"reconcile-"+marker}) AS cost`;
+    const [repeat]=await operator`SELECT agent_budget_reconcile_usage(
+      ${reservation.reservation_id},1000,500,0,'provider-usage-confirmed',${"reconcile-"+marker}) AS cost`;
+    assert.equal(String(repeat.cost),String(cost.cost));
+    const [state]=await admin`SELECT state FROM agent_budget_reservations WHERE id=${reservation.reservation_id}`;
+    assert.equal(state.state,"settled");
+    const [run]=await admin`SELECT status,input_tokens,output_tokens,cost_microusd FROM agent_runs WHERE id=${reservation.run_id}`;
+    assert.equal(run.status,"succeeded");
+    assert.equal(Number(run.input_tokens),1000);
+    assert.equal(Number(run.output_tokens),500);
+    assert.equal(String(run.cost_microusd),String(cost.cost));
+    const [events]=await admin`SELECT count(*)::int AS n FROM agent_budget_ledger
+      WHERE reservation_id=${reservation.reservation_id} AND event_type='reconciled'`;
+    assert.equal(events.n,1);
+  } finally {
+    if(taskId){
+      await admin`DELETE FROM agent_budget_ledger WHERE reservation_id IN (SELECT id FROM agent_budget_reservations WHERE task_id=${taskId})`;
+      await admin`DELETE FROM agent_budget_settlements WHERE reservation_id IN (SELECT id FROM agent_budget_reservations WHERE task_id=${taskId})`;
+      await admin`DELETE FROM agent_budget_reservations WHERE task_id=${taskId}`;
+      await admin`DELETE FROM agent_tasks WHERE id=${taskId}`;
+    }
+    if(oldBudget) await admin`UPDATE agent_budget_config SET enabled=${oldBudget.enabled},
+      daily_cap_microusd=${oldBudget.daily_cap_microusd},monthly_cap_microusd=${oldBudget.monthly_cap_microusd},
+      per_run_cap_microusd=${oldBudget.per_run_cap_microusd},
+      input_price_per_million_microusd=${oldBudget.input_price_per_million_microusd},
+      output_price_per_million_microusd=${oldBudget.output_price_per_million_microusd},
+      web_search_price_microusd_per_call=${oldBudget.web_search_price_microusd_per_call} WHERE id=1`;
+    await Promise.all([seo.end(),operator.end(),admin.end()]);
   }
 });
 
