@@ -41,6 +41,8 @@ These counts are a review index, not proof of exhaustive runtime coverage. Condi
 
 The disposable PostgreSQL CI harness now provisions distinct LOGINs for all 19 worker roles, maps `session_user` to the matching role, applies narrow baseline grants, and tests own-task plus exact QA/coordinator task visibility; own-artifact plus exact QA/coordinator artifact visibility; forbidden task routing/budget column updates; recipient-only inbox reads; and message-sender anti-spoofing. The operator approval path is separately exercised through its own LOGIN. Supervisor CLI acceptance covers repeated passes without duplicate QA tasks, missing explicit QA verdict blocking, expired lease recovery, two concurrent supervisor processes, QA REVISE blocking, and dead-letter blocking.
 
+Runtime startup now independently verifies the actual PostgreSQL `session_user`: each worker requires `agent_<AGENT_ROLE>`, and the supervisor requires `agent_supervisor`. The check is performed after opening the database connection and before any task or lifecycle SQL. Disposable CI includes negative tests that deliberately pair a valid SEO login with the QA worker role and with the supervisor process.
+
 These tests do **not** prove production authorization:
 - helper functions in the test harness are owned by the disposable database owner;
 - there is no reviewed production non-login function owner and no production RLS migration;

@@ -264,6 +264,7 @@ test("Agent HQ approval CLI lists, approves and rejects pending requests exactly
 
 test("Agent HQ worker refuses all model calls while the budget is disabled", async () => {
   assert.ok(databaseUrl, "Set AGENT_HQ_TEST_DATABASE_URL to a disposable PostgreSQL database.");
+  assert.ok(seoUrl, "Missing isolated SEO worker login.");
   assert.notEqual(databaseUrl, process.env.DATABASE_URL, "Test database must not equal DATABASE_URL.");
   const sql = postgres(databaseUrl, { max: 2, idle_timeout: 5 });
   const marker = randomUUID();
@@ -282,7 +283,7 @@ test("Agent HQ worker refuses all model calls while the budget is disabled", asy
       env: {
         ...process.env,
         NODE_ENV: "test",
-        DATABASE_URL: databaseUrl,
+        DATABASE_URL: seoUrl,
         AGENT_ROLE: "seo",
         OPENAI_API_KEY: "test-key-must-never-be-used",
         AGENT_MODEL: "gpt-4.1-mini",
@@ -556,4 +557,13 @@ test("Agent HQ bus send derives sender from authenticated PostgreSQL LOGIN", asy
     if (taskId) await sql`DELETE FROM agent_tasks WHERE id=${taskId}`;
     await sql.end({ timeout: 5 });
   }
+});
+
+
+test("Agent HQ supervisor rejects a non-supervisor PostgreSQL LOGIN", {
+  skip: !seoUrl
+}, () => {
+  const result = runNode("scripts/agent-hq-supervisor.mjs", ["--once"], { DATABASE_URL: seoUrl });
+  assert.notEqual(result.status, 0, "Supervisor must reject a worker login before lifecycle SQL.");
+  assert.match(result.stderr, /must authenticate as PostgreSQL LOGIN "agent_supervisor"/i);
 });
