@@ -99,7 +99,26 @@ AS $parent_check$
   )
 $parent_check$;
 REVOKE ALL ON FUNCTION public.agent_is_valid_coordinator_parent(BIGINT) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.agent_is_valid_coordinator_parent(BIGINT) TO agent_coordinator;
+GRANT EXECUTE ON FUNCTION public.agent_is_valid_coordinator_parent(BIGINT) TO agent_coordinator,agent_supervisor;
+
+CREATE OR REPLACE FUNCTION public.agent_can_insert_own_artifact(p_task_id BIGINT, p_created_by TEXT)
+RETURNS BOOLEAN
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $artifact_check$
+  SELECT p_created_by = CASE session_user
+    WHEN 'agent_seo' THEN 'seo'
+    WHEN 'agent_qa_security' THEN 'qa_security'
+    WHEN 'agent_coordinator' THEN 'coordinator'
+    ELSE '__denied__' END
+    AND EXISTS (SELECT 1 FROM public.agent_tasks t
+      WHERE t.id=p_task_id AND t.assigned_role=p_created_by)
+$artifact_check$;
+REVOKE ALL ON FUNCTION public.agent_can_insert_own_artifact(BIGINT,TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.agent_can_insert_own_artifact(BIGINT,TEXT)
+  TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
 
 ALTER TABLE agent_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_tasks FORCE ROW LEVEL SECURITY;
@@ -203,12 +222,7 @@ CREATE POLICY artifact_read_own_task ON agent_artifacts FOR SELECT USING (
   )
 );
 CREATE POLICY artifact_insert_own_task ON agent_artifacts FOR INSERT WITH CHECK (
-  session_user='agent_supervisor' OR (
-    created_by = CASE session_user
-      WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
-      WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
-    AND EXISTS (SELECT 1 FROM agent_tasks t WHERE t.id=task_id AND t.assigned_role=created_by)
-  )
+  session_user='agent_supervisor' OR public.agent_can_insert_own_artifact(task_id,created_by)
 );
 
 CREATE POLICY approval_read_requester ON agent_approvals FOR SELECT USING (
