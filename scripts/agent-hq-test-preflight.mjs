@@ -10,7 +10,13 @@ const fail = message => {
   process.exit(1);
 };
 if (process.env.NODE_ENV !== "test") fail("NODE_ENV must be test.");
-if (process.env.AGENT_HQ_WORKERS_ENABLED !== "true") fail("AGENT_HQ_WORKERS_ENABLED must be true.");
+const oneShotTestMode = process.env.NODE_ENV === "test" && process.env.AGENT_HQ_TEST_ONCE === "true";
+if (process.env.AGENT_HQ_WORKERS_ENABLED !== "true" && !oneShotTestMode) {
+  fail("AGENT_HQ_WORKERS_ENABLED must be true, except for an explicitly marked one-shot test.");
+}
+if (oneShotTestMode && process.env.AGENT_HQ_WORKERS_ENABLED !== "false") {
+  fail("One-shot test mode must keep long-running workers disabled.");
+}
 if (!databaseUrl) fail("DATABASE_URL is required.");
 let parsed;
 try { parsed = new URL(databaseUrl); } catch { fail("DATABASE_URL must be a valid PostgreSQL URL."); }
