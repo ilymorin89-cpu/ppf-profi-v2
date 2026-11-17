@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import postgres from "postgres";
 import { randomUUID } from "node:crypto";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -15,6 +15,21 @@ const runNode = (script, args = [], overrides = {}) => spawnSync(process.execPat
   encoding: "utf8",
   env: { ...process.env, NODE_ENV: "test", DATABASE_URL: databaseUrl, AGENT_HQ_TEST_APPROVER_UIDS: String(process.getuid?.() ?? ""), ...overrides }
 });
+
+const runNodeAsync = (script, args = [], overrides = {}) => new Promise((resolve, reject) => {
+  const child = spawn(process.execPath, [script, ...args], {
+    cwd: root,
+    env: { ...process.env, NODE_ENV: "test", DATABASE_URL: databaseUrl, AGENT_HQ_TEST_APPROVER_UIDS: String(process.getuid?.() ?? ""), ...overrides },
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+  let stdout = "";
+  let stderr = "";
+  child.stdout.setEncoding("utf8").on("data", chunk => { stdout += chunk; });
+  child.stderr.setEncoding("utf8").on("data", chunk => { stderr += chunk; });
+  child.once("error", reject);
+  child.once("close", (status, signal) => resolve({ status, signal, stdout, stderr }));
+});
+
 
 test("Agent HQ runs coordinator → SEO → QA → supervisor under separate PostgreSQL logins", async () => {
   assert.ok(databaseUrl, "Set AGENT_HQ_TEST_DATABASE_URL to a disposable PostgreSQL database.");
@@ -376,6 +391,50 @@ test("Agent HQ supervisor recovers expired worker leases without enabling worker
     assert.equal(recovered.lease_until, null);
   } finally {
     if (taskId) await sql`DELETE FROM agent_tasks WHERE id=${taskId}`;
+    await sql.end({ timeout: 5 });
+  }
+});
+
+
+test("Agent HQ concurrent supervisors create one QA task and one scoped grant", async () => {
+  assert.ok(databaseUrl, "Set AGENT_HQ_TEST_DATABASE_URL to a disposable PostgreSQL database.");
+  assert.ok(supervisorUrl, "Missing isolated supervisor test login.");
+  assert.notEqual(databaseUrl, process.env.DATABASE_URL, "Test database must not equal DATABASE_URL.");
+  const sql = postgres(databaseUrl, { max: 4, idle_timeout: 5 });
+  const marker = randomUUID();
+  let parentId;
+  let specialistId;
+  try {
+    const [parent] = await sql`INSERT INTO agent_tasks
+      (assigned_role,title,objective,expected_output,created_by,status)
+      VALUES ('coordinator',${"Concurrent supervisor " + marker},'Serialize concurrent lifecycle passes','One QA task','integration-test','review')
+      RETURNING id`;
+    parentId = parent.id;
+    const [specialist] = await sql`INSERT INTO agent_tasks
+      (parent_task_id,assigned_role,title,objective,expected_output,created_by,status)
+      VALUES (${parentId},'seo','Completed specialist','Evidence','Evidence','integration-test','done')
+      RETURNING id`;
+    specialistId = specialist.id;
+    await sql`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
+      VALUES (${specialistId},'seo','result','Evidence','Concurrent supervisor evidence')`;
+
+    const results = await Promise.all([
+      runNodeAsync("scripts/agent-hq-supervisor.mjs", ["--once"], { DATABASE_URL: supervisorUrl, AGENT_SUPERVISOR_ID: "ci-supervisor-a" }),
+      runNodeAsync("scripts/agent-hq-supervisor.mjs", ["--once"], { DATABASE_URL: supervisorUrl, AGENT_SUPERVISOR_ID: "ci-supervisor-b" })
+    ]);
+    for (const result of results) assert.equal(result.status, 0, result.stderr || result.stdout);
+
+    const qaRows = await sql`SELECT id,status FROM agent_tasks
+      WHERE parent_task_id=${parentId} AND assigned_role='qa_security'`;
+    assert.equal(qaRows.length, 1, "Concurrent supervisor passes must create exactly one QA task.");
+    const grants = await sql`SELECT task_id,principal,access_reason FROM agent_task_access
+      WHERE task_id=${specialistId} AND principal='qa_security' AND access_reason='qa_review'`;
+    assert.equal(grants.length, 1, "Concurrent supervisor passes must issue exactly one QA grant.");
+  } finally {
+    if (parentId) {
+      await sql`DELETE FROM agent_tasks WHERE parent_task_id=${parentId}`;
+      await sql`DELETE FROM agent_tasks WHERE id=${parentId}`;
+    }
     await sql.end({ timeout: 5 });
   }
 });
