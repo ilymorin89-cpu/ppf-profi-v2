@@ -181,8 +181,6 @@ GRANT SELECT ON public.agent_runs TO agent_hq_fn_owner_ci;
 ALTER FUNCTION public.agent_test_budget_totals() OWNER TO agent_hq_fn_owner_ci;
 REVOKE CREATE ON SCHEMA public FROM agent_hq_fn_owner_ci;
 REVOKE ALL ON FUNCTION public.agent_test_budget_totals() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.agent_test_budget_totals()
-  TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
 
 CREATE OR REPLACE FUNCTION public.agent_can_insert_own_artifact(p_task_id BIGINT, p_created_by TEXT)
 RETURNS BOOLEAN
