@@ -50,15 +50,24 @@ test("every Agent HQ worker login sees only its own role and cannot forge messag
       VALUES (${idByRole.get("seo")},'qa_security','qa_review'),
              (${idByRole.get("geo")},'coordinator','coordinator_oversight')`;
 
+    // The test-only SECURITY DEFINER aggregate is intentionally callable
+    // only by the disposable DB owner, never by runtime LOGINs.
+    const [trustedBudget] = await owner`SELECT daily_cost,monthly_cost
+      FROM public.agent_test_budget_totals()`;
+    assert.ok(Number(trustedBudget.daily_cost) >= 300,
+      "Trusted owner aggregate must include costs hidden by per-role RLS.");
+    assert.ok(Number(trustedBudget.monthly_cost) >= 300);
+
     for (const role of roles) {
       const suffix = "ROLE_" + role.toUpperCase();
       const url = process.env["AGENT_HQ_ROLE_TEST_URL_" + suffix];
       assert.ok(url, "Missing disposable PostgreSQL login for " + role + " (" + suffix + ").");
       const sql = postgres(url, { max: 1, idle_timeout: 5 });
       try {
-        const [identity] = await sql`SELECT session_user AS login, public.agent_role_for_session() AS mapped_role`;
+        const [identity] = await sql`SELECT session_user AS login, public.agent_role_for_session() AS mapped_role, public.agent_worker_id_for_session() AS worker_id`;
         assert.equal(identity.login, "agent_" + role);
         assert.equal(identity.mapped_role, role);
+        assert.equal(identity.worker_id, "test-" + role);
 
         // RLS intentionally hides other roles' run rows. A worker-side SUM is
         // therefore role-local; global caps must use a trusted aggregate function.
@@ -73,12 +82,6 @@ test("every Agent HQ worker login sees only its own role and cannot forge messag
         const expectedSpend = role === "seo" ? 100 : role === "geo" ? 200 : 0;
         assert.equal(Number(visibleSpend.total), expectedSpend,
           role + " must not aggregate another role's hidden run cost.");
-        const [trustedBudget] = await sql`SELECT daily_cost,monthly_cost
-          FROM public.agent_test_budget_totals()`;
-        assert.ok(Number(trustedBudget.daily_cost) >= 300,
-          role + " must receive global spend totals only through the trusted aggregate function.");
-        assert.ok(Number(trustedBudget.monthly_cost) >= 300);
-
         const visible = await sql`SELECT id,assigned_role FROM agent_tasks
           WHERE id = ANY(${taskIds}::bigint[]) ORDER BY id`;
         const expectedVisibleIds = role === "qa_security"
@@ -110,6 +113,12 @@ test("every Agent HQ worker login sees only its own role and cannot forge messag
           undefined,
           role + " must not change task budget ownership."
         );
+
+        const claimed = await sql`SELECT * FROM public.agent_task_claim(${identity.worker_id})`;
+        assert.equal(claimed.length, 1, role + " must be able to claim exactly one task through the trusted function.");
+        assert.equal(String(claimed[0].id), String(idByRole.get(role)),
+          role + " must claim only a task assigned to its authenticated PostgreSQL role.");
+        assert.equal(claimed[0].attempts, 1);
 
         const ownInboxKey = "role-matrix-inbox-" + marker + "-" + role;
         messageKeys.push(ownInboxKey);

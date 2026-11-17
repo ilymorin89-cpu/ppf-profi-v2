@@ -25,7 +25,7 @@ The migrator should be used only by a deployment/migration job and disconnected 
 
 ## RLS helper ownership model
 
-The CI harness currently creates helper functions as the disposable database owner. Production must not copy that ownership model.
+The CI harness now models a dedicated `agent_hq_fn_owner_ci NOLOGIN NOBYPASSRLS` role for SECURITY DEFINER helper ownership, with narrowly scoped SELECT privileges and RLS policies. Production must not copy the CI role name, credentials, grants or policies verbatim; it needs an independently provisioned and reviewed non-login owner with the exact production privileges.
 
 Recommended pattern for review:
 

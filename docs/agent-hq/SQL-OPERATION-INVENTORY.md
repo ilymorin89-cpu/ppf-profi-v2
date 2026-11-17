@@ -6,7 +6,7 @@ Reviewed on 2026-11-17 against:
 - `scripts/agent-hq-worker.mjs`
 - `scripts/agent-hq-supervisor.mjs`
 - `scripts/agent-hq-bus.mjs`
-- `drizzle/0003_agent_hq.sql` through `drizzle/0007_agent_task_access.sql`
+- `drizzle/0003_agent_hq.sql` through `drizzle/0008_agent_budget_trusted_settlement.sql`
 - `tests/agent-hq-role-isolation.sql`
 
 ## Inventory result
@@ -33,7 +33,7 @@ These counts are a review index, not proof of exhaustive runtime coverage. Condi
 3. **Coordinator delegation:** child task creation must require a coordinator-owned parent and an allowlisted specialist role. A caller must not set arbitrary `created_by`, `parent_task_id`, or `assigned_role`.
 4. **Messages:** worker path uses the process role, but bus `send` accepts a caller-supplied `fromRole`. Treat the bus as privileged until sender identity is derived from a dedicated authenticated LOGIN or fixed-search-path function. Reject spoofed sender, task mismatch, recipient escalation and idempotency replay.
 5. **Approvals:** worker may create pending requests but must not decide them. `approve/reject` uses `AGENT_HQ_OPERATOR_DATABASE_URL` and a root-owned UID allowlist in the CLI. Production acceptance must verify OS UID allowlist ownership/mode, DB LOGIN separation, pending-only update, actor derivation, duplicate decision rejection, and direct UPDATE denial for all other roles.
-6. **Budget:** worker takes a transaction advisory lock, reads caps/prices, estimates maximum cost and inserts a reservation in `agent_runs`; later it writes provider-reported usage/cost. Current design must still prove atomic settlement/reconciliation under concurrency, retries, provider failures, price changes, and web-search usage. CI mocks prove no live billing.
+6. **Budget (migration 0008):** worker creates runs only through `agent_budget_reserve`, settles only through `agent_budget_settle`, releases only before a provider call through `agent_budget_release`, and retains ambiguous outcomes through `agent_budget_mark_unknown`. `agent_budget_owner` is a dedicated NOLOGIN/NOBYPASSRLS function owner; reservations snapshot integer micro-USD pricing; a transaction advisory lock serializes admission against daily/monthly/per-run/task caps; ledger and settlement writes are restricted to trusted functions. Operator-only `agent_budget_reconcile_usage` and `agent_budget_reconcile_no_charge` resolve reservations after the worker lease expires. CI applies the migration to disposable PostgreSQL and uses mocked providers only; this is not production authorization.
 7. **Sequences and helper functions:** review `currval`, all sequence grants, SECURITY DEFINER helper owners, function EXECUTE grants, fixed `search_path`, PUBLIC revocation and function argument validation. CI helper ownership by database owner is not a production ownership model.
 8. **Bus operational commands:** `claim`, `complete`, `fail`, `inbox` and `send` must bind to the authenticated role LOGIN. Global `enqueue`, `status` and `recover` remain disabled until narrow operator/supervisor functions and read paths exist; `approvals` is restricted to the separate `agent_operator` LOGIN.
 
@@ -43,8 +43,12 @@ The disposable PostgreSQL CI harness now provisions distinct LOGINs for all 19 w
 
 Runtime startup now independently verifies the actual PostgreSQL `session_user`: each worker requires `agent_<AGENT_ROLE>`, and the supervisor requires `agent_supervisor`. The check is performed after opening the database connection and before any task or lifecycle SQL. Disposable CI includes negative tests that deliberately pair a valid SEO login with the QA worker role and with the supervisor process.
 
+The CI harness was strengthened to transfer all SECURITY DEFINER helpers (role mapping, scoped task access, coordinator-parent validation, artifact ownership and test budget aggregation) to a dedicated NOLOGIN, non-BYPASSRLS function-owner role. That role receives only the SELECT rights and RLS read policies required by those helpers; runtime LOGINs are not members and the function owner does not own protected tables. Catalog assertions verify owner, SECURITY DEFINER, fixed search_path, role flags, memberships and table ownership.
+
+The CI-only `agent_test_budget_totals()` helper is deliberately not executable by any runtime LOGIN or `PUBLIC`. The role-matrix test calls it only through the disposable database-owner connection to prove that per-role RLS hides other workers' run rows while a trusted test-only aggregate can see the global fixture total. This helper is not a production budget API and must never be copied into a production migration. Production workers still require a separate atomic reservation/settlement service path; the current worker's direct `SUM(agent_runs.cost_microusd)` is role-local under the intended RLS policy.
+
 These tests do **not** prove production authorization:
-- helper functions in the test harness are owned by the disposable database owner;
+- the CI harness now models a dedicated `agent_hq_fn_owner_ci NOLOGIN NOBYPASSRLS` owner for SECURITY DEFINER helpers and checks its ownership/ACL boundary; production still needs a separately provisioned and reviewed function owner, privileges and policies;
 - there is no reviewed production non-login function owner and no production RLS migration;
 - the role-matrix test now covers a broader slice of row visibility and immutable columns, but still does not exercise every SQL template or every mutable column;
 - bus `send`, `inbox`, and `claim` verify the authenticated PostgreSQL LOGIN against the requested role; heartbeat/complete/fail resolve the task's visible role and enforce the matching LOGIN.
@@ -55,6 +59,14 @@ These tests do **not** prove production authorization:
 ### Bus CLI hardening follow-up
 
 The bus CLI now derives the permitted role from PostgreSQL `session_user` for `send`, `inbox`, and `claim`; `heartbeat`, `complete`, and `fail` first resolve the task through the caller's visible row scope and then require the matching role LOGIN. Global `enqueue`, `status`, `approvals`, and `recover` commands are disabled until dedicated least-privilege operator/supervisor paths are implemented. A focused CLI test rejects global commands and mismatched role arguments. This is a fail-closed reduction of the CLI surface, not a production RLS implementation.
+
+### Confirmed accounting privilege gap — blocking
+
+A focused review of the current worker and CI grants found that the disposable role-isolation harness still grants runtime roles `UPDATE (status,input_tokens,output_tokens,cost_microusd,error,finished_at)` and `INSERT (...,cost_microusd)` on `agent_runs`. The worker itself directly writes provider usage and final cost on success, and writes the failed status directly on error. This means the current CI harness does not prove protection against a compromised worker forging usage/cost; the existing CI success must not be interpreted as closing this risk.
+
+The worker also reads a global `SUM(agent_runs.cost_microusd)` under role-scoped RLS. That aggregate is not globally authoritative for a runtime LOGIN. The test-only aggregate remains CI-only and is not a replacement.
+
+**Required next change:** replace direct worker reservation/settlement SQL with narrowly scoped trusted reserve/settle/release operations, backed by an append-only/idempotent ledger and conservative treatment of ambiguous provider outcomes. Runtime roles must not be able to INSERT or UPDATE authoritative cost/token fields. A detailed design and negative/concurrency test plan is in `docs/agent-hq/BUDGET-RESERVATION-SETTLEMENT-SECURITY-DESIGN.md`.
 
 ## Required production design before any migration
 
@@ -72,3 +84,15 @@ The bus CLI now derives the permitted role from PostgreSQL `session_user` for `s
 ## Non-actions
 
 No production migration, database login provisioning, Timeweb change, secret change, worker activation, model call, spend, publication, external message or deployment was performed. This document does not authorize any of them.
+
+
+## Budget boundary implementation update — 2026-11-17
+
+The former budget-risk description above is historical; the implementation is now in `drizzle/0008_agent_budget_trusted_settlement.sql`. Runtime worker LOGINs have direct INSERT/UPDATE on `agent_runs` revoked and use trusted reserve/settle/release/unknown functions. The dedicated function owner `agent_hq_budget_owner` is NOLOGIN/NOSUPERUSER/NOCREATEDB/NOCREATEROLE/NOINHERIT/NOBYPASSRLS, has no role memberships, and does not own the protected tables. It has no CREATE privilege on schema `public`. The budget ledger grants SELECT/INSERT only to the function owner; no runtime worker receives table access.
+
+Current PR validation must be read from the exact latest PR head and its Actions run. A prior successful CI run does not validate a later commit. All checks run against disposable PostgreSQL and test adapters; no production database, provider billing, deployment, external publication, or message delivery is involved.
+
+
+## Test launch boundary update — 2026-11-17
+
+All 19 worker roles now have separate Docker Compose services and distinct role-specific PostgreSQL LOGIN URL requirements. The worker launcher accepts only local disposable PostgreSQL hosts and the database name `agent_hq_test`; the Compose worker entrypoints require `NODE_ENV=test`, a deterministic response fixture, a non-secret placeholder provider key, web search disabled, and GitHub credentials/repository unset. The optional health gateway is behind a Compose profile and is not started by the worker groups. A trusted `agent_task_claim(text)` function now performs queue claims with the authenticated role from `session_user` and `FOR UPDATE SKIP LOCKED`; workers do not receive direct task UPDATE privileges. Supervisor lease recovery now blocks tasks with active/unknown budget reservations pending operator reconciliation rather than blindly requeueing them.
