@@ -11,7 +11,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const runNode = (script, args = []) => spawnSync(process.execPath, [script, ...args], {
   cwd: root,
   encoding: "utf8",
-  env: { ...process.env, DATABASE_URL: databaseUrl, AGENT_HQ_APPROVER_UIDS: String(process.getuid?.() ?? "") }
+  env: { ...process.env, NODE_ENV: "test", DATABASE_URL: databaseUrl, AGENT_HQ_TEST_APPROVER_UIDS: String(process.getuid?.() ?? "") }
 });
 
 test("Agent HQ supervisor executes the real parent → QA → consolidation lifecycle", async t => {
