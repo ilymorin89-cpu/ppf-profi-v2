@@ -14,6 +14,7 @@ test("every Agent HQ worker login sees only its own role and cannot forge messag
   const taskIds = [];
   const idByRole = new Map();
   const messageKeys = [];
+  const artifactIds = [];
   try {
     for (const role of roles) {
       const [task] = await owner`INSERT INTO agent_tasks
@@ -23,6 +24,17 @@ test("every Agent HQ worker login sees only its own role and cannot forge messag
       taskIds.push(task.id);
       idByRole.set(role, task.id);
     }
+
+    const [seoArtifact] = await owner`INSERT INTO agent_artifacts
+      (task_id,created_by,artifact_type,title,content)
+      VALUES (${idByRole.get("seo")},'seo','result','SEO scoped artifact','Only QA and SEO may see this artifact') RETURNING id`;
+    const [geoArtifact] = await owner`INSERT INTO agent_artifacts
+      (task_id,created_by,artifact_type,title,content)
+      VALUES (${idByRole.get("geo")},'geo','result','GEO scoped artifact','Only coordinator and GEO may see this artifact') RETURNING id`;
+    artifactIds.push(seoArtifact.id, geoArtifact.id);
+    await owner`INSERT INTO agent_task_access (task_id,principal,access_reason)
+      VALUES (${idByRole.get("seo")},'qa_security','qa_review'),
+             (${idByRole.get("geo")},'coordinator','coordinator_oversight')`;
 
     for (const role of roles) {
       const suffix = "ROLE_" + role.toUpperCase();
@@ -36,9 +48,24 @@ test("every Agent HQ worker login sees only its own role and cannot forge messag
 
         const visible = await sql`SELECT id,assigned_role FROM agent_tasks
           WHERE id = ANY(${taskIds}::bigint[]) ORDER BY id`;
-        assert.equal(visible.length, 1, role + " must not see another role's task.");
-        assert.equal(String(visible[0].id), String(idByRole.get(role)));
-        assert.equal(visible[0].assigned_role, role);
+        const expectedVisibleIds = role === "qa_security"
+          ? [idByRole.get(role), idByRole.get("seo")]
+          : role === "coordinator"
+            ? [idByRole.get(role), idByRole.get("geo")]
+            : [idByRole.get(role)];
+        assert.deepEqual(visible.map(row => String(row.id)).sort(),
+          expectedVisibleIds.map(String).sort(),
+          role + " must see only its own task and explicitly granted task access.");
+
+        const scopedArtifacts = await sql`SELECT id,task_id FROM agent_artifacts
+          WHERE id = ANY(${artifactIds}::bigint[]) ORDER BY id`;
+        const expectedArtifactIds = role === "qa_security" ? [seoArtifact.id]
+          : role === "coordinator" ? [geoArtifact.id]
+          : role === "seo" ? [seoArtifact.id]
+          : role === "geo" ? [geoArtifact.id] : [];
+        assert.deepEqual(scopedArtifacts.map(row => String(row.id)).sort(),
+          expectedArtifactIds.map(String).sort(),
+          role + " must see only artifacts on its own task or explicitly granted task.");
 
         await assert.rejects(
           () => sql`UPDATE agent_tasks SET assigned_role='coordinator' WHERE id=${idByRole.get(role)}`,
@@ -85,6 +112,7 @@ test("every Agent HQ worker login sees only its own role and cannot forge messag
     }
   } finally {
     if (messageKeys.length) await owner`DELETE FROM agent_messages WHERE idempotency_key = ANY(${messageKeys}::varchar[])`;
+    if (artifactIds.length) await owner`DELETE FROM agent_artifacts WHERE id = ANY(${artifactIds}::bigint[])`;
     if (taskIds.length) await owner`DELETE FROM agent_tasks WHERE id = ANY(${taskIds}::bigint[])`;
     await owner.end({ timeout: 5 });
   }
