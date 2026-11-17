@@ -66,3 +66,277 @@ services:
       AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
       AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
     restart: unless-stopped
+
+  # New specialist services are independently gated; they remain idle unless both flags are explicitly enabled.
+
+  web_engineer:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_ADDITIONAL_WORKERS_ENABLED\" != \"true\" ]; then echo 'Additional Agent HQ workers disabled; waiting'; exec sleep infinity; fi; if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    environment:
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-}
+      AGENT_ROLE: web_engineer
+      AGENT_WORKER_ID: ${AGENT_WORKER_ID_PREFIX:-ppf}-web_engineer
+      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      AGENT_HQ_ADDITIONAL_WORKERS_ENABLED: ${AGENT_HQ_ADDITIONAL_WORKERS_ENABLED:-false}
+      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
+      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+    restart: unless-stopped
+
+  seo:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_ADDITIONAL_WORKERS_ENABLED\" != \"true\" ]; then echo 'Additional Agent HQ workers disabled; waiting'; exec sleep infinity; fi; if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    environment:
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-}
+      AGENT_ROLE: seo
+      AGENT_WORKER_ID: ${AGENT_WORKER_ID_PREFIX:-ppf}-seo
+      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      AGENT_HQ_ADDITIONAL_WORKERS_ENABLED: ${AGENT_HQ_ADDITIONAL_WORKERS_ENABLED:-false}
+      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
+      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+    restart: unless-stopped
+
+  geo:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_ADDITIONAL_WORKERS_ENABLED\" != \"true\" ]; then echo 'Additional Agent HQ workers disabled; waiting'; exec sleep infinity; fi; if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    environment:
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-}
+      AGENT_ROLE: geo
+      AGENT_WORKER_ID: ${AGENT_WORKER_ID_PREFIX:-ppf}-geo
+      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      AGENT_HQ_ADDITIONAL_WORKERS_ENABLED: ${AGENT_HQ_ADDITIONAL_WORKERS_ENABLED:-false}
+      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
+      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+    restart: unless-stopped
+
+  growth:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_ADDITIONAL_WORKERS_ENABLED\" != \"true\" ]; then echo 'Additional Agent HQ workers disabled; waiting'; exec sleep infinity; fi; if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    environment:
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-}
+      AGENT_ROLE: growth
+      AGENT_WORKER_ID: ${AGENT_WORKER_ID_PREFIX:-ppf}-growth
+      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      AGENT_HQ_ADDITIONAL_WORKERS_ENABLED: ${AGENT_HQ_ADDITIONAL_WORKERS_ENABLED:-false}
+      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
+      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+    restart: unless-stopped
+
+  analytics:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_ADDITIONAL_WORKERS_ENABLED\" != \"true\" ]; then echo 'Additional Agent HQ workers disabled; waiting'; exec sleep infinity; fi; if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    environment:
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-}
+      AGENT_ROLE: analytics
+      AGENT_WORKER_ID: ${AGENT_WORKER_ID_PREFIX:-ppf}-analytics
+      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      AGENT_HQ_ADDITIONAL_WORKERS_ENABLED: ${AGENT_HQ_ADDITIONAL_WORKERS_ENABLED:-false}
+      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
+      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+    restart: unless-stopped
+
+  vk_strategist:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_ADDITIONAL_WORKERS_ENABLED\" != \"true\" ]; then echo 'Additional Agent HQ workers disabled; waiting'; exec sleep infinity; fi; if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    environment:
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-}
+      AGENT_ROLE: vk_strategist
+      AGENT_WORKER_ID: ${AGENT_WORKER_ID_PREFIX:-ppf}-vk_strategist
+      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      AGENT_HQ_ADDITIONAL_WORKERS_ENABLED: ${AGENT_HQ_ADDITIONAL_WORKERS_ENABLED:-false}
+      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
+      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+    restart: unless-stopped
+
+  copywriter:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_ADDITIONAL_WORKERS_ENABLED\" != \"true\" ]; then echo 'Additional Agent HQ workers disabled; waiting'; exec sleep infinity; fi; if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    environment:
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-}
+      AGENT_ROLE: copywriter
+      AGENT_WORKER_ID: ${AGENT_WORKER_ID_PREFIX:-ppf}-copywriter
+      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      AGENT_HQ_ADDITIONAL_WORKERS_ENABLED: ${AGENT_HQ_ADDITIONAL_WORKERS_ENABLED:-false}
+      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
+      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+    restart: unless-stopped
+
+  designer:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_ADDITIONAL_WORKERS_ENABLED\" != \"true\" ]; then echo 'Additional Agent HQ workers disabled; waiting'; exec sleep infinity; fi; if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    environment:
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-}
+      AGENT_ROLE: designer
+      AGENT_WORKER_ID: ${AGENT_WORKER_ID_PREFIX:-ppf}-designer
+      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      AGENT_HQ_ADDITIONAL_WORKERS_ENABLED: ${AGENT_HQ_ADDITIONAL_WORKERS_ENABLED:-false}
+      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
+      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+    restart: unless-stopped
+
+  image_generator:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_ADDITIONAL_WORKERS_ENABLED\" != \"true\" ]; then echo 'Additional Agent HQ workers disabled; waiting'; exec sleep infinity; fi; if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    environment:
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-}
+      AGENT_ROLE: image_generator
+      AGENT_WORKER_ID: ${AGENT_WORKER_ID_PREFIX:-ppf}-image_generator
+      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      AGENT_HQ_ADDITIONAL_WORKERS_ENABLED: ${AGENT_HQ_ADDITIONAL_WORKERS_ENABLED:-false}
+      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
+      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+    restart: unless-stopped
+
+  storyteller:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_ADDITIONAL_WORKERS_ENABLED\" != \"true\" ]; then echo 'Additional Agent HQ workers disabled; waiting'; exec sleep infinity; fi; if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    environment:
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-}
+      AGENT_ROLE: storyteller
+      AGENT_WORKER_ID: ${AGENT_WORKER_ID_PREFIX:-ppf}-storyteller
+      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      AGENT_HQ_ADDITIONAL_WORKERS_ENABLED: ${AGENT_HQ_ADDITIONAL_WORKERS_ENABLED:-false}
+      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
+      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+    restart: unless-stopped
+
+  content_seo:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_ADDITIONAL_WORKERS_ENABLED\" != \"true\" ]; then echo 'Additional Agent HQ workers disabled; waiting'; exec sleep infinity; fi; if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    environment:
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-}
+      AGENT_ROLE: content_seo
+      AGENT_WORKER_ID: ${AGENT_WORKER_ID_PREFIX:-ppf}-content_seo
+      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      AGENT_HQ_ADDITIONAL_WORKERS_ENABLED: ${AGENT_HQ_ADDITIONAL_WORKERS_ENABLED:-false}
+      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
+      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+    restart: unless-stopped
+
+  ads_manager:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_ADDITIONAL_WORKERS_ENABLED\" != \"true\" ]; then echo 'Additional Agent HQ workers disabled; waiting'; exec sleep infinity; fi; if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    environment:
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-}
+      AGENT_ROLE: ads_manager
+      AGENT_WORKER_ID: ${AGENT_WORKER_ID_PREFIX:-ppf}-ads_manager
+      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      AGENT_HQ_ADDITIONAL_WORKERS_ENABLED: ${AGENT_HQ_ADDITIONAL_WORKERS_ENABLED:-false}
+      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
+      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+    restart: unless-stopped
+
+  trend_scout:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_ADDITIONAL_WORKERS_ENABLED\" != \"true\" ]; then echo 'Additional Agent HQ workers disabled; waiting'; exec sleep infinity; fi; if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    environment:
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-}
+      AGENT_ROLE: trend_scout
+      AGENT_WORKER_ID: ${AGENT_WORKER_ID_PREFIX:-ppf}-trend_scout
+      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      AGENT_HQ_ADDITIONAL_WORKERS_ENABLED: ${AGENT_HQ_ADDITIONAL_WORKERS_ENABLED:-false}
+      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
+      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+    restart: unless-stopped
+
+  auto_news_editor:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_ADDITIONAL_WORKERS_ENABLED\" != \"true\" ]; then echo 'Additional Agent HQ workers disabled; waiting'; exec sleep infinity; fi; if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    environment:
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-}
+      AGENT_ROLE: auto_news_editor
+      AGENT_WORKER_ID: ${AGENT_WORKER_ID_PREFIX:-ppf}-auto_news_editor
+      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      AGENT_HQ_ADDITIONAL_WORKERS_ENABLED: ${AGENT_HQ_ADDITIONAL_WORKERS_ENABLED:-false}
+      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
+      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+    restart: unless-stopped
+
+  auto_law_monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_ADDITIONAL_WORKERS_ENABLED\" != \"true\" ]; then echo 'Additional Agent HQ workers disabled; waiting'; exec sleep infinity; fi; if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    environment:
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-}
+      AGENT_ROLE: auto_law_monitor
+      AGENT_WORKER_ID: ${AGENT_WORKER_ID_PREFIX:-ppf}-auto_law_monitor
+      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      AGENT_HQ_ADDITIONAL_WORKERS_ENABLED: ${AGENT_HQ_ADDITIONAL_WORKERS_ENABLED:-false}
+      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
+      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+    restart: unless-stopped
+
+  fact_checker:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_ADDITIONAL_WORKERS_ENABLED\" != \"true\" ]; then echo 'Additional Agent HQ workers disabled; waiting'; exec sleep infinity; fi; if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    environment:
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-}
+      AGENT_ROLE: fact_checker
+      AGENT_WORKER_ID: ${AGENT_WORKER_ID_PREFIX:-ppf}-fact_checker
+      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      AGENT_HQ_ADDITIONAL_WORKERS_ENABLED: ${AGENT_HQ_ADDITIONAL_WORKERS_ENABLED:-false}
+      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
+      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+    restart: unless-stopped
