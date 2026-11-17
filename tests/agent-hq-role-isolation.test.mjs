@@ -50,6 +50,45 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
     assert.equal(ownArtifacts.length, 1);
     assert.equal(qaArtifacts.length, 0, "QA cannot read unrelated specialist artifacts");
 
+    const [seoMessage] = await admin`INSERT INTO agent_messages
+      (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
+      VALUES (${seoTask.id},${randomUUID()},'seo','qa_security','request','SEO to QA',${"m-" + marker + "-seo"}) RETURNING id`;
+    const [qaMessage] = await admin`INSERT INTO agent_messages
+      (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
+      VALUES (${qaTask.id},${randomUUID()},'qa_security','seo','question','QA to SEO',${"m-" + marker + "-qa"}) RETURNING id`;
+    const seoInbox = await seo`SELECT id FROM agent_messages WHERE id IN (${seoMessage.id},${qaMessage.id})`;
+    const qaInbox = await qa`SELECT id FROM agent_messages WHERE id IN (${seoMessage.id},${qaMessage.id})`;
+    assert.deepEqual(seoInbox.map(row => String(row.id)), [String(qaMessage.id)]);
+    assert.deepEqual(qaInbox.map(row => String(row.id)), [String(seoMessage.id)]);
+    await assert.rejects(
+      seo`INSERT INTO agent_messages (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
+        VALUES (${seoTask.id},${randomUUID()},'qa_security','seo','status','forged',${"m-" + marker + "-forged"})`,
+      error => ["42501","23514"].includes(error.code)
+    );
+
+    const [seoRun] = await admin`INSERT INTO agent_runs (task_id,role,worker_id,provider,model,status)
+      VALUES (${seoTask.id},'seo','seo-ci','test','test','succeeded') RETURNING id`;
+    const [qaRun] = await admin`INSERT INTO agent_runs (task_id,role,worker_id,provider,model,status)
+      VALUES (${qaTask.id},'qa_security','qa-ci','test','test','succeeded') RETURNING id`;
+    const seoRuns = await seo`SELECT id FROM agent_runs WHERE id IN (${seoRun.id},${qaRun.id})`;
+    const qaRuns = await qa`SELECT id FROM agent_runs WHERE id IN (${seoRun.id},${qaRun.id})`;
+    assert.deepEqual(seoRuns.map(row => String(row.id)), [String(seoRun.id)]);
+    assert.deepEqual(qaRuns.map(row => String(row.id)), [String(qaRun.id)]);
+    const foreignRunUpdate = await seo`UPDATE agent_runs SET status='failed' WHERE id=${qaRun.id} RETURNING id`;
+    assert.equal(foreignRunUpdate.length, 0);
+
+    const [seoApproval] = await admin`INSERT INTO agent_approvals (task_id,action,requested_by,payload,status)
+      VALUES (${seoTask.id},'other','seo','{"reason":"test"}'::jsonb,'pending') RETURNING id`;
+    const [qaApproval] = await admin`INSERT INTO agent_approvals (task_id,action,requested_by,payload,status)
+      VALUES (${qaTask.id},'other','qa_security','{"reason":"test"}'::jsonb,'pending') RETURNING id`;
+    const seoApprovals = await seo`SELECT id FROM agent_approvals WHERE id IN (${seoApproval.id},${qaApproval.id})`;
+    assert.deepEqual(seoApprovals.map(row => String(row.id)), [String(seoApproval.id)]);
+    await assert.rejects(
+      seo`INSERT INTO agent_approvals (task_id,action,requested_by,payload,status)
+        VALUES (${seoTask.id},'other','qa_security','{}'::jsonb,'pending')`,
+      error => ["42501","23514"].includes(error.code)
+    );
+
     await seo`SELECT set_config('agent.role','qa_security',false)`;
     const afterSpoof = await seo`SELECT id FROM agent_tasks WHERE id=${qaTask.id}`;
     assert.equal(afterSpoof.length, 0, "Changing a custom GUC cannot impersonate QA");
