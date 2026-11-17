@@ -368,6 +368,62 @@ BEGIN
 END
 $unknown$;
 
+CREATE OR REPLACE FUNCTION public.agent_budget_reconcile_usage(
+  p_reservation_id BIGINT,p_input_tokens INTEGER,p_output_tokens INTEGER,
+  p_search_calls INTEGER,p_provider_reference TEXT,p_idempotency_key TEXT
+) RETURNS BIGINT
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $reconcile_usage$
+DECLARE
+  v_res public.agent_budget_reservations%ROWTYPE;
+  v_existing public.agent_budget_settlements%ROWTYPE;
+  v_cost BIGINT;
+BEGIN
+  IF session_user<>'agent_operator' OR p_input_tokens NOT BETWEEN 0 AND 100000000
+     OR p_output_tokens NOT BETWEEN 0 AND 100000000 OR p_search_calls NOT BETWEEN 0 AND 512
+     OR p_provider_reference IS NULL OR length(p_provider_reference) NOT BETWEEN 1 AND 200
+     OR p_idempotency_key IS NULL OR length(p_idempotency_key) NOT BETWEEN 8 AND 160 THEN
+    RAISE EXCEPTION 'operator and provider usage evidence required for reconciliation' USING ERRCODE='42501';
+  END IF;
+  SELECT * INTO v_res FROM public.agent_budget_reservations WHERE id=p_reservation_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'reservation not found' USING ERRCODE='P0002'; END IF;
+  IF v_res.state='settled' THEN
+    SELECT * INTO v_existing FROM public.agent_budget_settlements WHERE reservation_id=v_res.id;
+    IF v_existing.idempotency_key=p_idempotency_key
+       AND v_existing.input_tokens=p_input_tokens AND v_existing.output_tokens=p_output_tokens
+       AND v_existing.web_search_calls=p_search_calls THEN
+      RETURN v_existing.actual_cost_microusd;
+    END IF;
+    RAISE EXCEPTION 'reservation already reconciled with different evidence' USING ERRCODE='23505';
+  END IF;
+  IF v_res.state<>'unknown' THEN
+    RAISE EXCEPTION 'only unknown reservations can be reconciled with provider usage' USING ERRCODE='55000';
+  END IF;
+  v_cost:=CEIL((
+    p_input_tokens::NUMERIC*(v_res.price_snapshot->>'input_price')::BIGINT
+    + p_output_tokens::NUMERIC*(v_res.price_snapshot->>'output_price')::BIGINT
+  )/1000000)::BIGINT + p_search_calls::BIGINT*(v_res.price_snapshot->>'search_price')::BIGINT;
+  IF p_input_tokens > (v_res.price_snapshot->>'estimated_input_tokens')::INTEGER * (v_res.price_snapshot->>'max_turns')::INTEGER
+     OR p_output_tokens > (v_res.price_snapshot->>'max_output_tokens')::INTEGER * (v_res.price_snapshot->>'max_turns')::INTEGER
+     OR p_search_calls > (v_res.price_snapshot->>'max_search_calls')::INTEGER
+     OR v_cost>v_res.reserved_microusd THEN
+    RAISE EXCEPTION 'reconciled provider usage exceeds the approved reservation envelope' USING ERRCODE='P0001';
+  END IF;
+  INSERT INTO public.agent_budget_settlements(reservation_id,idempotency_key,input_tokens,
+    output_tokens,web_search_calls,actual_cost_microusd,provider_reference)
+    VALUES(v_res.id,p_idempotency_key,p_input_tokens,p_output_tokens,p_search_calls,v_cost,p_provider_reference);
+  INSERT INTO public.agent_budget_ledger(reservation_id,event_key,event_type,amount_microusd,metadata)
+    VALUES(v_res.id,'reconcile-usage:'||p_idempotency_key,'reconciled',v_cost,
+      jsonb_build_object('input_tokens',p_input_tokens,'output_tokens',p_output_tokens,
+        'web_search_calls',p_search_calls,'provider_reference',p_provider_reference));
+  UPDATE public.agent_budget_reservations SET state='settled',updated_at=now() WHERE id=v_res.id;
+  UPDATE public.agent_runs SET status='succeeded',input_tokens=p_input_tokens,output_tokens=p_output_tokens,
+    cost_microusd=v_cost,error='Settled by operator reconciliation',finished_at=now() WHERE id=v_res.run_id;
+  RETURN v_cost;
+END
+$reconcile_usage$;
+
 CREATE OR REPLACE FUNCTION public.agent_budget_reconcile_no_charge(
   p_reservation_id BIGINT,p_confirmation_reference TEXT,p_idempotency_key TEXT
 ) RETURNS BOOLEAN
@@ -382,6 +438,9 @@ BEGIN
     RAISE EXCEPTION 'operator confirmation required for no-charge reconciliation' USING ERRCODE='42501';
   END IF;
   SELECT * INTO v_res FROM public.agent_budget_reservations WHERE id=p_reservation_id FOR UPDATE;
+  IF FOUND AND v_res.state='released' AND EXISTS (SELECT 1 FROM public.agent_budget_ledger WHERE reservation_id=v_res.id AND event_key='reconcile:'||p_idempotency_key) THEN
+    RETURN true;
+  END IF;
   IF NOT FOUND OR v_res.state<>'unknown' THEN
     RAISE EXCEPTION 'only unknown reservations can be reconciled' USING ERRCODE='55000';
   END IF;
@@ -399,12 +458,14 @@ ALTER FUNCTION public.agent_budget_reserve(BIGINT,TEXT,TEXT,TEXT,INTEGER,INTEGER
 ALTER FUNCTION public.agent_budget_settle(BIGINT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) OWNER TO agent_hq_budget_owner;
 ALTER FUNCTION public.agent_budget_release(BIGINT,TEXT,TEXT) OWNER TO agent_hq_budget_owner;
 ALTER FUNCTION public.agent_budget_mark_unknown(BIGINT,TEXT,TEXT) OWNER TO agent_hq_budget_owner;
+ALTER FUNCTION public.agent_budget_reconcile_usage(BIGINT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) OWNER TO agent_hq_budget_owner;
 ALTER FUNCTION public.agent_budget_reconcile_no_charge(BIGINT,TEXT,TEXT) OWNER TO agent_hq_budget_owner;
 
 REVOKE ALL ON FUNCTION public.agent_budget_reserve(BIGINT,TEXT,TEXT,TEXT,INTEGER,INTEGER,INTEGER,INTEGER,TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.agent_budget_settle(BIGINT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.agent_budget_release(BIGINT,TEXT,TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.agent_budget_mark_unknown(BIGINT,TEXT,TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.agent_budget_reconcile_usage(BIGINT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.agent_budget_reconcile_no_charge(BIGINT,TEXT,TEXT) FROM PUBLIC;
 
 DO $acl$
@@ -434,4 +495,5 @@ BEGIN
   REVOKE UPDATE (status,input_tokens,output_tokens,cost_microusd,error,finished_at) ON public.agent_runs FROM agent_supervisor,agent_operator;
 END
 $run_revoke$;
+GRANT EXECUTE ON FUNCTION public.agent_budget_reconcile_usage(BIGINT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) TO agent_operator;
 GRANT EXECUTE ON FUNCTION public.agent_budget_reconcile_no_charge(BIGINT,TEXT,TEXT) TO agent_operator;
