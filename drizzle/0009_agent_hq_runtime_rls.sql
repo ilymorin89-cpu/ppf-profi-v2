@@ -110,7 +110,7 @@ DO $operator_connect$ BEGIN
   EXECUTE format('GRANT CONNECT ON DATABASE %I TO agent_operator',current_database());
 END $operator_connect$;
 GRANT USAGE ON SCHEMA public TO agent_operator;
-GRANT EXECUTE ON FUNCTION public.agent_role_for_session() TO agent_operator;
+GRANT EXECUTE ON FUNCTION public.agent_role_for_session() TO agent_operator,agent_supervisor;
 
 -- The function owner receives only the reads needed by the SECURITY DEFINER helpers.
 ALTER TABLE public.agent_tasks ENABLE ROW LEVEL SECURITY;
@@ -125,6 +125,9 @@ ALTER TABLE public.agent_approvals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.agent_approvals FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.agent_task_access ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.agent_task_access FORCE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS budget_read_only ON public.agent_budget_config;
+CREATE POLICY budget_read_only ON public.agent_budget_config FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS task_fn_owner_read ON public.agent_tasks;
 CREATE POLICY task_fn_owner_read ON public.agent_tasks FOR SELECT TO agent_hq_runtime_fn_owner USING (true);
