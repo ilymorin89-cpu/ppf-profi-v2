@@ -416,6 +416,27 @@ test("Agent HQ trusted budget tables and run accounting are inaccessible to work
     await assert.rejects(seo`SELECT * FROM agent_budget_reservations`,e=>e.code==="42501");
     await assert.rejects(seo`SELECT * FROM agent_budget_ledger`,e=>e.code==="42501");
     await assert.rejects(seo`SELECT * FROM agent_budget_settlements`,e=>e.code==="42501");
+    await assert.rejects(seo`UPDATE agent_budget_ledger SET amount_microusd=0`,e=>e.code==="42501");
+    await assert.rejects(seo`DELETE FROM agent_budget_ledger`,e=>e.code==="42501");
+    await assert.rejects(seo`UPDATE agent_budget_settlements SET actual_cost_microusd=0`,e=>e.code==="42501");
+    const budgetFunctions=await admin`SELECT p.proname,r.rolname AS owner,p.prosecdef,p.proconfig
+      FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+      JOIN pg_roles r ON r.oid=p.proowner
+      WHERE n.nspname='public' AND p.proname IN
+        ('agent_budget_reserve','agent_budget_settle','agent_budget_release',
+         'agent_budget_mark_unknown','agent_budget_reconcile_usage','agent_budget_reconcile_no_charge')`;
+    assert.equal(budgetFunctions.length,6);
+    assert.ok(budgetFunctions.every(fn=>fn.owner==="agent_hq_budget_owner" && fn.prosecdef &&
+      Array.isArray(fn.proconfig) && fn.proconfig.some(value=>value.startsWith("search_path=pg_catalog"))));
+    const [runtimeExec]=await admin`SELECT has_function_privilege('agent_seo',
+      'public.agent_budget_reserve(bigint,text,text,text,integer,integer,integer,integer,text)','EXECUTE') AS allowed`;
+    assert.equal(runtimeExec.allowed,true);
+    const [operatorReconcile]=await admin`SELECT has_function_privilege('agent_operator',
+      'public.agent_budget_reconcile_usage(bigint,integer,integer,integer,text,text)','EXECUTE') AS allowed`;
+    assert.equal(operatorReconcile.allowed,true);
+    const [workerReconcile]=await admin`SELECT has_function_privilege('agent_seo',
+      'public.agent_budget_reconcile_usage(bigint,integer,integer,integer,text,text)','EXECUTE') AS allowed`;
+    assert.equal(workerReconcile.allowed,false);
     const [owner]=await admin`SELECT rolcanlogin,rolsuper,rolcreatedb,rolcreaterole,rolinherit,rolbypassrls
       FROM pg_roles WHERE rolname='agent_hq_budget_owner'`;
     assert.ok(owner);
