@@ -96,7 +96,7 @@ BEGIN
     'agent_copywriter','agent_designer','agent_image_generator','agent_storyteller',
     'agent_community_manager','agent_content_seo','agent_ads_manager','agent_trend_scout',
     'agent_auto_news_editor','agent_auto_law_monitor','agent_fact_checker',
-    'agent_seo','agent_qa_security','agent_coordinator'
+    'agent_seo','agent_qa_security','agent_coordinator','agent_supervisor'
   ] LOOP
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_role_for_session() TO %I',role_name);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_has_task_access(BIGINT) TO %I',role_name);
