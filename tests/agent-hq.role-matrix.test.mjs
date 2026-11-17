@@ -11,6 +11,12 @@ test("every Agent HQ worker login sees only its own role and cannot forge messag
   assert.notEqual(ownerUrl, process.env.DATABASE_URL, "Test database must not equal DATABASE_URL.");
   const owner = postgres(ownerUrl, { max: 2, idle_timeout: 5 });
   const marker = randomUUID();
+  const [fnOwner] = await owner`SELECT rolcanlogin,rolbypassrls FROM pg_roles WHERE rolname='agent_hq_fn_owner_ci'`;
+  assert.ok(fnOwner, "Trusted aggregate must have a dedicated CI function owner.");
+  assert.equal(fnOwner.rolcanlogin, false, "Function owner must not be a LOGIN.");
+  assert.equal(fnOwner.rolbypassrls, false, "Function owner must not bypass RLS.");
+  const [membership] = await owner`SELECT COUNT(*)::int AS count FROM pg_auth_members WHERE roleid='agent_hq_fn_owner_ci'::regrole`;
+  assert.equal(membership.count, 0, "Runtime roles must not be members of the function owner.");
   const taskIds = [];
   const idByRole = new Map();
   const messageKeys = [];
