@@ -11,7 +11,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const runNode = (script, args = []) => spawnSync(process.execPath, [script, ...args], {
   cwd: root,
   encoding: "utf8",
-  env: { ...process.env, DATABASE_URL: databaseUrl }
+  env: { ...process.env, DATABASE_URL: databaseUrl, AGENT_HQ_APPROVER_UIDS: String(process.getuid?.() ?? "") }
 });
 
 test("Agent HQ supervisor executes the real parent → QA → consolidation lifecycle", async t => {
@@ -120,19 +120,19 @@ test("Agent HQ approval CLI lists, approves and rejects pending requests exactly
     assert.ok(listed.stdout.includes(String(approvalIds[0])));
     assert.ok(listed.stdout.includes(String(approvalIds[1])));
 
-    const approved = runNode("scripts/agent-hq-bus.mjs", ["approve", String(approvalIds[0]), "test-owner", "approved in disposable test"]);
+    const approved = runNode("scripts/agent-hq-bus.mjs", ["approve", String(approvalIds[0]), "approved in disposable test"]);
     assert.equal(approved.status, 0, approved.stderr || approved.stdout);
     assert.match(approved.stdout, /"status": "approved"/);
-    const rejected = runNode("scripts/agent-hq-bus.mjs", ["reject", String(approvalIds[1]), "test-owner", "rejected in disposable test"]);
+    const rejected = runNode("scripts/agent-hq-bus.mjs", ["reject", String(approvalIds[1]), "rejected in disposable test"]);
     assert.equal(rejected.status, 0, rejected.stderr || rejected.stdout);
     assert.match(rejected.stdout, /"status": "rejected"/);
 
-    const secondDecision = runNode("scripts/agent-hq-bus.mjs", ["approve", String(approvalIds[0]), "test-owner", "must fail"]);
+    const secondDecision = runNode("scripts/agent-hq-bus.mjs", ["approve", String(approvalIds[0]), "must fail"]);
     assert.notEqual(secondDecision.status, 0, "A decided approval must not be decided again.");
     const rows = await sql`SELECT id,status,decided_by FROM agent_approvals WHERE id = ANY(${approvalIds}::bigint[]) ORDER BY id`;
     assert.equal(rows.find(row => String(row.id) === String(approvalIds[0])).status, "approved");
     assert.equal(rows.find(row => String(row.id) === String(approvalIds[1])).status, "rejected");
-    assert.ok(rows.every(row => row.decided_by === "test-owner"));
+    assert.ok(rows.every(row => row.decided_by === `uid:${process.getuid()}`));
   } finally {
     if (approvalIds.length) await sql`DELETE FROM agent_approvals WHERE id = ANY(${approvalIds}::bigint[])`;
     if (taskIds.length) await sql`DELETE FROM agent_tasks WHERE id = ANY(${taskIds}::bigint[])`;
