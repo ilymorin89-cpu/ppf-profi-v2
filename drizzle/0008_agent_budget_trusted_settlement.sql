@@ -59,7 +59,7 @@ REVOKE ALL ON public.agent_budget_reservations,public.agent_budget_ledger,public
 REVOKE ALL ON SEQUENCE public.agent_budget_reservations_id_seq,public.agent_budget_ledger_id_seq,public.agent_budget_settlements_id_seq FROM PUBLIC;
 GRANT USAGE,SELECT ON SEQUENCE public.agent_runs_id_seq,public.agent_budget_reservations_id_seq,public.agent_budget_ledger_id_seq,public.agent_budget_settlements_id_seq TO agent_hq_budget_owner;
 
-GRANT USAGE ON SCHEMA public TO agent_hq_budget_owner;
+GRANT USAGE,CREATE ON SCHEMA public TO agent_hq_budget_owner;
 GRANT SELECT ON public.agent_tasks,public.agent_budget_config TO agent_hq_budget_owner;
 GRANT UPDATE (status,lease_owner,lease_until) ON public.agent_tasks TO agent_hq_budget_owner;
 GRANT SELECT,INSERT,UPDATE ON public.agent_runs TO agent_hq_budget_owner;
@@ -465,6 +465,7 @@ ALTER FUNCTION public.agent_budget_release(BIGINT,TEXT,TEXT) OWNER TO agent_hq_b
 ALTER FUNCTION public.agent_budget_mark_unknown(BIGINT,TEXT,TEXT) OWNER TO agent_hq_budget_owner;
 ALTER FUNCTION public.agent_budget_reconcile_usage(BIGINT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) OWNER TO agent_hq_budget_owner;
 ALTER FUNCTION public.agent_budget_reconcile_no_charge(BIGINT,TEXT,TEXT) OWNER TO agent_hq_budget_owner;
+REVOKE CREATE ON SCHEMA public FROM agent_hq_budget_owner;
 
 REVOKE ALL ON FUNCTION public.agent_budget_reserve(BIGINT,TEXT,TEXT,TEXT,INTEGER,INTEGER,INTEGER,INTEGER,TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.agent_budget_settle(BIGINT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) FROM PUBLIC;
