@@ -65,12 +65,21 @@ function validate(group) {
   if (missing.length) throw new Error("Missing required settings: " + missing.join(", "));
   const identities = services.map(service => {
     const key = roleEnv[service];
-    let username;
-    try { username = new URL(process.env[key]).username; }
+    let parsed;
+    try { parsed = new URL(process.env[key]); }
     catch { throw new Error(`${key} must be a valid PostgreSQL URL.`); }
+    const username = parsed.username;
     if (!username) throw new Error(`${key} must include a PostgreSQL login.`);
     if (username !== auditedLogins[service]) {
       throw new Error(`${key} must use the dedicated login ${auditedLogins[service]}; shared or elevated database identities are forbidden.`);
+    }
+    const host = parsed.hostname.replace(/^\\[|\\]$/g, "");
+    if (![ "localhost", "127.0.0.1", "::1", "host.docker.internal", "postgres" ].includes(host)) {
+      throw new Error(`${key} must target a local disposable PostgreSQL host; remote database hosts are forbidden.`);
+    }
+    const databaseName = decodeURIComponent(parsed.pathname.replace(/^\\/+/, ""));
+    if (databaseName !== "agent_hq_test") {
+      throw new Error(`${key} must target the disposable database named agent_hq_test.`);
     }
     return [service, username];
   });
