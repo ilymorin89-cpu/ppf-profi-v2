@@ -49,6 +49,10 @@ jobs:
           --health-retries 10
     env:
       AGENT_HQ_TEST_DATABASE_URL: postgres://agent_test:agent_test@localhost:5432/agent_hq_test
+      AGENT_HQ_ROLE_TEST_URL_SEO: postgres://agent_seo:ci_agent_seo@localhost:5432/agent_hq_test
+      AGENT_HQ_ROLE_TEST_URL_QA: postgres://agent_qa_security:ci_agent_qa@localhost:5432/agent_hq_test
+      AGENT_HQ_ROLE_TEST_URL_COORDINATOR: postgres://agent_coordinator:ci_agent_coordinator@localhost:5432/agent_hq_test
+      AGENT_HQ_ROLE_TEST_URL_SUPERVISOR: postgres://agent_supervisor:ci_agent_supervisor@localhost:5432/agent_hq_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -62,6 +66,7 @@ jobs:
           psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0004_agent_budget.sql
           psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0005_agent_approval_idempotency.sql
           psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0006_agent_web_search_budget.sql
+          psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/agent-hq-role-isolation.sql
       - name: Check Agent HQ JavaScript syntax
         run: |
           node --check scripts/agent-hq-bus.mjs
