@@ -56,7 +56,8 @@ AS $snapshot$
           AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole AND NOT rolinherit AND NOT rolbypassrls),
       'safe_function_owners',count(*) FILTER (
         WHERE rolname IN ('agent_hq_budget_owner','agent_hq_runtime_fn_owner','agent_hq_monitor_owner')
-          AND NOT rolcanlogin AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole AND NOT rolbypassrls),
+          AND NOT rolcanlogin AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole
+          AND NOT rolinherit AND NOT rolbypassrls),
       'login_memberships',(SELECT count(*) FROM pg_auth_members m
         JOIN pg_roles member ON member.oid=m.member
         WHERE member.rolname = ANY(ARRAY[
