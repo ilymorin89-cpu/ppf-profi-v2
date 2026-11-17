@@ -58,8 +58,10 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
       VALUES (${qaTask.id},${randomUUID()},'qa_security','seo','question','QA to SEO',${"m-" + marker + "-qa"}) RETURNING id`;
     const seoInbox = await seo`SELECT id FROM agent_messages WHERE id IN (${seoMessage.id},${qaMessage.id})`;
     const qaInbox = await qa`SELECT id FROM agent_messages WHERE id IN (${seoMessage.id},${qaMessage.id})`;
-    assert.deepEqual(seoInbox.map(row => String(row.id)), [String(qaMessage.id)]);
-    assert.deepEqual(qaInbox.map(row => String(row.id)), [String(seoMessage.id)]);
+    assert.equal(seoInbox.length, 1);
+    assert.equal(String(seoInbox[0].id), String(qaMessage.id));
+    assert.equal(qaInbox.length, 1);
+    assert.equal(String(qaInbox[0].id), String(seoMessage.id));
     await assert.rejects(
       seo`INSERT INTO agent_messages (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
         VALUES (${seoTask.id},${randomUUID()},'qa_security','seo','status','forged',${"m-" + marker + "-forged"})`,
@@ -72,8 +74,10 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
       VALUES (${qaTask.id},'qa_security','qa-ci','test','test','succeeded') RETURNING id`;
     const seoRuns = await seo`SELECT id FROM agent_runs WHERE id IN (${seoRun.id},${qaRun.id})`;
     const qaRuns = await qa`SELECT id FROM agent_runs WHERE id IN (${seoRun.id},${qaRun.id})`;
-    assert.deepEqual(seoRuns.map(row => String(row.id)), [String(seoRun.id)]);
-    assert.deepEqual(qaRuns.map(row => String(row.id)), [String(qaRun.id)]);
+    assert.equal(seoRuns.length, 1);
+    assert.equal(String(seoRuns[0].id), String(seoRun.id));
+    assert.equal(qaRuns.length, 1);
+    assert.equal(String(qaRuns[0].id), String(qaRun.id));
     const foreignRunUpdate = await seo`UPDATE agent_runs SET status='failed' WHERE id=${qaRun.id} RETURNING id`;
     assert.equal(foreignRunUpdate.length, 0);
 
@@ -82,7 +86,8 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
     const [qaApproval] = await admin`INSERT INTO agent_approvals (task_id,action,requested_by,payload,status)
       VALUES (${qaTask.id},'other','qa_security','{"reason":"test"}'::jsonb,'pending') RETURNING id`;
     const seoApprovals = await seo`SELECT id FROM agent_approvals WHERE id IN (${seoApproval.id},${qaApproval.id})`;
-    assert.deepEqual(seoApprovals.map(row => String(row.id)), [String(seoApproval.id)]);
+    assert.equal(seoApprovals.length, 1);
+    assert.equal(String(seoApprovals[0].id), String(seoApproval.id));
     await assert.rejects(
       seo`INSERT INTO agent_approvals (task_id,action,requested_by,payload,status)
         VALUES (${seoTask.id},'other','qa_security','{}'::jsonb,'pending')`,
