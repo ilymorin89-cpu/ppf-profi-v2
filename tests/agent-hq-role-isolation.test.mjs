@@ -42,6 +42,22 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
       error => error.code === "42501",
       "Worker cannot claim tasks under an environment-supplied or forged worker ID"
     );
+    await assert.rejects(
+      seo`SELECT * FROM public.agent_task_claim('test-coordinator')`,
+      error => error.code === "42501",
+      "Worker cannot impersonate another valid registered worker principal"
+    );
+    await assert.rejects(
+      seo`INSERT INTO public.agent_worker_principals(login_role,role,worker_id)
+        VALUES ('agent_fake','seo','fake-worker')`,
+      error => error.code === "42501",
+      "Worker cannot self-register a database identity"
+    );
+    await assert.rejects(
+      seo`UPDATE public.agent_worker_principals SET worker_id='spoofed' WHERE login_role='agent_seo'`,
+      error => error.code === "42501",
+      "Worker cannot rewrite its authenticated identity"
+    );
 
     [seoTask] = await admin`INSERT INTO agent_tasks (assigned_role,title,objective,expected_output,created_by)
       VALUES ('seo',${"SEO " + marker},'SEO test','Evidence','integration-test') RETURNING id`;
@@ -955,7 +971,7 @@ test("Agent HQ SECURITY DEFINER helpers use a dedicated NOLOGIN non-BYPASSRLS ow
       WHERE n.nspname='public'
         AND p.proname IN ('agent_has_task_access','agent_can_grant_task_access',
           'agent_is_valid_coordinator_parent','agent_role_for_session',
-          'agent_can_insert_own_artifact')
+          'agent_can_insert_own_artifact','agent_worker_id_for_session')
         AND has_function_privilege('public', p.oid, 'EXECUTE')
     `;
     assert.equal(publicHelperExec.length, 0, "PUBLIC must not execute any SECURITY DEFINER helper");
