@@ -20,13 +20,18 @@ test("Agent HQ bus global commands fail closed without a dedicated authorization
   for (const [command, args] of [
     ["enqueue", ["seo", "Unsafe task", "Must not enqueue through broad CLI"]],
     ["status", []],
-    ["approvals", []],
     ["recover", []]
   ]) {
     const result = runBus([command, ...args], isolatedUnusedUrl);
     assert.notEqual(result.status, 0, command + " must remain disabled");
     assert.match(result.stderr, /disabled until a dedicated least-privilege authorization path/i);
   }
+});
+
+test("Agent HQ bus approval inbox requires the separate operator login", () => {
+  const result = runBus(["approvals"], "postgres://unused:unused@127.0.0.1:1/agent_hq_test");
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /AGENT_HQ_OPERATOR_DATABASE_URL is required/i);
 });
 
 test("Agent HQ bus rejects a requested role that differs from authenticated PostgreSQL LOGIN", {
