@@ -103,7 +103,10 @@ function runProcess(role, script, fixture) {
     AGENT_MAX_OUTPUT_TOKENS: "128",
     GITHUB_TOKEN: "",
     AGENT_GITHUB_REPOSITORY: "",
-    ...(fixture ? { AGENT_HQ_TEST_RESPONSES_JSON: JSON.stringify(fixture) } : {})
+    ...(fixture ? { AGENT_HQ_TEST_RESPONSES_JSON: JSON.stringify(fixture) } : {}),
+    ...(role === "qa_security"
+      ? { AGENT_HQ_TEST_EXPECT_INPUT_JSON: JSON.stringify(["SEO_E2E_EVIDENCE"]) }
+      : {})
   };
 
   const preflight = spawnSync(process.execPath, ["scripts/agent-hq-test-preflight.mjs"], {
@@ -175,6 +178,9 @@ try {
   assert.ok(delegated, "Coordinator must create an actual SEO child task.");
   assert.equal(String(delegated.parent_task_id), String(parentId));
   assert.ok(["queued","claimed","running","done","blocked"].includes(delegated.status));
+  const [parentAfterCoordinator] = await sql`SELECT status FROM public.agent_tasks WHERE id=${parentId}`;
+  assert.equal(parentAfterCoordinator?.status, "review",
+    "Coordinator must hand the parent task to Supervisor in review state.");
 
   // 2. SEO runs under its own PostgreSQL LOGIN and persists an evidence artifact.
   runProcess("seo", "scripts/agent-hq-worker.mjs", fixtures.seo);
@@ -226,6 +232,18 @@ try {
       AND to_role='coordinator' AND kind='objection' ORDER BY id DESC LIMIT 1`;
   assert.match(qaMessage?.body || "", /SEO_E2E_EVIDENCE|VERDICT:\s*PASS/,
     "QA must send an explicit verdict message to Coordinator.");
+
+  // The receiving Coordinator must be able to read the QA message under its own LOGIN.
+  const coordinatorDb = postgres(roleUrls.coordinator, { max: 1, connect_timeout: 10 });
+  try {
+    const [coordinatorInbox] = await coordinatorDb`SELECT body FROM public.agent_messages
+      WHERE task_id=${qaTask.id} AND from_role='qa_security'
+        AND to_role='coordinator' AND kind='objection' ORDER BY id DESC LIMIT 1`;
+    assert.match(coordinatorInbox?.body || "", /SEO_E2E_EVIDENCE|VERDICT:\\s*PASS/,
+      "Coordinator's authenticated inbox must contain the QA verdict.");
+  } finally {
+    await coordinatorDb.end({ timeout: 5 });
+  }
 
   // 5. Supervisor reads the QA verdict and consolidates the parent task.
   runProcess("supervisor", "scripts/agent-hq-supervisor.mjs");
