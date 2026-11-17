@@ -133,4 +133,11 @@ The disposable CI harness now implements and exercises:
 
 The E2E test now executes actual coordinator, SEO, QA and supervisor processes using their separate CI PostgreSQL logins. Responses API output is deterministic and mocked in the test process; no HTTP request, API key, model spend or web search occurs. The test validates delegation, specialist completion, supervisor-issued QA access, QA PASS, and final consolidation.
 
+The lifecycle test suite was extended in PR #94 and merged into this branch. It now additionally verifies:
+- repeated supervisor passes do not create duplicate QA tasks;
+- a completed QA task with no explicit PASS/REVISE verdict blocks the parent;
+- expired worker leases are recovered and lease ownership is cleared.
+
+The PR #94 CI run (#326) passed both the Agent HQ integration/syntax job and the website build, including disposable PostgreSQL migrations, integration tests, Docker Compose validation and runtime container build.
+
 **Important limits:** this is still a CI-only authorization harness, not a deployable runtime migration. The test helper functions are owned by the disposable CI database owner; production must use a dedicated non-login, narrowly privileged function owner with fixed search_path and reviewed grants. Only the four core identities above are currently exercised; the full specialist roster, operator approval identity, all worker/bus commands, column-by-column lifecycle transitions, DDL/sequence/unknown-login tests and production-grade function ownership remain open. Do not copy this harness to a live database.
