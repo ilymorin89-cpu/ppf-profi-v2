@@ -342,14 +342,12 @@ test("Agent HQ blocks retry and retains reservation after ambiguous provider out
       VALUES('seo',${"ambiguous provider outcome "+marker},'Test ambiguous billing outcome',
         'A non-empty result','integration-test') RETURNING id`;
     taskId=task.id;
-    const workerId="seo-ambiguous-outcome";
-
     const child=spawnSync(process.execPath,["scripts/agent-hq-worker.mjs","--once"],{
       cwd:path.resolve(path.dirname(fileURLToPath(import.meta.url)),".."),
       encoding:"utf8",
       env:{
         ...process.env,NODE_ENV:"test",DATABASE_URL:roleUrls.seo,AGENT_ROLE:"seo",
-        AGENT_WORKER_ID:workerId,OPENAI_API_KEY:"test-key-never-used",
+        AGENT_WORKER_ID:"seo-ambiguous-outcome",OPENAI_API_KEY:"test-key-never-used",
         AGENT_MODEL:"gpt-4.1-mini",AGENT_WEB_SEARCH_ENABLED:"false",
         AGENT_HQ_TEST_RESPONSES_JSON:JSON.stringify({
           __test_provider_outcome:"ambiguous",
@@ -489,6 +487,9 @@ test("Agent HQ reservation and settlement are idempotent and bound to the origin
       ${first.reservation_id},${workerId},1000,500,0,${"settle-"+marker},'provider-test-ref') AS cost`;
     assert.equal(String(repeat.cost),String(settled.cost));
     await assert.rejects(seo`SELECT agent_budget_settle(
+      ${first.reservation_id},${workerId},1000,500,0,${"settle-"+marker},'different-provider-ref')`,
+      e=>e.code==="23505");
+    await assert.rejects(seo`SELECT agent_budget_settle(
       ${first.reservation_id},${workerId},1001,500,0,${"settle-other-"+marker},'provider-test-ref')`,
       e=>e.code==="23505");
     const [counts]=await admin`SELECT
@@ -545,6 +546,9 @@ test("Agent HQ releases a reservation only for its original worker and idempoten
       ${reservation.reservation_id},${workerId},'provider call not started',${"release-"+marker}) AS ok`;
     assert.equal(repeat.ok,true);
     await assert.rejects(seo`SELECT agent_budget_release(
+      ${reservation.reservation_id},${workerId},'different reason',${"release-"+marker})`,
+      e=>e.code==="23505");
+    await assert.rejects(seo`SELECT agent_budget_release(
       ${reservation.reservation_id},${workerId},'different reason',${"release-other-"+marker})`,
       e=>e.code==="23505");
     const [state]=await admin`SELECT state FROM agent_budget_reservations WHERE id=${reservation.reservation_id}`;
@@ -600,6 +604,9 @@ test("Agent HQ operator reconciles an unknown reservation exactly once after lea
     const [repeat]=await operator`SELECT agent_budget_reconcile_usage(
       ${reservation.reservation_id},1000,500,0,'provider-usage-confirmed',${"reconcile-"+marker}) AS cost`;
     assert.equal(String(repeat.cost),String(cost.cost));
+    await assert.rejects(operator`SELECT agent_budget_reconcile_usage(
+      ${reservation.reservation_id},1000,500,0,'different-provider-reference',${"reconcile-"+marker}) AS cost`,
+      e=>e.code==="23505");
     const [state]=await admin`SELECT state FROM agent_budget_reservations WHERE id=${reservation.reservation_id}`;
     assert.equal(state.state,"settled");
     const [run]=await admin`SELECT status,input_tokens,output_tokens,cost_microusd FROM agent_runs WHERE id=${reservation.run_id}`;
@@ -719,8 +726,15 @@ test("Agent HQ operator can reconcile a reservation with confirmed zero provider
     taskId=task.id;
     const [reservation]=await seo`SELECT * FROM agent_budget_reserve(
       ${taskId},${workerId},'test_stub','test-model',10000,1024,1,0,${"no-charge-reserve-"+marker})`;
-    await seo`SELECT agent_budget_mark_unknown(
-      ${reservation.reservation_id},${workerId},'provider outcome ambiguous',${"no-charge-unknown-"+marker})`;
+    const [unknownFirst]=await seo`SELECT agent_budget_mark_unknown(
+      ${reservation.reservation_id},${workerId},'provider outcome ambiguous',${"no-charge-unknown-"+marker}) AS ok`;
+    const [unknownRepeat]=await seo`SELECT agent_budget_mark_unknown(
+      ${reservation.reservation_id},${workerId},'provider outcome ambiguous',${"no-charge-unknown-"+marker}) AS ok`;
+    assert.equal(unknownFirst.ok,true);
+    assert.equal(unknownRepeat.ok,true);
+    await assert.rejects(seo`SELECT agent_budget_mark_unknown(
+      ${reservation.reservation_id},${workerId},'different provider outcome',${"no-charge-unknown-"+marker})`,
+      e=>e.code==="23505");
     await admin`UPDATE agent_tasks SET status='queued',lease_owner=NULL,lease_until=NULL WHERE id=${taskId}`;
     const [first]=await operator`SELECT agent_budget_reconcile_no_charge(
       ${reservation.reservation_id},'provider billing record confirms zero charge',${"no-charge-"+marker}) AS ok`;
@@ -728,6 +742,9 @@ test("Agent HQ operator can reconcile a reservation with confirmed zero provider
       ${reservation.reservation_id},'provider billing record confirms zero charge',${"no-charge-"+marker}) AS ok`;
     assert.equal(first.ok,true);
     assert.equal(repeat.ok,true);
+    await assert.rejects(operator`SELECT agent_budget_reconcile_no_charge(
+      ${reservation.reservation_id},'different confirmation evidence',${"no-charge-"+marker}) AS ok`,
+      e=>e.code==="23505");
     const [state]=await admin`SELECT state FROM agent_budget_reservations WHERE id=${reservation.reservation_id}`;
     assert.equal(state.state,"released");
     const [run]=await admin`SELECT status,cost_microusd FROM agent_runs WHERE id=${reservation.run_id}`;
@@ -944,6 +961,58 @@ test("Agent HQ SECURITY DEFINER helpers use a dedicated NOLOGIN non-BYPASSRLS ow
       WHERE c.relname IN ('agent_tasks','agent_task_access','agent_runs') AND c.relkind='r'`;
     assert.ok(tableOwners.every(row => row.owner !== "agent_hq_fn_owner_ci"),
       "Function owner must not own protected tables");
+  } finally {
+    await admin.end();
+  }
+});
+
+
+test("Agent HQ budget function owner has only the column privileges required by trusted routines", {
+  skip: !adminUrl
+}, async () => {
+  const admin=postgres(adminUrl,{max:1});
+  try {
+    const [privileges]=await admin`SELECT
+      has_table_privilege('agent_hq_budget_owner','public.agent_runs','SELECT') AS run_select,
+      has_table_privilege('agent_hq_budget_owner','public.agent_runs','INSERT') AS run_table_insert,
+      has_table_privilege('agent_hq_budget_owner','public.agent_runs','UPDATE') AS run_table_update,
+      has_table_privilege('agent_hq_budget_owner','public.agent_budget_reservations','UPDATE') AS reservation_table_update,
+      has_table_privilege('agent_hq_budget_owner','public.agent_budget_ledger','UPDATE') AS ledger_update,
+      has_table_privilege('agent_hq_budget_owner','public.agent_budget_ledger','DELETE') AS ledger_delete,
+      has_table_privilege('agent_hq_budget_owner','public.agent_budget_settlements','UPDATE') AS settlement_update,
+      has_table_privilege('agent_hq_budget_owner','public.agent_budget_settlements','DELETE') AS settlement_delete,
+      has_column_privilege('agent_hq_budget_owner','public.agent_runs','id','SELECT') AS run_select_id,
+      has_column_privilege('agent_hq_budget_owner','public.agent_runs','cost_microusd','SELECT') AS run_select_cost,
+      has_column_privilege('agent_hq_budget_owner','public.agent_runs','task_id','INSERT') AS run_insert_task,
+      has_column_privilege('agent_hq_budget_owner','public.agent_runs','cost_microusd','INSERT') AS run_insert_cost,
+      has_column_privilege('agent_hq_budget_owner','public.agent_runs','status','UPDATE') AS run_update_status,
+      has_column_privilege('agent_hq_budget_owner','public.agent_runs','cost_microusd','UPDATE') AS run_update_cost,
+      has_column_privilege('agent_hq_budget_owner','public.agent_runs','worker_id','UPDATE') AS run_update_worker,
+      has_column_privilege('agent_hq_budget_owner','public.agent_runs','provider','UPDATE') AS run_update_provider,
+      has_column_privilege('agent_hq_budget_owner','public.agent_budget_reservations','state','UPDATE') AS reservation_update_state,
+      has_column_privilege('agent_hq_budget_owner','public.agent_budget_reservations','updated_at','UPDATE') AS reservation_update_timestamp,
+      has_column_privilege('agent_hq_budget_owner','public.agent_budget_reservations','worker_id','UPDATE') AS reservation_update_worker,
+      has_column_privilege('agent_hq_budget_owner','public.agent_budget_reservations','reserved_microusd','UPDATE') AS reservation_update_amount`;
+    assert.equal(privileges.run_select,false);
+    assert.equal(privileges.run_table_insert,false);
+    assert.equal(privileges.run_table_update,false);
+    assert.equal(privileges.reservation_table_update,false);
+    assert.equal(privileges.ledger_update,false);
+    assert.equal(privileges.ledger_delete,false);
+    assert.equal(privileges.settlement_update,false);
+    assert.equal(privileges.settlement_delete,false);
+    assert.equal(privileges.run_select_id,true);
+    assert.equal(privileges.run_select_cost,false);
+    assert.equal(privileges.run_insert_task,true);
+    assert.equal(privileges.run_insert_cost,true);
+    assert.equal(privileges.run_update_status,true);
+    assert.equal(privileges.run_update_cost,true);
+    assert.equal(privileges.run_update_worker,false);
+    assert.equal(privileges.run_update_provider,false);
+    assert.equal(privileges.reservation_update_state,true);
+    assert.equal(privileges.reservation_update_timestamp,true);
+    assert.equal(privileges.reservation_update_worker,false);
+    assert.equal(privileges.reservation_update_amount,false);
   } finally {
     await admin.end();
   }
