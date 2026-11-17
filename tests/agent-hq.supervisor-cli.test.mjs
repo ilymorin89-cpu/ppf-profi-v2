@@ -168,12 +168,14 @@ test("Agent HQ runs coordinator → SEO → QA → supervisor under separate Pos
     assert.match(artifact.content, /VERDICT: PASS/);
   } finally {
     if (parentId) {
-      const relatedTasks = sql`SELECT id FROM agent_tasks WHERE parent_task_id=${parentId} UNION SELECT ${parentId}::bigint`;
       await sql`DELETE FROM agent_budget_ledger WHERE reservation_id IN
-        (SELECT id FROM agent_budget_reservations WHERE task_id IN (SELECT id FROM (${relatedTasks}) AS related))`;
+        (SELECT id FROM agent_budget_reservations WHERE task_id=${parentId}
+          OR task_id IN (SELECT id FROM agent_tasks WHERE parent_task_id=${parentId}))`;
       await sql`DELETE FROM agent_budget_settlements WHERE reservation_id IN
-        (SELECT id FROM agent_budget_reservations WHERE task_id IN (SELECT id FROM (${relatedTasks}) AS related))`;
-      await sql`DELETE FROM agent_budget_reservations WHERE task_id IN (SELECT id FROM (${relatedTasks}) AS related)`;
+        (SELECT id FROM agent_budget_reservations WHERE task_id=${parentId}
+          OR task_id IN (SELECT id FROM agent_tasks WHERE parent_task_id=${parentId}))`;
+      await sql`DELETE FROM agent_budget_reservations WHERE task_id=${parentId}
+        OR task_id IN (SELECT id FROM agent_tasks WHERE parent_task_id=${parentId})`;
       await sql`DELETE FROM agent_tasks WHERE parent_task_id=${parentId}`;
       await sql`DELETE FROM agent_tasks WHERE id=${parentId}`;
     }
