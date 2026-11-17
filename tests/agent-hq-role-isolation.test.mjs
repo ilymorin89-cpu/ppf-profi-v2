@@ -342,14 +342,17 @@ test("Agent HQ blocks retry and retains reservation after ambiguous provider out
       VALUES('seo',${"ambiguous provider outcome "+marker},'Test ambiguous billing outcome',
         'A non-empty result','integration-test') RETURNING id`;
     taskId=task.id;
+    const workerId="seo-ambiguous-outcome";
+
     const child=spawnSync(process.execPath,["scripts/agent-hq-worker.mjs","--once"],{
       cwd:path.resolve(path.dirname(fileURLToPath(import.meta.url)),".."),
       encoding:"utf8",
       env:{
         ...process.env,NODE_ENV:"test",DATABASE_URL:roleUrls.seo,AGENT_ROLE:"seo",
-        AGENT_WORKER_ID:"seo-ambiguous-outcome",OPENAI_API_KEY:"test-key-never-used",
+        AGENT_WORKER_ID:workerId,OPENAI_API_KEY:"test-key-never-used",
         AGENT_MODEL:"gpt-4.1-mini",AGENT_WEB_SEARCH_ENABLED:"false",
         AGENT_HQ_TEST_RESPONSES_JSON:JSON.stringify({
+          __test_provider_outcome:"ambiguous",
           output:[],usage:{input_tokens:0,output_tokens:0}
         })
       }
