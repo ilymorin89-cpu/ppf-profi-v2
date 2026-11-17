@@ -50,6 +50,14 @@ test("every Agent HQ worker login sees only its own role and cannot forge messag
       VALUES (${idByRole.get("seo")},'qa_security','qa_review'),
              (${idByRole.get("geo")},'coordinator','coordinator_oversight')`;
 
+    // The test-only SECURITY DEFINER aggregate is intentionally callable
+    // only by the disposable DB owner, never by runtime LOGINs.
+    const [trustedBudget] = await owner`SELECT daily_cost,monthly_cost
+      FROM public.agent_test_budget_totals()`;
+    assert.ok(Number(trustedBudget.daily_cost) >= 300,
+      "Trusted owner aggregate must include costs hidden by per-role RLS.");
+    assert.ok(Number(trustedBudget.monthly_cost) >= 300);
+
     for (const role of roles) {
       const suffix = "ROLE_" + role.toUpperCase();
       const url = process.env["AGENT_HQ_ROLE_TEST_URL_" + suffix];
@@ -73,12 +81,6 @@ test("every Agent HQ worker login sees only its own role and cannot forge messag
         const expectedSpend = role === "seo" ? 100 : role === "geo" ? 200 : 0;
         assert.equal(Number(visibleSpend.total), expectedSpend,
           role + " must not aggregate another role's hidden run cost.");
-        const [trustedBudget] = await sql`SELECT daily_cost,monthly_cost
-          FROM public.agent_test_budget_totals()`;
-        assert.ok(Number(trustedBudget.daily_cost) >= 300,
-          role + " must receive global spend totals only through the trusted aggregate function.");
-        assert.ok(Number(trustedBudget.monthly_cost) >= 300);
-
         const visible = await sql`SELECT id,assigned_role FROM agent_tasks
           WHERE id = ANY(${taskIds}::bigint[]) ORDER BY id`;
         const expectedVisibleIds = role === "qa_security"
