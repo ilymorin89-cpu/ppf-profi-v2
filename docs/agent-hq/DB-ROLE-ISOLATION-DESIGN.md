@@ -60,3 +60,11 @@ Run in CI against a fresh PostgreSQL service with at least two specialist logins
 ## Rollout boundary
 
 No changes to the existing Agent HQ database are authorized by this design. First implement and test the selected pattern in disposable CI PostgreSQL. Then review grants and migration ownership on a newly provisioned staging database. Only after successful tests and a separate explicit approval may any staging runtime be connected. Production website, production database default_db, Timeweb deployment, network, secrets, worker activation and spend remain out of scope.
+
+## Implementation sequence and operational rule
+
+Before adding a production-style privilege migration, complete the operation inventory and permission matrix in `POSTGRES-ROLE-PERMISSION-MATRIX.md`. The existing worker and supervisor use many direct SQL statements. A policy set is not ready merely because isolated SELECT/UPDATE examples pass.
+
+The CI acceptance harness must invoke the same worker/supervisor operations against role-specific logins. Use a deterministic injected Responses API client in tests so the full lifecycle is exercised without internet access, API keys or charges. Any database helper functions must have a dedicated non-login owner, fixed search_path, revoked PUBLIC execute and explicit argument validation.
+
+Do not enable RLS on an existing shared-login runtime database. Do not make the role-isolation harness itself a deployable migration. Do not provision roles, passwords or runtime URLs outside disposable CI as part of this phase.
