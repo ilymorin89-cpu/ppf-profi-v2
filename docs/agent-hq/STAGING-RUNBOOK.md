@@ -55,11 +55,11 @@ Expected initial state: `enabled = false` and all caps/prices, including the web
 
 ## 3. Configure secrets
 
-Create one root-owned environment file per worker role under `/etc/ppf-agent-hq`. Set permissions to `0640` and group `ppf-agent`.
+Create one root-owned environment file per worker role under `/etc/ppf-agent-hq`. Each role must use its own PostgreSQL LOGIN and its own connection URL; never reuse one shared runtime login for all agents. Compose variables are `AGENT_HQ_DATABASE_URL_COORDINATOR`, `AGENT_HQ_DATABASE_URL_COMMUNITY_MANAGER`, `AGENT_HQ_DATABASE_URL_QA_SECURITY`, `AGENT_HQ_DATABASE_URL_WEB_ENGINEER`, `AGENT_HQ_DATABASE_URL_SEO`, `AGENT_HQ_DATABASE_URL_ANALYTICS`, and `AGENT_HQ_DATABASE_URL_SUPERVISOR`. Set permissions to `0640` and group `ppf-agent`.
 
 Required variables:
 
-- `DATABASE_URL`: staging-only PostgreSQL URL.
+- `DATABASE_URL`: the staging-only PostgreSQL URL for this exact role's dedicated login. The coordinator, every specialist, QA and supervisor must not share a database login.
 - `OPENAI_API_KEY`: secret for this workload.
 - `AGENT_MODEL`: exact model identifier approved for staging.
 - `AGENT_ROLE`: one of `coordinator`, `web_engineer`, `seo`, `geo`, `growth`, `analytics`, `qa_security`, `vk_strategist`, `copywriter`, `designer`, `image_generator`, `storyteller`, `community_manager`, `content_seo`, `ads_manager`, `trend_scout`, `auto_news_editor`, `auto_law_monitor`, `fact_checker`.
@@ -149,6 +149,10 @@ sudo systemctl enable --now agent-hq-supervisor
 ```
 
 Do not enable all roles by default. Add specialists only when a test requires them. Review logs with `journalctl -u agent-hq-worker@coordinator -f` and `journalctl -u agent-hq-supervisor -f`. To stop staging, stop and disable each enabled worker instance and the supervisor before disabling the budget.
+
+## Database role isolation status
+
+The current branch contains a disposable-CI-only RLS harness at `tests/agent-hq-role-isolation.sql` and negative tests using distinct PostgreSQL logins. This proves the prototype policy pattern on a fresh test database only. It is not a production/staging migration, does not provision real role credentials, and does not yet grant the coordinator/QA/supervisor all of their final least-privilege workflow permissions. Do not connect the runtime to role-specific URLs or enable workers until a reviewed staging migration and end-to-end tests cover every table and operation. The compose variables are deliberately separate and default empty.
 
 ## Not included yet
 
