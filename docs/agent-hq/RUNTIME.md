@@ -5,7 +5,7 @@ This branch adds a PostgreSQL-backed task/message transport, lifecycle CLI and a
 ## Files
 - `drizzle/0003_agent_hq.sql`: durable tables for tasks, messages, runs, artifacts and approvals.
 - `drizzle/0004_agent_budget.sql`: fail-closed global daily, monthly and per-run spend limits plus model token pricing.
-- `scripts/agent-hq-bus.mjs`: enqueue tasks, exchange role-to-role messages, inspect inboxes, claim tasks, renew leases, complete/fail tasks and recover expired leases.
+- `scripts/agent-hq-bus.mjs`: enqueue tasks, exchange role-to-role messages, inspect inboxes, claim tasks, renew leases, complete/fail tasks and recover expired leases. Role-bearing CLI arguments are checked against the role allowlist. Approval decisions require the current OS UID to be included in `AGENT_HQ_APPROVER_UIDS`; the actor is derived from the UID, never accepted as free text.
 - `scripts/agent-hq-worker.mjs`: independent role process that claims tasks, calls the OpenAI Responses API, can use hosted web search with citations, optionally reads text files from one explicitly configured GitHub repository/branch (read-only), renews its lease, stores results and sends result/status messages. Workers can message other roles directly; only coordinator can create child tasks. Any role can submit a pending approval request for restricted actions; requesting permission never executes the action.
 - `scripts/agent-hq-supervisor.mjs`: watches coordinator parent tasks, waits for specialist children, creates an independent QA task and consolidates completed artifacts.
 - `package.json`: `npm run agent-hq -- <command>` convenience script.
@@ -52,6 +52,7 @@ After applying the migration to a disposable PostgreSQL test database, set `AGEN
 - No worker receives database credentials in prompts or messages.
 - External publishing, advertising spend, customer outreach, destructive database changes and production deployment must remain behind explicit approval records. The worker exposes `request_approval` to create a pending record and notify coordinator; it has no tool to approve or execute that request.
 - Apply least-privilege tool permissions per role; QA must be independent from the worker being reviewed.
+- The manual CLI's OS-UID approval gate is suitable only for a trusted local operator account. It is not a network authentication system. The database currently uses one configured connection identity across roles; application-level role checks do not provide database-enforced tenant isolation. Do not expose a multi-user dashboard or run untrusted role processes until per-role DB identities/RLS or narrowly scoped database procedures have been implemented and tested.
 
 ## Verification status
 The GitHub Actions workflow now provisions a disposable PostgreSQL 16 service, applies the two Agent HQ migrations, checks JavaScript syntax and runs the integration suite. The suite covers fail-closed budget defaults, concurrent exclusive claims, lease ownership, artifact completion, retry exhaustion and lease recovery. Check the PR's latest Actions run before treating the suite as passed. No production database connection or migration was made, no live task was created, and no worker process was launched. The public website and production database were not changed.
