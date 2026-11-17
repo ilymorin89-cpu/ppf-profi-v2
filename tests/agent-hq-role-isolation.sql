@@ -1,7 +1,7 @@
 -- Disposable CI-only least-privilege harness. NEVER apply to a live database.
 -- The CI database owner is the only seeding/cleanup identity.
 -- Keep the DO block's opening and closing dollar-quote delimiters identical.
-DO $ DECLARE role_name TEXT; BEGIN
+DO $roles$ DECLARE role_name TEXT; BEGIN
 
   FOREACH role_name IN ARRAY ARRAY['agent_web_engineer','agent_geo','agent_growth','agent_analytics','agent_vk_strategist','agent_copywriter','agent_designer','agent_image_generator','agent_storyteller','agent_community_manager','agent_content_seo','agent_ads_manager','agent_trend_scout','agent_auto_news_editor','agent_auto_law_monitor','agent_fact_checker'] LOOP
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname=role_name) THEN
@@ -60,7 +60,7 @@ GRANT USAGE,SELECT ON SEQUENCE agent_tasks_id_seq,agent_messages_id_seq,agent_ru
   TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
 
 -- Give every specialist the same narrow baseline; RLS below scopes rows by session_user.
-DO $ DECLARE role_name TEXT; BEGIN
+DO $roles$ DECLARE role_name TEXT; BEGIN
   FOREACH role_name IN ARRAY ARRAY['agent_web_engineer','agent_geo','agent_growth','agent_analytics','agent_vk_strategist','agent_copywriter','agent_designer','agent_image_generator','agent_storyteller','agent_community_manager','agent_content_seo','agent_ads_manager','agent_trend_scout','agent_auto_news_editor','agent_auto_law_monitor','agent_fact_checker'] LOOP
     EXECUTE format('GRANT CONNECT ON DATABASE agent_hq_test TO %I', role_name);
     EXECUTE format('GRANT USAGE ON SCHEMA public TO %I', role_name);
@@ -73,7 +73,7 @@ DO $ DECLARE role_name TEXT; BEGIN
     EXECUTE format('GRANT INSERT (task_id,action,requested_by,payload,status) ON agent_approvals TO %I', role_name);
     EXECUTE format('GRANT USAGE,SELECT ON SEQUENCE agent_tasks_id_seq,agent_messages_id_seq,agent_runs_id_seq,agent_artifacts_id_seq,agent_approvals_id_seq TO %I', role_name);
   END LOOP;
-END $;
+END $roles$;
 
 -- CI-only SECURITY DEFINER helper avoids recursive RLS evaluation between
 -- agent_tasks and agent_task_access. Production owner must be a dedicated,
@@ -177,13 +177,13 @@ GRANT EXECUTE ON FUNCTION public.agent_can_insert_own_artifact(BIGINT,TEXT)
   TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
 GRANT EXECUTE ON FUNCTION public.agent_role_for_session()
   TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
-DO $ DECLARE role_name TEXT; BEGIN
+DO $roles$ DECLARE role_name TEXT; BEGIN
   FOREACH role_name IN ARRAY ARRAY['agent_web_engineer','agent_geo','agent_growth','agent_analytics','agent_vk_strategist','agent_copywriter','agent_designer','agent_image_generator','agent_storyteller','agent_community_manager','agent_content_seo','agent_ads_manager','agent_trend_scout','agent_auto_news_editor','agent_auto_law_monitor','agent_fact_checker'] LOOP
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_role_for_session() TO %I', role_name);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_has_task_access(BIGINT) TO %I', role_name);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_can_insert_own_artifact(BIGINT,TEXT) TO %I', role_name);
   END LOOP;
-END $;
+END $roles$;
 
 ALTER TABLE agent_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_tasks FORCE ROW LEVEL SECURITY;
