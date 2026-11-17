@@ -79,6 +79,37 @@ test("launcher refuses live provider mode before starting Docker services", () =
   assert.match(result.stderr, /Worker start is restricted to no-spend test mode/);
 });
 
+const testModeEnv = {
+  ...allRoleEnv,
+  OPENAI_API_KEY: "test-no-provider-call",
+  AGENT_MODEL: "test-model",
+  AGENT_HQ_WORKERS_ENABLED: "true",
+  NODE_ENV: "test",
+  AGENT_HQ_TEST_RESPONSES_JSON: JSON.stringify({
+    id: "deterministic-fixture",
+    usage: { input_tokens: 1, output_tokens: 1 },
+    output: [{ type: "message", content: [{ type: "output_text", text: "test fixture" }] }]
+  })
+};
+
+test("launcher rejects remote PostgreSQL hosts even in test mode", () => {
+  const result = run(["check", "all"], {
+    ...testModeEnv,
+    AGENT_HQ_DATABASE_URL_GEO: "postgres://agent_geo:test@db.example.com:5432/agent_hq_test"
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /remote database hosts are forbidden/);
+});
+
+test("launcher rejects any database other than the disposable agent_hq_test", () => {
+  const result = run(["check", "all"], {
+    ...testModeEnv,
+    AGENT_HQ_DATABASE_URL_GEO: "postgres://agent_geo:test@127.0.0.1:5432/production"
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /disposable database named agent_hq_test/);
+});
+
 test("Docker Compose defines one isolated worker service for every role", () => {
   const compose = readFileSync(path.join(root, "docker-compose.yml"), "utf8");
   for (const role of [...allWorkerRoles,"supervisor"]) {
