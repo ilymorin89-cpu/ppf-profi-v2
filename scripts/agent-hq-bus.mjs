@@ -1,5 +1,7 @@
 import postgres from "postgres";
+import { readFileSync, statSync } from "node:fs";
 import { randomUUID } from "node:crypto";
+import { requireAgentRole, resolveApproverIdentity } from "./agent-hq-helpers.mjs";
 
 const url = process.env.DATABASE_URL;
 if (!url) {
@@ -22,7 +24,7 @@ function taskId(value) {
 async function main() {
   if (command === "enqueue") {
     const [role, title, objective] = args;
-    required(role, "role"); required(title, "title"); required(objective, "objective");
+    requireAgentRole(required(role, "role")); required(title, "title"); required(objective, "objective");
     const [task] = await sql`INSERT INTO agent_tasks (assigned_role,title,objective,expected_output,created_by)
       VALUES (${role},${title},${objective},'Evidence-backed result and next action','owner')
       RETURNING id,status,assigned_role,title,created_at`;
@@ -32,7 +34,7 @@ async function main() {
   if (command === "send") {
     const [from, to, rawTaskId, kind, ...bodyParts] = args;
     const body = bodyParts.join(" ");
-    required(from, "fromRole"); required(to, "toRole"); required(kind, "kind"); required(body, "message");
+    requireAgentRole(required(from, "fromRole"), "fromRole"); requireAgentRole(required(to, "toRole"), "toRole"); required(kind, "kind"); required(body, "message");
     const allowed = ["request","result","question","objection","handoff","approval_request","status"];
     if (!allowed.includes(kind)) throw new Error("Unsupported message kind");
     const id = rawTaskId === "-" ? null : taskId(rawTaskId);
@@ -44,14 +46,14 @@ async function main() {
     return;
   }
   if (command === "inbox") {
-    const role = required(args[0], "role");
+    const role = requireAgentRole(required(args[0], "role"));
     const rows = await sql`SELECT id,task_id,from_role,to_role,kind,body,evidence,created_at
       FROM agent_messages WHERE to_role=${role} ORDER BY created_at DESC LIMIT 50`;
     console.log(JSON.stringify(rows, null, 2));
     return;
   }
   if (command === "claim") {
-    const role = required(args[0], "role");
+    const role = requireAgentRole(required(args[0], "role"));
     const workerId = required(args[1], "workerId");
     const rows = await sql.begin(async tx => tx`
       WITH candidate AS (
@@ -138,6 +140,32 @@ async function main() {
     console.log(JSON.stringify(rows, null, 2));
     return;
   }
+  if (command === "approve" || command === "reject") {
+    const [rawId, ...noteParts] = args;
+    const id = taskId(rawId);
+    const uid = typeof process.getuid === "function" ? process.getuid() : undefined;
+    let allowedUids;
+    if (process.env.NODE_ENV === "test") {
+      allowedUids = process.env.AGENT_HQ_TEST_APPROVER_UIDS;
+    } else {
+      const allowlistPath = "/etc/ppf-agent-hq/approver-uids";
+      const metadata = statSync(allowlistPath);
+      if (metadata.uid !== 0 || (metadata.mode & 0o022) !== 0) {
+        throw new Error("Approver allowlist must be owned by root and not group/world writable");
+      }
+      allowedUids = readFileSync(allowlistPath, "utf8");
+    }
+    const actor = resolveApproverIdentity({ uid, allowedUids });
+    const note = noteParts.join(" ").slice(0, 4000);
+    const status = command === "approve" ? "approved" : "rejected";
+    const [approval] = await sql`UPDATE agent_approvals
+      SET status=${status},decided_by=${actor},decision_note=${note || null},decided_at=now()
+      WHERE id=${id} AND status='pending'
+      RETURNING id,task_id,action,status,decided_by,decision_note,decided_at`;
+    if (!approval) throw new Error("Approval not found or already decided");
+    console.log(JSON.stringify(approval, null, 2));
+    return;
+  }
   if (command === "recover") {
     const rows = await sql`UPDATE agent_tasks SET
       status=CASE WHEN attempts < max_attempts THEN 'queued' ELSE 'dead_letter' END,
@@ -151,6 +179,9 @@ async function main() {
 Commands:
   enqueue <role> <title> <objective>
   send <fromRole> <toRole> <taskId|-> <kind> <message>
+  approvals
+  approve <approvalId> [note] (requires root-owned /etc/ppf-agent-hq/approver-uids)
+  reject <approvalId> [note] (requires root-owned /etc/ppf-agent-hq/approver-uids)
   inbox <role>
   claim <role> <workerId>
   heartbeat <workerId> <taskId>

@@ -2,15 +2,22 @@ name: Agent HQ checks
 
 on:
   push:
-    branches: ["agent-hq-runtime-skeleton"]
+    branches: ["agent-hq-runtime-skeleton", "feat/vk-content-army", "agent-hq/enable-research-tools"]
     paths:
       - "scripts/agent-hq-*.mjs"
       - "tests/agent-hq*.mjs"
+      - "tests/agent-hq*.sql"
+      - "Dockerfile.agent-hq"
+      - "Dockerfile.agent-hq"
       - "drizzle/0003_agent_hq.sql"
       - "drizzle/0004_agent_budget.sql"
+      - "drizzle/0005_agent_approval_idempotency.sql"
+      - "drizzle/0006_agent_web_search_budget.sql"
+      - "drizzle/0007_agent_task_access.sql"
       - "docs/agent-hq/**"
       - "deploy/systemd/**"
       - "package.json"
+      - "package-lock.json"
       - ".github/workflows/agent-hq-checks.yml"
   pull_request:
     paths:
@@ -18,6 +25,9 @@ on:
       - "tests/agent-hq*.mjs"
       - "drizzle/0003_agent_hq.sql"
       - "drizzle/0004_agent_budget.sql"
+      - "drizzle/0005_agent_approval_idempotency.sql"
+      - "drizzle/0006_agent_web_search_budget.sql"
+      - "drizzle/0007_agent_task_access.sql"
       - "docs/agent-hq/**"
       - "deploy/systemd/**"
       - "package.json"
@@ -45,6 +55,10 @@ jobs:
           --health-retries 10
     env:
       AGENT_HQ_TEST_DATABASE_URL: postgres://agent_test:agent_test@localhost:5432/agent_hq_test
+      AGENT_HQ_ROLE_TEST_URL_SEO: postgres://agent_seo:ci_agent_seo@localhost:5432/agent_hq_test
+      AGENT_HQ_ROLE_TEST_URL_QA: postgres://agent_qa_security:ci_agent_qa@localhost:5432/agent_hq_test
+      AGENT_HQ_ROLE_TEST_URL_COORDINATOR: postgres://agent_coordinator:ci_agent_coordinator@localhost:5432/agent_hq_test
+      AGENT_HQ_ROLE_TEST_URL_SUPERVISOR: postgres://agent_supervisor:ci_agent_supervisor@localhost:5432/agent_hq_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -52,20 +66,31 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Reject high and critical dependency advisories
+        run: npm audit --audit-level=high
       - name: Apply Agent HQ migrations to disposable PostgreSQL
         run: |
           psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0003_agent_hq.sql
           psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0004_agent_budget.sql
+          psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0005_agent_approval_idempotency.sql
+          psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0006_agent_web_search_budget.sql
+          psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0007_agent_task_access.sql
+          psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/agent-hq-role-isolation.sql
       - name: Check Agent HQ JavaScript syntax
         run: |
           node --check scripts/agent-hq-bus.mjs
           node --check scripts/agent-hq-worker.mjs
           node --check scripts/agent-hq-supervisor.mjs
+          node --check scripts/agent-hq-launch.mjs
           node --check tests/agent-hq.integration.test.mjs
       - name: Run PostgreSQL integration tests
         run: npm run agent-hq:test
       - name: Verify systemd unit syntax
         run: systemd-analyze verify deploy/systemd/agent-hq-worker@.service deploy/systemd/agent-hq-supervisor.service
+      - name: Validate Docker Compose configuration
+        run: docker compose -f docker-compose.yml config --quiet
+      - name: Build Agent HQ runtime container (no deployment)
+        run: docker build --file Dockerfile.agent-hq --tag ppf-agent-hq:ci .
 
   website-build:
     runs-on: ubuntu-latest

@@ -1,0 +1,137 @@
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["node", "scripts/agent-hq-health.mjs"]
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL:-}
+    restart: unless-stopped
+
+  coordinator:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    environment:
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_COORDINATOR:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-}
+      AGENT_ROLE: coordinator
+      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
+      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-true}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
+      AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
+    restart: unless-stopped
+
+  community_manager:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    environment:
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_COMMUNITY_MANAGER:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-}
+      AGENT_ROLE: community_manager
+      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
+      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-true}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
+      AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
+    restart: unless-stopped
+
+  qa_security:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    environment:
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_QA_SECURITY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-}
+      AGENT_ROLE: qa_security
+      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
+      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-true}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
+      AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
+    restart: unless-stopped
+
+  web_engineer:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    environment:
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_WEB_ENGINEER:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-}
+      AGENT_ROLE: web_engineer
+      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
+      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-true}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
+      AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
+    restart: unless-stopped
+
+  seo:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    environment:
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_SEO:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-}
+      AGENT_ROLE: seo
+      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
+      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-true}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
+      AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
+    restart: unless-stopped
+
+  analytics:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ workers disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
+    environment:
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_ANALYTICS:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-}
+      AGENT_ROLE: analytics
+      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
+      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-true}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
+      AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
+    restart: unless-stopped
+
+  supervisor:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ]; then echo 'Agent HQ supervisor disabled; waiting'; exec sleep infinity; fi; exec node scripts/agent-hq-supervisor.mjs"]
+    environment:
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_SUPERVISOR:-}
+      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+    restart: unless-stopped

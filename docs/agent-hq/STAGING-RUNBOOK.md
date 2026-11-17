@@ -37,6 +37,9 @@ Create a new database and a dedicated login for Agent HQ. Keep the migration own
 ```sh
 psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0003_agent_hq.sql
 psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0004_agent_budget.sql
+psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0005_agent_approval_idempotency.sql
+psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0006_agent_web_search_budget.sql
+psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0007_agent_task_access.sql
 ```
 
 Use a separate staging database URL for runtime. Verify that the budget row exists and remains disabled:
@@ -44,29 +47,32 @@ Use a separate staging database URL for runtime. Verify that the budget row exis
 ```sql
 SELECT enabled, daily_cap_microusd, monthly_cap_microusd,
        per_run_cap_microusd, input_price_per_million_microusd,
-       output_price_per_million_microusd
+       output_price_per_million_microusd,
+       web_search_price_microusd_per_call
 FROM agent_budget_config WHERE id = 1;
 ```
 
-Expected initial state: `enabled = false` and all caps/prices are zero. Do not enable workers until real model prices and owner-approved caps have been entered.
+Expected initial state: `enabled = false` and all caps/prices, including the web-search call price, are zero. Do not enable workers until real model prices and owner-approved caps have been entered.
 
 ## 3. Configure secrets
 
-Create one root-owned environment file per worker role under `/etc/ppf-agent-hq`. Set permissions to `0640` and group `ppf-agent`.
+Create one root-owned environment file per worker role under `/etc/ppf-agent-hq`. Each role must use its own PostgreSQL LOGIN and its own connection URL; never reuse one shared runtime login for all agents. Compose variables are `AGENT_HQ_DATABASE_URL_COORDINATOR`, `AGENT_HQ_DATABASE_URL_COMMUNITY_MANAGER`, `AGENT_HQ_DATABASE_URL_QA_SECURITY`, `AGENT_HQ_DATABASE_URL_WEB_ENGINEER`, `AGENT_HQ_DATABASE_URL_SEO`, `AGENT_HQ_DATABASE_URL_ANALYTICS`, and `AGENT_HQ_DATABASE_URL_SUPERVISOR`. Set permissions to `0640` and group `ppf-agent`.
 
 Required variables:
 
-- `DATABASE_URL`: staging-only PostgreSQL URL.
+- `DATABASE_URL`: the staging-only PostgreSQL URL for this exact role's dedicated login. The coordinator, every specialist, QA and supervisor must not share a database login.
 - `OPENAI_API_KEY`: secret for this workload.
 - `AGENT_MODEL`: exact model identifier approved for staging.
-- `AGENT_ROLE`: one of `coordinator`, `web_engineer`, `seo`, `geo`, `growth`, `analytics`, `qa_security`.
-- Optional: `AGENT_MAX_OUTPUT_TOKENS`, `AGENT_POLL_MS`, `AGENT_WORKER_ID`.
+- `AGENT_ROLE`: one of `coordinator`, `web_engineer`, `seo`, `geo`, `growth`, `analytics`, `qa_security`, `vk_strategist`, `copywriter`, `designer`, `image_generator`, `storyteller`, `community_manager`, `content_seo`, `ads_manager`, `trend_scout`, `auto_news_editor`, `auto_law_monitor`, `fact_checker`.
+- Optional: `AGENT_MAX_OUTPUT_TOKENS`, `AGENT_POLL_MS`, `AGENT_WORKER_ID`, `AGENT_WEB_SEARCH_ENABLED`.
+- For the local operator CLI only: create `/etc/ppf-agent-hq/approver-uids` as a root-owned file containing comma-separated numeric Linux UIDs authorized to approve/reject requests. Set owner `root`, group `ppf-agent`, mode `0640`. The CLI verifies root ownership and rejects group/world-writable files, then derives the actor from the process UID; callers cannot supply an arbitrary owner name. This is an OS-account gate, not a substitute for a protected authenticated dashboard or database-enforced role isolation.
+- Optional read-only repository inspection: `GITHUB_TOKEN` with only Contents: Read permission, `AGENT_GITHUB_REPOSITORY=owner/repo`, and `AGENT_GITHUB_REF` set to the reviewed branch. Never grant Contents: Write to the agent token.
 
 Do not paste secrets into chat, commit them, or reuse production credentials. Use the host's secret manager if available.
 
 ## 4. Enable a bounded staging budget
 
-Only after the exact model pricing and caps have been confirmed, update the singleton row in staging. Values are integer micro-USD; 1 USD = 1,000,000 micro-USD. The price columns are micro-USD per million tokens.
+Only after the exact model pricing and caps have been confirmed, update the singleton row in staging. Values are integer micro-USD; 1 USD = 1,000,000 micro-USD. The token price columns are micro-USD per million tokens. The hosted web-search call price is micro-USD per search call; configure it from the current provider price schedule before enabling web search.
 
 Example SQL template (replace every placeholder with an explicitly approved numeric value; do not execute with placeholders):
 
@@ -78,6 +84,7 @@ SET enabled = TRUE,
     per_run_cap_microusd = <approved_per_run_cap>,
     input_price_per_million_microusd = <verified_input_price>,
     output_price_per_million_microusd = <verified_output_price>,
+    web_search_price_microusd_per_call = <verified_search_price_per_call>,
     updated_at = now()
 WHERE id = 1;
 ```
@@ -108,7 +115,7 @@ For a full delegated lifecycle, start the specialist workers with their own role
 - Confirm QA blocks a parent without an explicit `VERDICT: PASS`.
 - Confirm disabled/exhausted budgets prevent model calls and block tasks with a coordinator notification.
 - Confirm expired leases recover and retries stop at `max_attempts`.
-- Confirm pending approvals are only recorded; no worker can execute them.
+- Confirm pending approvals are only recorded; no worker can execute them. Owner decisions can be recorded through the trusted local bus CLI with `approve <id> [note]` or `reject <id> [note]`, but only when the process UID is listed in the root-owned `/etc/ppf-agent-hq/approver-uids` file; the audit actor is recorded as `uid:<number>`. These commands do not execute the requested action. Do not expose the CLI directly over a network.
 - Inspect `node scripts/agent-hq-bus.mjs status` and host logs after every test.
 
 ## 7. Service management and rollback
@@ -143,6 +150,10 @@ sudo systemctl enable --now agent-hq-supervisor
 ```
 
 Do not enable all roles by default. Add specialists only when a test requires them. Review logs with `journalctl -u agent-hq-worker@coordinator -f` and `journalctl -u agent-hq-supervisor -f`. To stop staging, stop and disable each enabled worker instance and the supervisor before disabling the budget.
+
+## Database role isolation status
+
+The current branch contains a disposable-CI-only RLS harness at `tests/agent-hq-role-isolation.sql` and negative tests using distinct PostgreSQL logins. Migration `0007_agent_task_access.sql` creates the scoped access registry; the supervisor grants coordinator visibility to a parent's child tasks and QA visibility to sibling specialist tasks before QA runs. Supervisor lifecycle tests assert these grants. This migration does **not** enable RLS or create role logins. The RLS policies remain a CI prototype and do not yet cover every runtime operation/column with final least privilege. Do not connect live workers or enable RLS until role-specific PostgreSQL logins, table/sequence grants, column-level restrictions, and end-to-end tests for claim, heartbeat, messages, runs, artifacts, approvals and supervisor lifecycle have been reviewed on a disposable staging database. The compose variables are deliberately separate and default empty.
 
 ## Not included yet
 

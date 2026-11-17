@@ -1,0 +1,302 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import postgres from "postgres";
+import { randomUUID } from "node:crypto";
+import { spawnSync } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const adminUrl = process.env.AGENT_HQ_TEST_DATABASE_URL;
+const roleUrls = {
+  seo: process.env.AGENT_HQ_ROLE_TEST_URL_SEO,
+  qa: process.env.AGENT_HQ_ROLE_TEST_URL_QA,
+  coordinator: process.env.AGENT_HQ_ROLE_TEST_URL_COORDINATOR,
+  supervisor: process.env.AGENT_HQ_ROLE_TEST_URL_SUPERVISOR
+};
+
+test("Agent HQ database roles are isolated by authenticated PostgreSQL identity", {
+  skip: !adminUrl || Object.values(roleUrls).some(value => !value)
+}, async () => {
+  const admin = postgres(adminUrl, { max: 2 });
+  const seo = postgres(roleUrls.seo, { max: 1 });
+  const qa = postgres(roleUrls.qa, { max: 1 });
+  const coordinator = postgres(roleUrls.coordinator, { max: 1 });
+  const supervisor = postgres(roleUrls.supervisor, { max: 1 });
+  const marker = randomUUID();
+  let seoTask, qaTask, parentTask, unrelatedParent, unrelatedTask, delegatedTaskId, seoArtifact, unrelatedArtifact;
+  try {
+    [seoTask] = await admin`INSERT INTO agent_tasks (assigned_role,title,objective,expected_output,created_by)
+      VALUES ('seo',${"SEO " + marker},'SEO test','Evidence','integration-test') RETURNING id`;
+    [qaTask] = await admin`INSERT INTO agent_tasks (assigned_role,title,objective,expected_output,created_by)
+      VALUES ('qa_security',${"QA " + marker},'QA test','Verdict','integration-test') RETURNING id`;
+    [parentTask] = await admin`INSERT INTO agent_tasks (assigned_role,title,objective,expected_output,created_by,status)
+      VALUES ('coordinator',${"Parent " + marker},'Parent test','Summary','integration-test','review') RETURNING id`;
+    await admin`UPDATE agent_tasks SET parent_task_id=${parentTask.id} WHERE id IN (${seoTask.id},${qaTask.id})`;
+    await supervisor`INSERT INTO agent_task_access (task_id,principal,access_reason)
+      VALUES (${seoTask.id},'qa_security','qa_review'),
+             (${qaTask.id},'qa_security','qa_review'),
+             (${seoTask.id},'coordinator','coordinator_oversight'),
+             (${qaTask.id},'coordinator','coordinator_oversight')`;
+    [seoArtifact] = await admin`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
+      VALUES (${seoTask.id},'seo','result','SEO artifact',${marker}) RETURNING id`;
+    [unrelatedParent] = await admin`INSERT INTO agent_tasks
+      (assigned_role,title,objective,expected_output,created_by,status)
+      VALUES ('coordinator',${"Unrelated parent " + marker},'Other project','Other result','integration-test','review') RETURNING id`;
+    [unrelatedTask] = await admin`INSERT INTO agent_tasks
+      (assigned_role,title,objective,expected_output,created_by,parent_task_id)
+      VALUES ('seo',${"Unrelated SEO " + marker},'Other task','Other evidence','integration-test',${unrelatedParent.id}) RETURNING id`;
+    [unrelatedArtifact] = await admin`INSERT INTO agent_artifacts
+      (task_id,created_by,artifact_type,title,content)
+      VALUES (${unrelatedTask.id},'seo','result','Unrelated artifact',${"private-" + marker}) RETURNING id`;
+
+    const ownTasks = await seo`SELECT id FROM agent_tasks WHERE id=${seoTask.id}`;
+    const foreignTasks = await seo`SELECT id FROM agent_tasks WHERE id IN (${qaTask.id},${parentTask.id})`;
+    assert.equal(ownTasks.length, 1, "SEO can read its own task");
+    assert.equal(foreignTasks.length, 0, "SEO cannot read QA or coordinator tasks");
+
+    await assert.rejects(
+      seo`UPDATE agent_tasks SET title='forged' WHERE id=${qaTask.id} RETURNING id`,
+      error => error.code === "42501",
+      "SEO cannot update another role's task"
+    );
+    await assert.rejects(
+      seo`UPDATE agent_tasks SET assigned_role='qa_security' WHERE id=${seoTask.id}`,
+      error => error.code === "42501",
+      "SEO cannot change task routing/identity columns"
+    );
+    await assert.rejects(
+      seo`UPDATE agent_tasks SET parent_task_id=${parentTask.id} WHERE id=${seoTask.id}`,
+      error => error.code === "42501",
+      "SEO cannot re-parent its task"
+    );
+    await assert.rejects(
+      seo`DELETE FROM agent_tasks WHERE id=${seoTask.id}`,
+      error => error.code === "42501",
+      "SEO cannot delete tasks"
+    );
+    await assert.rejects(
+      seo`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
+        VALUES (${qaTask.id},'seo','result','forged','forged')`,
+      error => ["42501","23514"].includes(error.code),
+      "SEO cannot write an artifact against QA task"
+    );
+
+    const ownArtifacts = await seo`SELECT id FROM agent_artifacts WHERE id=${seoArtifact.id}`;
+    const qaArtifacts = await qa`SELECT id FROM agent_artifacts WHERE id=${seoArtifact.id}`;
+    assert.equal(ownArtifacts.length, 1);
+    assert.equal(qaArtifacts.length, 1, "QA can read sibling specialist artifacts explicitly granted for this parent review");
+    const unrelatedQaArtifacts = await qa`SELECT id FROM agent_artifacts WHERE id=${unrelatedArtifact.id}`;
+    assert.equal(unrelatedQaArtifacts.length, 0, "QA cannot read artifacts from an unrelated parent");
+    const unrelatedCoordinatorTasks = await coordinator`SELECT id FROM agent_tasks WHERE id=${unrelatedTask.id}`;
+    assert.equal(unrelatedCoordinatorTasks.length, 0, "Coordinator cannot read child tasks without a scoped grant");
+    const coordinatorChildTasks = await coordinator`SELECT id FROM agent_tasks WHERE id IN (${seoTask.id},${qaTask.id}) ORDER BY id`;
+    assert.equal(coordinatorChildTasks.length, 2, "Coordinator can inspect explicitly granted child tasks");
+    const coordinatorArtifacts = await coordinator`SELECT id FROM agent_artifacts WHERE id=${seoArtifact.id}`;
+    assert.equal(coordinatorArtifacts.length, 1, "Coordinator can read explicitly granted child artifacts");
+    const qaSiblingTasks = await qa`SELECT id FROM agent_tasks WHERE id=${seoTask.id}`;
+    assert.equal(qaSiblingTasks.length, 1, "QA can inspect sibling task metadata for its parent review");
+    await assert.rejects(
+      coordinator`INSERT INTO agent_task_access (task_id,principal,access_reason)
+        VALUES (${qaTask.id},'seo','coordinator_oversight')`,
+      error => ["42501","23514"].includes(error.code),
+      "Coordinator cannot grant access or impersonate another principal"
+    );
+    await assert.rejects(
+      seo`INSERT INTO agent_task_access (task_id,principal,access_reason)
+        VALUES (${qaTask.id},'qa_security','qa_review')`,
+      error => ["42501","23514"].includes(error.code),
+      "Specialists cannot create cross-role access grants"
+    );
+    const seoAccess = await seo`SELECT task_id FROM agent_task_access WHERE task_id=${seoTask.id}`;
+    assert.equal(seoAccess.length, 0, "Specialist cannot read another role's access grants");
+
+    const [seoMessage] = await admin`INSERT INTO agent_messages
+      (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
+      VALUES (${seoTask.id},${randomUUID()},'seo','qa_security','request','SEO to QA',${"m-" + marker + "-seo"}) RETURNING id`;
+    const [qaMessage] = await admin`INSERT INTO agent_messages
+      (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
+      VALUES (${qaTask.id},${randomUUID()},'qa_security','seo','question','QA to SEO',${"m-" + marker + "-qa"}) RETURNING id`;
+    const seoInbox = await seo`SELECT id FROM agent_messages WHERE id IN (${seoMessage.id},${qaMessage.id})`;
+    const qaInbox = await qa`SELECT id FROM agent_messages WHERE id IN (${seoMessage.id},${qaMessage.id})`;
+    assert.equal(seoInbox.length, 1);
+    assert.equal(String(seoInbox[0].id), String(qaMessage.id));
+    assert.equal(qaInbox.length, 1);
+    assert.equal(String(qaInbox[0].id), String(seoMessage.id));
+    await assert.rejects(
+      seo`INSERT INTO agent_messages (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
+        VALUES (${seoTask.id},${randomUUID()},'qa_security','seo','status','forged',${"m-" + marker + "-forged"})`,
+      error => ["42501","23514"].includes(error.code)
+    );
+    await assert.rejects(
+      seo`INSERT INTO agent_messages (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
+        VALUES (${qaTask.id},${randomUUID()},'seo','qa_security','status','cross-task',${"m-" + marker + "-cross"})`,
+      error => ["42501","23514"].includes(error.code),
+      "SEO cannot attach a message to another role's task"
+    );
+
+    const [seoRun] = await admin`INSERT INTO agent_runs (task_id,role,worker_id,provider,model,status)
+      VALUES (${seoTask.id},'seo','seo-ci','test','test','succeeded') RETURNING id`;
+    const [qaRun] = await admin`INSERT INTO agent_runs (task_id,role,worker_id,provider,model,status)
+      VALUES (${qaTask.id},'qa_security','qa-ci','test','test','succeeded') RETURNING id`;
+    const seoRuns = await seo`SELECT id FROM agent_runs WHERE id IN (${seoRun.id},${qaRun.id})`;
+    const qaRuns = await qa`SELECT id FROM agent_runs WHERE id IN (${seoRun.id},${qaRun.id})`;
+    assert.equal(seoRuns.length, 1);
+    assert.equal(String(seoRuns[0].id), String(seoRun.id));
+    assert.equal(qaRuns.length, 1);
+    assert.equal(String(qaRuns[0].id), String(qaRun.id));
+    const foreignRunUpdate = await seo`UPDATE agent_runs SET status='failed' WHERE id=${qaRun.id} RETURNING id`;
+    assert.equal(foreignRunUpdate.length, 0);
+    await assert.rejects(
+      seo`UPDATE agent_runs SET role='qa_security' WHERE id=${seoRun.id}`,
+      error => error.code === "42501",
+      "SEO cannot reassign run identity"
+    );
+
+    const [seoApproval] = await admin`INSERT INTO agent_approvals (task_id,action,requested_by,payload,status)
+      VALUES (${seoTask.id},'other','seo','{"reason":"test"}'::jsonb,'pending') RETURNING id`;
+    const [qaApproval] = await admin`INSERT INTO agent_approvals (task_id,action,requested_by,payload,status)
+      VALUES (${qaTask.id},'other','qa_security','{"reason":"test"}'::jsonb,'pending') RETURNING id`;
+    const seoApprovals = await seo`SELECT id FROM agent_approvals WHERE id IN (${seoApproval.id},${qaApproval.id})`;
+    assert.equal(seoApprovals.length, 1);
+    assert.equal(String(seoApprovals[0].id), String(seoApproval.id));
+    await assert.rejects(
+      seo`INSERT INTO agent_approvals (task_id,action,requested_by,payload,status)
+        VALUES (${seoTask.id},'other','qa_security','{}'::jsonb,'pending')`,
+      error => ["42501","23514"].includes(error.code)
+    );
+    await assert.rejects(
+      seo`INSERT INTO agent_approvals (task_id,action,requested_by,payload,status)
+        VALUES (${seoTask.id},'other','seo','{}'::jsonb,'approved')`,
+      error => ["42501","23514"].includes(error.code),
+      "Worker may request approval only in pending state"
+    );
+
+    await seo`SELECT set_config('agent.role','qa_security',false)`;
+    const afterSpoof = await seo`SELECT id FROM agent_tasks WHERE id=${qaTask.id}`;
+    assert.equal(afterSpoof.length, 0, "Changing a custom GUC cannot impersonate QA");
+
+    await assert.rejects(seo`SET ROLE agent_qa_security`, error => error.code === "42501");
+    await assert.rejects(
+      seo`UPDATE agent_budget_config SET daily_cap_microusd=999999 WHERE id=1`,
+      error => error.code === "42501"
+    );
+    await assert.rejects(
+      seo`UPDATE agent_approvals SET status='approved' WHERE status='pending'`,
+      error => error.code === "42501"
+    );
+    await assert.rejects(
+      seo`DELETE FROM agent_approvals WHERE id=${seoApproval.id}`,
+      error => error.code === "42501",
+      "Worker cannot delete approval audit records"
+    );
+
+    const coordinatorOwn = await coordinator`SELECT id FROM agent_tasks WHERE id=${parentTask.id}`;
+    assert.equal(coordinatorOwn.length, 1);
+    await coordinator`INSERT INTO agent_tasks
+      (parent_task_id,assigned_role,title,objective,expected_output,created_by)
+      VALUES (${parentTask.id},'seo','Delegated child','Do bounded work','Evidence','coordinator')`;
+    const [delegated] = await coordinator`SELECT currval('agent_tasks_id_seq') AS id`;
+    delegatedTaskId = delegated.id;
+    assert.ok(delegated.id, "Coordinator can create a child under its own parent without SELECT-before-grant");
+    const beforeGrant = await coordinator`SELECT id FROM agent_tasks WHERE id=${delegated.id}`;
+    assert.equal(beforeGrant.length, 0, "Coordinator cannot read child before supervisor grant");
+    await supervisor`INSERT INTO agent_task_access (task_id,principal,access_reason)
+      VALUES (${delegated.id},'coordinator','coordinator_oversight')`;
+    const afterGrant = await coordinator`SELECT id FROM agent_tasks WHERE id=${delegated.id}`;
+    assert.equal(afterGrant.length, 1, "Coordinator can read child after supervisor grants scoped access");
+    await assert.rejects(
+      coordinator`INSERT INTO agent_tasks
+        (assigned_role,title,objective,expected_output,created_by)
+        VALUES ('seo','Orphan child','No parent','Evidence','coordinator')`,
+      error => ["42501","23514"].includes(error.code),
+      "Coordinator cannot create an unparented task"
+    );
+    await assert.rejects(
+      coordinator`INSERT INTO agent_tasks
+        (parent_task_id,assigned_role,title,objective,expected_output,created_by)
+        VALUES (${parentTask.id},'seo','Forged child','No','Evidence','seo')`,
+      error => ["42501","23514"].includes(error.code),
+      "Coordinator cannot forge task creator"
+    );
+    const allTasks = await supervisor`SELECT id FROM agent_tasks WHERE id IN (${seoTask.id},${qaTask.id},${parentTask.id})`;
+    assert.equal(allTasks.length, 3, "Supervisor has its narrowly designated lifecycle visibility");
+  } finally {
+    if (parentTask) await admin`DELETE FROM agent_tasks WHERE id=${parentTask.id}`;
+    if (unrelatedParent) await admin`DELETE FROM agent_tasks WHERE id=${unrelatedParent.id}`;
+    if (seoTask) await admin`DELETE FROM agent_tasks WHERE id=${seoTask.id}`;
+    if (qaTask) await admin`DELETE FROM agent_tasks WHERE id=${qaTask.id}`;
+    if (unrelatedTask) await admin`DELETE FROM agent_tasks WHERE id=${unrelatedTask.id}`;
+    if (delegatedTaskId) await admin`DELETE FROM agent_tasks WHERE id=${delegatedTaskId}`;
+    await Promise.all([admin.end(),seo.end(),qa.end(),coordinator.end(),supervisor.end()]);
+  }
+});
+
+
+test("real SEO worker completes a task using its restricted PostgreSQL login and mocked model", {
+  skip: !adminUrl || !roleUrls.seo
+}, async () => {
+  const admin = postgres(adminUrl, { max: 2 });
+  const marker = randomUUID();
+  let taskId;
+  let previousBudget;
+  try {
+    [previousBudget] = await admin`SELECT * FROM agent_budget_config WHERE id=1`;
+    await admin`UPDATE agent_budget_config SET enabled=true,
+      daily_cap_microusd=100000000,monthly_cap_microusd=100000000,
+      per_run_cap_microusd=10000000,
+      input_price_per_million_microusd=1000,
+      output_price_per_million_microusd=1000,
+      web_search_price_microusd_per_call=0 WHERE id=1`;
+    const [task] = await admin`INSERT INTO agent_tasks
+      (assigned_role,title,objective,expected_output,created_by)
+      VALUES ('seo',${"RLS worker E2E " + marker},'Run real worker under SEO login',
+        'Evidence-backed result','integration-test') RETURNING id`;
+    taskId = task.id;
+    const child = spawnSync(process.execPath, [
+      "scripts/agent-hq-worker.mjs", "--once"
+    ], {
+      cwd: path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        NODE_ENV: "test",
+        DATABASE_URL: roleUrls.seo,
+        AGENT_ROLE: "seo",
+        AGENT_WORKER_ID: "seo-rls-e2e",
+        OPENAI_API_KEY: "test-key-never-used",
+        AGENT_MODEL: "gpt-4.1-mini",
+        AGENT_WEB_SEARCH_ENABLED: "false",
+        AGENT_HQ_TEST_RESPONSES_JSON: JSON.stringify({
+          output: [{
+            type: "message",
+            content: [{ type: "output_text", text: "CI mocked evidence: worker completed under RLS." }]
+          }],
+          usage: { input_tokens: 0, output_tokens: 0 }
+        })
+      }
+    });
+    assert.equal(child.status, 0, child.stderr || child.stdout);
+    const [completed] = await admin`SELECT status,attempts FROM agent_tasks WHERE id=${taskId}`;
+    assert.equal(completed.status, "done", child.stderr || child.stdout);
+    assert.equal(completed.attempts, 1);
+    const artifacts = await admin`SELECT content FROM agent_artifacts
+      WHERE task_id=${taskId} AND created_by='seo'`;
+    assert.equal(artifacts.length, 1);
+    assert.match(artifacts[0].content, /CI mocked evidence/);
+    const runs = await admin`SELECT status FROM agent_runs WHERE task_id=${taskId}`;
+    assert.equal(runs.length, 1);
+    assert.equal(runs[0].status, "succeeded");
+  } finally {
+    if (taskId) await admin`DELETE FROM agent_tasks WHERE id=${taskId}`;
+    if (previousBudget) await admin`UPDATE agent_budget_config SET
+      enabled=${previousBudget.enabled},
+      daily_cap_microusd=${previousBudget.daily_cap_microusd},
+      monthly_cap_microusd=${previousBudget.monthly_cap_microusd},
+      per_run_cap_microusd=${previousBudget.per_run_cap_microusd},
+      input_price_per_million_microusd=${previousBudget.input_price_per_million_microusd},
+      output_price_per_million_microusd=${previousBudget.output_price_per_million_microusd},
+      web_search_price_microusd_per_call=${previousBudget.web_search_price_microusd_per_call}
+      WHERE id=1`;
+    await admin.end();
+  }
+});
