@@ -445,8 +445,9 @@ test("Agent HQ workers cannot forge authoritative run costs or usage", {
     await assert.rejects(seo`INSERT INTO agent_budget_reservations
       (run_id,task_id,role,worker_id,reserve_key,reserved_microusd,price_snapshot,day_key,month_key)
       VALUES (${row.id},${taskId},'seo','seo-ci','forged-reserve-001',999,'{}',CURRENT_DATE,date_trunc('month',now())::date)`,
-      e=>e.code==="42501" || e.code==="42501" || e.code==="42501");
+      e=>e.code==="42501");
     await assert.rejects(seo`SELECT * FROM agent_budget_ledger`,e=>e.code==="42501");
+    await assert.rejects(seo`UPDATE agent_runs SET status='succeeded' WHERE id=${row.id}`,e=>e.code==="42501" || e.code==="42501");
     const [owner]=await admin`SELECT rolcanlogin,rolsuper,rolcreatedb,rolcreaterole,rolinherit,rolbypassrls
       FROM pg_roles WHERE rolname='agent_hq_budget_owner_ci'`;
     assert.ok(owner);
