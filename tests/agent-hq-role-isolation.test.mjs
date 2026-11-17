@@ -29,7 +29,7 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
     [parentTask] = await admin`INSERT INTO agent_tasks (assigned_role,title,objective,expected_output,created_by,status)
       VALUES ('coordinator',${"Parent " + marker},'Parent test','Summary','integration-test','review') RETURNING id`;
     await admin`UPDATE agent_tasks SET parent_task_id=${parentTask.id} WHERE id IN (${seoTask.id},${qaTask.id})`;
-    await admin`INSERT INTO agent_task_access (task_id,principal,access_reason)
+    await supervisor`INSERT INTO agent_task_access (task_id,principal,access_reason)
       VALUES (${seoTask.id},'qa_security','qa_review'),
              (${qaTask.id},'qa_security','qa_review'),
              (${seoTask.id},'coordinator','coordinator_oversight'),
@@ -66,6 +66,12 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
         VALUES (${qaTask.id},'seo','coordinator_oversight')`,
       error => ["42501","23514"].includes(error.code),
       "Coordinator cannot grant access or impersonate another principal"
+    );
+    await assert.rejects(
+      seo`INSERT INTO agent_task_access (task_id,principal,access_reason)
+        VALUES (${qaTask.id},'qa_security','qa_review')`,
+      error => ["42501","23514"].includes(error.code),
+      "Specialists cannot create cross-role access grants"
     );
     const seoAccess = await seo`SELECT task_id FROM agent_task_access WHERE task_id=${seoTask.id}`;
     assert.equal(seoAccess.length, 0, "Specialist cannot read another role's access grants");
