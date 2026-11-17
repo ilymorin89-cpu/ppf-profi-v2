@@ -43,9 +43,29 @@ AS $snapshot$
       'monthly_cap_microusd',monthly_cap_microusd,'per_run_cap_microusd',per_run_cap_microusd
     ) FROM public.agent_budget_config WHERE id=1),
     'principals',(SELECT jsonb_build_object(
-      'total',count(*),'enabled',count(*) FILTER (WHERE enabled),
-      'distinct_logins',count(DISTINCT login_role),'distinct_worker_ids',count(DISTINCT worker_id)
-    ) FROM public.agent_worker_principals),
+      'total',count(*),'enabled',count(*) FILTER (WHERE p.enabled),
+      'distinct_logins',count(DISTINCT p.login_role),'distinct_worker_ids',count(DISTINCT p.worker_id),
+      'safe_login_flags',bool_and(r.rolcanlogin AND NOT r.rolsuper AND NOT r.rolcreatedb
+        AND NOT r.rolcreaterole AND NOT r.rolinherit AND NOT r.rolbypassrls)
+    ) FROM public.agent_worker_principals p
+      LEFT JOIN pg_roles r ON r.rolname=p.login_role),
+    'privileged',(SELECT jsonb_build_object(
+      'safe_supervisor_operator_logins',count(*) FILTER (
+        WHERE rolname IN ('agent_supervisor','agent_operator') AND rolcanlogin
+          AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole AND NOT rolbypassrls),
+      'safe_function_owners',count(*) FILTER (
+        WHERE rolname IN ('agent_hq_budget_owner','agent_hq_runtime_fn_owner','agent_hq_monitor_owner')
+          AND NOT rolcanlogin AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole AND NOT rolbypassrls),
+      'login_memberships',(SELECT count(*) FROM pg_auth_members m
+        JOIN pg_roles member ON member.oid=m.member
+        WHERE member.rolname = ANY(ARRAY[
+          'agent_coordinator','agent_web_engineer','agent_seo','agent_geo','agent_growth',
+          'agent_analytics','agent_qa_security','agent_vk_strategist','agent_copywriter',
+          'agent_designer','agent_image_generator','agent_storyteller','agent_community_manager',
+          'agent_content_seo','agent_ads_manager','agent_trend_scout','agent_auto_news_editor',
+          'agent_auto_law_monitor','agent_fact_checker','agent_supervisor','agent_operator'
+        ]))
+    ) FROM pg_roles),
     'tasks',(SELECT jsonb_build_object(
       'queued',count(*) FILTER (WHERE status='queued'),
       'active',count(*) FILTER (WHERE status IN ('claimed','running')),
