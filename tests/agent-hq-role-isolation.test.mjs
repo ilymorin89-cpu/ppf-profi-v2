@@ -726,8 +726,12 @@ test("Agent HQ operator can reconcile a reservation with confirmed zero provider
     taskId=task.id;
     const [reservation]=await seo`SELECT * FROM agent_budget_reserve(
       ${taskId},${workerId},'test_stub','test-model',10000,1024,1,0,${"no-charge-reserve-"+marker})`;
-    await seo`SELECT agent_budget_mark_unknown(
-      ${reservation.reservation_id},${workerId},'provider outcome ambiguous',${"no-charge-unknown-"+marker})`;
+    const [unknownFirst]=await seo`SELECT agent_budget_mark_unknown(
+      ${reservation.reservation_id},${workerId},'provider outcome ambiguous',${"no-charge-unknown-"+marker}) AS ok`;
+    const [unknownRepeat]=await seo`SELECT agent_budget_mark_unknown(
+      ${reservation.reservation_id},${workerId},'provider outcome ambiguous',${"no-charge-unknown-"+marker}) AS ok`;
+    assert.equal(unknownFirst.ok,true);
+    assert.equal(unknownRepeat.ok,true);
     await assert.rejects(seo`SELECT agent_budget_mark_unknown(
       ${reservation.reservation_id},${workerId},'different provider outcome',${"no-charge-unknown-"+marker})`,
       e=>e.code==="23505");
