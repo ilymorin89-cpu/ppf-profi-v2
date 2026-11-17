@@ -191,7 +191,7 @@ jobs:
           # The overlay uses an internal-only Docker network and an in-memory DB.
           # No host port is published; worker containers have no outbound network.
           compose up -d postgres
-          compose run --rm db-init
+          # Starting workers also starts db-init exactly once via service_completed_successfully.
           compose up -d --build \
             coordinator web_engineer seo geo growth analytics qa_security \
             vk_strategist copywriter designer image_generator storyteller \
