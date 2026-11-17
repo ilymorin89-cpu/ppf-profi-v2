@@ -16,6 +16,7 @@ on:
       - "docs/agent-hq/**"
       - "deploy/systemd/**"
       - "package.json"
+      - "package-lock.json"
       - ".github/workflows/agent-hq-checks.yml"
   pull_request:
     paths:
