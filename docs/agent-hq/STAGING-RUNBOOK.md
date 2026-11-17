@@ -2,11 +2,43 @@
 
 This runbook prepares an isolated staging deployment. It does not authorize production deployment, external messages, advertising, or spend.
 
+## Current 19-worker runtime Compose candidate
+
+The follow-on branch agent-hq/runtime-compose-role-logins prepares docker-compose.yml as the live Agent HQ runtime definition. It is separate from docker-compose.agent-hq-test.yml and docker-compose.agent-hq-four-agent-test.yml, which remain disposable no-egress test stacks.
+
+The runtime Compose contains:
+- all 19 specialist worker services;
+- one separate Supervisor service;
+- an optional health gateway profile;
+- a separate DATABASE_URL for every worker role, plus a separate agent_supervisor URL;
+- a global worker enable switch and an independent enable switch for every role;
+- disabled-by-default web search and optional read-only GitHub integration.
+
+All switches default to false. A container may process work only when both AGENT_HQ_WORKERS_ENABLED=true and its AGENT_HQ_ENABLE_<ROLE>=true. Supervisor separately requires AGENT_HQ_SUPERVISOR_ENABLED=true. A worker that is enabled but has no role-specific DATABASE_URL, OPENAI_API_KEY or AGENT_MODEL exits instead of silently using a shared login. No service runs migrations.
+
+The matching .env.agent-hq.example now lists all 19 role URLs and enable switches, plus the separate Supervisor URL. Populate values only in the Timeweb secret/environment manager. Each worker URL must authenticate as its own agent_<role> PostgreSQL LOGIN and match the enabled row in agent_worker_principals. Never copy agent_hq_user or one shared URL into multiple roles. The supervisor URL must authenticate as agent_supervisor. agent_operator is reserved for the human approval CLI and is not a worker service.
+
+### Safe staged enablement
+
+1. Keep the existing Timeweb-selected feat/vk-content-army deployment unchanged. It still has three workers sharing one database LOGIN and is not approved for activation.
+2. Prepare a separate database named agent_hq_staging. Do not assume the existing agent_hq database is staging; verify ownership and use a separate database before any migrations.
+3. Provision the 19 worker LOGINs plus agent_supervisor and agent_operator with unique secrets, NOINHERIT, no role memberships, and no elevated flags. Register 19 unique worker IDs using the same values in the registry manifest.
+4. Apply migrations 0003–0011 to the isolated staging database in the runbook order, then run the read-only staging preflight. Budget must still be disabled at this point.
+5. Validate the runtime Compose file without starting services using docker compose -f docker-compose.yml config --quiet. Then verify the app container can reach staging PostgreSQL over TLS and report the expected database and session_user.
+6. Before a paid pilot, the owner must approve the exact model, provider price schedule, daily/monthly/per-run caps and manual billing-reconciliation procedure. The staging budget singleton must be enabled with non-zero, owner-approved micro-USD caps and prices; the worker refuses to claim tasks while budget is disabled or caps are zero.
+7. Start only the core group first: global switch true; enable coordinator, seo and qa_security; enable Supervisor; leave the other 16 role switches false. Confirm task delegation, QA, Supervisor consolidation, provider usage, reservation settlement and provider billing reconciliation.
+8. Add the research roles in controlled batches, then the remaining roles. Never enable all 19 solely because the Compose file contains 19 services.
+
+The core paid pilot is not a no-spend test. For deterministic no-spend testing, use only the isolated Compose files with the internal network and test_stub provider. Do not place a real API key in those test containers.
+
+The runtime Compose candidate is still a Draft PR and has not passed Docker Compose validation on GitHub Actions. Do not select it in Timeweb or enable any role until its exact PR head passes CI and the dedicated staging preflight succeeds.
+
+
 ## Timeweb App Platform: diagnose PostgreSQL reachability before workers
 
 The existing Timeweb App Platform deployment is not a reason to create another server. Keep the production website application and its database untouched. The current Agent HQ Timeweb app must be treated as staging only after its repository branch and database target have been verified.
 
-The GitHub branch selected in the supplied App Platform screenshot is `feat/vk-content-army`, at commit `d032f9d0fc272e5a0b31872021efad71f6ad23bf`. The exact `docker-compose.yml` at that commit contains only three worker services (`coordinator`, `community_manager`, `qa_security`), plus `gateway` and `supervisor`; all four runtime services reuse the single `AGENT_HQ_DATABASE_URL`. This is not the 19-worker, role-specific-LOGIN configuration in the newer reviewed Agent HQ branch. Do not turn workers on in this currently selected branch. The newer 19-worker Compose remains in Draft PRs and must pass review/CI before it is selected for staging.
+The GitHub branch selected in the supplied App Platform screenshot is `feat/vk-content-army`, at commit `d032f9d0fc272e5a0b31872021efad71f6ad23bf`. The exact `docker-compose.yml` at that commit contains only three worker services (`coordinator`, `community_manager`, `qa_security`), plus `gateway` and `supervisor`; all four runtime services reuse the single `AGENT_HQ_DATABASE_URL`. This is not the 19-worker, role-specific-LOGIN configuration in the newer reviewed Agent HQ branch. Do not turn workers on in this currently selected branch. The 19-worker runtime Compose candidate is now being prepared in Draft PR #137, stacked on the budget-envelope PR #136. It must pass review/CI and dedicated staging preflight before it is selected for staging.
 
 The Timeweb screenshots supplied for this project show:
 - App Platform framework: Docker Compose; compose path `/docker-compose.yml`.
