@@ -116,7 +116,7 @@ psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0011_agent_hq_readon
 After migrations `0003–0011`, register the 19 worker LOGINs with their approved unique immutable worker IDs. The repository includes a password-free manifest that inserts the expected worker identities and fails closed if an existing mapping differs, a LOGIN is unsafe, or extra principals exist:
 
 ```sh
-psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f scripts/agent-hq-staging-register-workers.sql
+psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -v worker_id_prefix=staging- -f scripts/agent-hq-staging-register-workers.sql
 ```
 
 The manifest enables the 19 identity records but does not start any worker process, grant passwords, or enable model spending. Keep the singleton budget disabled with zero caps/prices. `agent_supervisor` and `agent_operator` are separate control logins and are not entries in `agent_worker_principals`.
@@ -137,7 +137,7 @@ The database must be `agent_hq_staging`; the budget must be disabled and every c
 Run the fail-closed preflight with a TLS-enabled, read-only-capable staging migration/verification account. It checks the exact database name, TLS, the disabled budget, all 19 enabled principals, unique LOGINs/worker IDs, least-privilege LOGIN attributes, separate supervisor/operator LOGINs and three NOLOGIN function owners (budget, runtime and monitor). It makes no changes and makes no provider calls:
 
 ```sh
-STAGING_DATABASE_URL='postgresql://<staging-verifier>:<secret>@<staging-host>:5432/agent_hq_staging?sslmode=require' npm run agent-hq:staging-preflight
+STAGING_DATABASE_URL='postgresql://agent_supervisor:<secret>@<staging-host>:5432/agent_hq_staging?sslmode=require' npm run agent-hq:staging-preflight
 ```
 
 Do not paste the URL into chat, shell history or CI logs. Supply it through the host secret manager/environment injection. The command must print `result: PASS`; otherwise stop and fix the reported blocker.
