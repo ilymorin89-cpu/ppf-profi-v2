@@ -45,6 +45,21 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
     const foreignUpdate = await seo`UPDATE agent_tasks SET title='forged' WHERE id=${qaTask.id} RETURNING id`;
     assert.equal(foreignUpdate.length, 0, "SEO cannot update another role's task");
     await assert.rejects(
+      seo`UPDATE agent_tasks SET assigned_role='qa_security' WHERE id=${seoTask.id}`,
+      error => error.code === "42501",
+      "SEO cannot change task routing/identity columns"
+    );
+    await assert.rejects(
+      seo`UPDATE agent_tasks SET parent_task_id=${parentTask.id} WHERE id=${seoTask.id}`,
+      error => error.code === "42501",
+      "SEO cannot re-parent its task"
+    );
+    await assert.rejects(
+      seo`DELETE FROM agent_tasks WHERE id=${seoTask.id}`,
+      error => error.code === "42501",
+      "SEO cannot delete tasks"
+    );
+    await assert.rejects(
       seo`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
         VALUES (${qaTask.id},'seo','result','forged','forged')`,
       error => ["42501","23514"].includes(error.code),
@@ -106,6 +121,11 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
     assert.equal(String(qaRuns[0].id), String(qaRun.id));
     const foreignRunUpdate = await seo`UPDATE agent_runs SET status='failed' WHERE id=${qaRun.id} RETURNING id`;
     assert.equal(foreignRunUpdate.length, 0);
+    await assert.rejects(
+      seo`UPDATE agent_runs SET role='qa_security' WHERE id=${seoRun.id}`,
+      error => error.code === "42501",
+      "SEO cannot reassign run identity"
+    );
 
     const [seoApproval] = await admin`INSERT INTO agent_approvals (task_id,action,requested_by,payload,status)
       VALUES (${seoTask.id},'other','seo','{"reason":"test"}'::jsonb,'pending') RETURNING id`;
@@ -132,6 +152,11 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
     await assert.rejects(
       seo`UPDATE agent_approvals SET status='approved' WHERE status='pending'`,
       error => error.code === "42501"
+    );
+    await assert.rejects(
+      seo`DELETE FROM agent_approvals WHERE id=${seoApproval.id}`,
+      error => error.code === "42501",
+      "Worker cannot delete approval audit records"
     );
 
     const coordinatorOwn = await coordinator`SELECT id FROM agent_tasks WHERE id=${parentTask.id}`;
