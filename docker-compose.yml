@@ -1,3 +1,38 @@
+# Agent HQ live runtime Compose. This is NOT the no-egress test stack.
+# All processes and external calls remain disabled unless explicitly enabled.
+x-agent-hq-worker: &agent-hq-worker
+  image: ppf-agent-hq:runtime
+  build:
+    context: .
+    dockerfile: Dockerfile.agent-hq
+  init: true
+  command: &agent-hq-worker-command
+    - sh
+    - -lc
+    - |
+      if [ "$AGENT_HQ_WORKERS_ENABLED" != "true" ] || [ "$AGENT_HQ_ROLE_ENABLED" != "true" ]; then
+        echo "Agent HQ worker disabled by global/role gate; waiting";
+        exec sleep infinity;
+      fi
+      if [ -z "$DATABASE_URL" ]; then echo "Missing role-specific DATABASE_URL"; exit 1; fi
+      if [ -z "$OPENAI_API_KEY" ] || [ -z "$AGENT_MODEL" ]; then echo "Missing provider key or model"; exit 1; fi
+      exec node scripts/agent-hq-worker.mjs
+  environment: &agent-hq-worker-environment
+    NODE_ENV: production
+    OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    AGENT_MODEL: ${AGENT_MODEL:-}
+    AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
+    AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
+    AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
+    AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-false}
+    GITHUB_TOKEN: ${AGENT_GITHUB_READ_TOKEN:-}
+    AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
+    AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+
+services:
 services:
   gateway:
     profiles: ["optional-health"]
@@ -9,417 +44,182 @@ services:
       - "8080:8080"
     environment:
       PORT: "8080"
-      DATABASE_URL: ${AGENT_HQ_DATABASE_URL:-}
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_SUPERVISOR:-}
     restart: unless-stopped
 
   coordinator:
-    build:
-      context: .
-      dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    <<: *agent-hq-worker
     environment:
-      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_COORDINATOR:-}
-      OPENAI_API_KEY: test-no-provider-call
-      AGENT_MODEL: test-model
-      NODE_ENV: test
-      AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
+      <<: *agent-hq-worker-environment
       AGENT_ROLE: coordinator
-      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
-      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
-      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: "false"
-      GITHUB_TOKEN: ""
-      AGENT_GITHUB_REPOSITORY: ""
-      AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
-    restart: unless-stopped
-
-  community_manager:
-    build:
-      context: .
-      dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
-    environment:
-      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_COMMUNITY_MANAGER:-}
-      OPENAI_API_KEY: test-no-provider-call
-      AGENT_MODEL: test-model
-      NODE_ENV: test
-      AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
-      AGENT_ROLE: community_manager
-      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
-      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
-      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: "false"
-      GITHUB_TOKEN: ""
-      AGENT_GITHUB_REPOSITORY: ""
-      AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
-    restart: unless-stopped
-
-  qa_security:
-    build:
-      context: .
-      dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
-    environment:
-      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_QA_SECURITY:-}
-      OPENAI_API_KEY: test-no-provider-call
-      AGENT_MODEL: test-model
-      NODE_ENV: test
-      AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
-      AGENT_ROLE: qa_security
-      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
-      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
-      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: "false"
-      GITHUB_TOKEN: ""
-      AGENT_GITHUB_REPOSITORY: ""
-      AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
-    restart: unless-stopped
+      AGENT_HQ_ROLE_ENABLED: ${AGENT_HQ_ENABLE_COORDINATOR:-false}
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_COORDINATOR:-}
 
   web_engineer:
-    build:
-      context: .
-      dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    <<: *agent-hq-worker
     environment:
-      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_WEB_ENGINEER:-}
-      OPENAI_API_KEY: test-no-provider-call
-      AGENT_MODEL: test-model
-      NODE_ENV: test
-      AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
+      <<: *agent-hq-worker-environment
       AGENT_ROLE: web_engineer
-      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
-      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
-      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: "false"
-      GITHUB_TOKEN: ""
-      AGENT_GITHUB_REPOSITORY: ""
-      AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
-    restart: unless-stopped
+      AGENT_HQ_ROLE_ENABLED: ${AGENT_HQ_ENABLE_WEB_ENGINEER:-false}
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_WEB_ENGINEER:-}
 
   seo:
-    build:
-      context: .
-      dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    <<: *agent-hq-worker
     environment:
-      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_SEO:-}
-      OPENAI_API_KEY: test-no-provider-call
-      AGENT_MODEL: test-model
-      NODE_ENV: test
-      AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
+      <<: *agent-hq-worker-environment
       AGENT_ROLE: seo
-      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
-      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
-      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: "false"
-      GITHUB_TOKEN: ""
-      AGENT_GITHUB_REPOSITORY: ""
-      AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
-    restart: unless-stopped
-
-  analytics:
-    build:
-      context: .
-      dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
-    environment:
-      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_ANALYTICS:-}
-      OPENAI_API_KEY: test-no-provider-call
-      AGENT_MODEL: test-model
-      NODE_ENV: test
-      AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
-      AGENT_ROLE: analytics
-      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
-      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
-      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: "false"
-      GITHUB_TOKEN: ""
-      AGENT_GITHUB_REPOSITORY: ""
-      AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
-    restart: unless-stopped
+      AGENT_HQ_ROLE_ENABLED: ${AGENT_HQ_ENABLE_SEO:-false}
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_SEO:-}
 
   geo:
-    build:
-      context: .
-      dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    <<: *agent-hq-worker
     environment:
-      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_GEO:-}
-      OPENAI_API_KEY: test-no-provider-call
-      AGENT_MODEL: test-model
-      NODE_ENV: test
-      AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
+      <<: *agent-hq-worker-environment
       AGENT_ROLE: geo
-      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
-      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
-      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: "false"
-      GITHUB_TOKEN: ""
-      AGENT_GITHUB_REPOSITORY: ""
-      AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
-    restart: unless-stopped
+      AGENT_HQ_ROLE_ENABLED: ${AGENT_HQ_ENABLE_GEO:-false}
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_GEO:-}
 
   growth:
-    build:
-      context: .
-      dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    <<: *agent-hq-worker
     environment:
-      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_GROWTH:-}
-      OPENAI_API_KEY: test-no-provider-call
-      AGENT_MODEL: test-model
-      NODE_ENV: test
-      AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
+      <<: *agent-hq-worker-environment
       AGENT_ROLE: growth
-      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
-      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
-      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: "false"
-      GITHUB_TOKEN: ""
-      AGENT_GITHUB_REPOSITORY: ""
-      AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
-    restart: unless-stopped
+      AGENT_HQ_ROLE_ENABLED: ${AGENT_HQ_ENABLE_GROWTH:-false}
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_GROWTH:-}
+
+  analytics:
+    <<: *agent-hq-worker
+    environment:
+      <<: *agent-hq-worker-environment
+      AGENT_ROLE: analytics
+      AGENT_HQ_ROLE_ENABLED: ${AGENT_HQ_ENABLE_ANALYTICS:-false}
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_ANALYTICS:-}
+
+  qa_security:
+    <<: *agent-hq-worker
+    environment:
+      <<: *agent-hq-worker-environment
+      AGENT_ROLE: qa_security
+      AGENT_HQ_ROLE_ENABLED: ${AGENT_HQ_ENABLE_QA_SECURITY:-false}
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_QA_SECURITY:-}
 
   vk_strategist:
-    build:
-      context: .
-      dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    <<: *agent-hq-worker
     environment:
-      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_VK_STRATEGIST:-}
-      OPENAI_API_KEY: test-no-provider-call
-      AGENT_MODEL: test-model
-      NODE_ENV: test
-      AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
+      <<: *agent-hq-worker-environment
       AGENT_ROLE: vk_strategist
-      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
-      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
-      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: "false"
-      GITHUB_TOKEN: ""
-      AGENT_GITHUB_REPOSITORY: ""
-      AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
-    restart: unless-stopped
+      AGENT_HQ_ROLE_ENABLED: ${AGENT_HQ_ENABLE_VK_STRATEGIST:-false}
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_VK_STRATEGIST:-}
 
   copywriter:
-    build:
-      context: .
-      dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    <<: *agent-hq-worker
     environment:
-      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_COPYWRITER:-}
-      OPENAI_API_KEY: test-no-provider-call
-      AGENT_MODEL: test-model
-      NODE_ENV: test
-      AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
+      <<: *agent-hq-worker-environment
       AGENT_ROLE: copywriter
-      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
-      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
-      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: "false"
-      GITHUB_TOKEN: ""
-      AGENT_GITHUB_REPOSITORY: ""
-      AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
-    restart: unless-stopped
+      AGENT_HQ_ROLE_ENABLED: ${AGENT_HQ_ENABLE_COPYWRITER:-false}
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_COPYWRITER:-}
 
   designer:
-    build:
-      context: .
-      dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    <<: *agent-hq-worker
     environment:
-      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_DESIGNER:-}
-      OPENAI_API_KEY: test-no-provider-call
-      AGENT_MODEL: test-model
-      NODE_ENV: test
-      AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
+      <<: *agent-hq-worker-environment
       AGENT_ROLE: designer
-      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
-      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
-      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: "false"
-      GITHUB_TOKEN: ""
-      AGENT_GITHUB_REPOSITORY: ""
-      AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
-    restart: unless-stopped
+      AGENT_HQ_ROLE_ENABLED: ${AGENT_HQ_ENABLE_DESIGNER:-false}
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_DESIGNER:-}
 
   image_generator:
-    build:
-      context: .
-      dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    <<: *agent-hq-worker
     environment:
-      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_IMAGE_GENERATOR:-}
-      OPENAI_API_KEY: test-no-provider-call
-      AGENT_MODEL: test-model
-      NODE_ENV: test
-      AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
+      <<: *agent-hq-worker-environment
       AGENT_ROLE: image_generator
-      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
-      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
-      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: "false"
-      GITHUB_TOKEN: ""
-      AGENT_GITHUB_REPOSITORY: ""
-      AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
-    restart: unless-stopped
+      AGENT_HQ_ROLE_ENABLED: ${AGENT_HQ_ENABLE_IMAGE_GENERATOR:-false}
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_IMAGE_GENERATOR:-}
 
   storyteller:
-    build:
-      context: .
-      dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    <<: *agent-hq-worker
     environment:
-      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_STORYTELLER:-}
-      OPENAI_API_KEY: test-no-provider-call
-      AGENT_MODEL: test-model
-      NODE_ENV: test
-      AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
+      <<: *agent-hq-worker-environment
       AGENT_ROLE: storyteller
-      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
-      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
-      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: "false"
-      GITHUB_TOKEN: ""
-      AGENT_GITHUB_REPOSITORY: ""
-      AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
-    restart: unless-stopped
+      AGENT_HQ_ROLE_ENABLED: ${AGENT_HQ_ENABLE_STORYTELLER:-false}
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_STORYTELLER:-}
+
+  community_manager:
+    <<: *agent-hq-worker
+    environment:
+      <<: *agent-hq-worker-environment
+      AGENT_ROLE: community_manager
+      AGENT_HQ_ROLE_ENABLED: ${AGENT_HQ_ENABLE_COMMUNITY_MANAGER:-false}
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_COMMUNITY_MANAGER:-}
 
   content_seo:
-    build:
-      context: .
-      dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    <<: *agent-hq-worker
     environment:
-      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_CONTENT_SEO:-}
-      OPENAI_API_KEY: test-no-provider-call
-      AGENT_MODEL: test-model
-      NODE_ENV: test
-      AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
+      <<: *agent-hq-worker-environment
       AGENT_ROLE: content_seo
-      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
-      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
-      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: "false"
-      GITHUB_TOKEN: ""
-      AGENT_GITHUB_REPOSITORY: ""
-      AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
-    restart: unless-stopped
+      AGENT_HQ_ROLE_ENABLED: ${AGENT_HQ_ENABLE_CONTENT_SEO:-false}
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_CONTENT_SEO:-}
 
   ads_manager:
-    build:
-      context: .
-      dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    <<: *agent-hq-worker
     environment:
-      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_ADS_MANAGER:-}
-      OPENAI_API_KEY: test-no-provider-call
-      AGENT_MODEL: test-model
-      NODE_ENV: test
-      AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
+      <<: *agent-hq-worker-environment
       AGENT_ROLE: ads_manager
-      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
-      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
-      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: "false"
-      GITHUB_TOKEN: ""
-      AGENT_GITHUB_REPOSITORY: ""
-      AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
-    restart: unless-stopped
+      AGENT_HQ_ROLE_ENABLED: ${AGENT_HQ_ENABLE_ADS_MANAGER:-false}
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_ADS_MANAGER:-}
 
   trend_scout:
-    build:
-      context: .
-      dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    <<: *agent-hq-worker
     environment:
-      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_TREND_SCOUT:-}
-      OPENAI_API_KEY: test-no-provider-call
-      AGENT_MODEL: test-model
-      NODE_ENV: test
-      AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
+      <<: *agent-hq-worker-environment
       AGENT_ROLE: trend_scout
-      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
-      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
-      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: "false"
-      GITHUB_TOKEN: ""
-      AGENT_GITHUB_REPOSITORY: ""
-      AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
-    restart: unless-stopped
+      AGENT_HQ_ROLE_ENABLED: ${AGENT_HQ_ENABLE_TREND_SCOUT:-false}
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_TREND_SCOUT:-}
 
   auto_news_editor:
-    build:
-      context: .
-      dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    <<: *agent-hq-worker
     environment:
-      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_AUTO_NEWS_EDITOR:-}
-      OPENAI_API_KEY: test-no-provider-call
-      AGENT_MODEL: test-model
-      NODE_ENV: test
-      AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
+      <<: *agent-hq-worker-environment
       AGENT_ROLE: auto_news_editor
-      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
-      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
-      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: "false"
-      GITHUB_TOKEN: ""
-      AGENT_GITHUB_REPOSITORY: ""
-      AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
-    restart: unless-stopped
+      AGENT_HQ_ROLE_ENABLED: ${AGENT_HQ_ENABLE_AUTO_NEWS_EDITOR:-false}
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_AUTO_NEWS_EDITOR:-}
 
   auto_law_monitor:
-    build:
-      context: .
-      dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    <<: *agent-hq-worker
     environment:
-      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_AUTO_LAW_MONITOR:-}
-      OPENAI_API_KEY: test-no-provider-call
-      AGENT_MODEL: test-model
-      NODE_ENV: test
-      AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
+      <<: *agent-hq-worker-environment
       AGENT_ROLE: auto_law_monitor
-      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
-      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
-      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: "false"
-      GITHUB_TOKEN: ""
-      AGENT_GITHUB_REPOSITORY: ""
-      AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
-    restart: unless-stopped
+      AGENT_HQ_ROLE_ENABLED: ${AGENT_HQ_ENABLE_AUTO_LAW_MONITOR:-false}
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_AUTO_LAW_MONITOR:-}
 
   fact_checker:
-    build:
-      context: .
-      dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
+    <<: *agent-hq-worker
     environment:
-      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_FACT_CHECKER:-}
-      OPENAI_API_KEY: test-no-provider-call
-      AGENT_MODEL: test-model
-      NODE_ENV: test
-      AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
+      <<: *agent-hq-worker-environment
       AGENT_ROLE: fact_checker
-      AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
-      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
-      AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: "false"
-      GITHUB_TOKEN: ""
-      AGENT_GITHUB_REPOSITORY: ""
-      AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
-    restart: unless-stopped
+      AGENT_HQ_ROLE_ENABLED: ${AGENT_HQ_ENABLE_FACT_CHECKER:-false}
+      DATABASE_URL: ${AGENT_HQ_DATABASE_URL_FACT_CHECKER:-}
 
   supervisor:
     build:
       context: .
       dockerfile: Dockerfile.agent-hq
-    command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ]; then echo 'Agent HQ supervisor disabled; test mode required'; exec sleep infinity; fi; node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-supervisor.mjs"]
+    init: true
+    command:
+      - sh
+      - -lc
+      - |
+        if [ "$AGENT_HQ_WORKERS_ENABLED" != "true" ] || [ "$AGENT_HQ_SUPERVISOR_ENABLED" != "true" ]; then
+          echo "Agent HQ supervisor disabled by global/control gate";
+          exec sleep infinity;
+        fi
+        if [ -z "$DATABASE_URL" ]; then echo "Missing supervisor DATABASE_URL"; exit 1; fi
+        exec node scripts/agent-hq-supervisor.mjs
     environment:
+      NODE_ENV: production
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_SUPERVISOR:-}
-      AGENT_ROLE: supervisor
       AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
-      NODE_ENV: test
+      AGENT_HQ_SUPERVISOR_ENABLED: ${AGENT_HQ_SUPERVISOR_ENABLED:-false}
       AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
