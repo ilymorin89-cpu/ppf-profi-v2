@@ -43,9 +43,9 @@ GRANT INSERT (parent_task_id,title,objective,expected_output,acceptance_criteria
 GRANT INSERT (task_id,conversation_id,from_role,to_role,kind,body,evidence,in_reply_to,idempotency_key)
   ON agent_messages TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
 
-GRANT INSERT (task_id,role,worker_id,provider,model,status,cost_microusd)
+GRANT INSERT (task_id,role,worker_id,provider,model,status)
   ON agent_runs TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
-GRANT UPDATE (status,input_tokens,output_tokens,cost_microusd,error,finished_at)
+GRANT UPDATE (status,error,finished_at)
   ON agent_runs TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
 
 GRANT INSERT (task_id,created_by,artifact_type,title,content,evidence)
@@ -68,8 +68,8 @@ DO $roles$ DECLARE role_name TEXT; BEGIN
     EXECUTE format('GRANT SELECT ON agent_tasks,agent_messages,agent_runs,agent_artifacts,agent_approvals,agent_budget_config TO %I', role_name);
     EXECUTE format('GRANT UPDATE (status,attempts,lease_owner,lease_until,updated_at,completed_at) ON agent_tasks TO %I', role_name);
     EXECUTE format('GRANT INSERT (task_id,conversation_id,from_role,to_role,kind,body,evidence,in_reply_to,idempotency_key) ON agent_messages TO %I', role_name);
-    EXECUTE format('GRANT INSERT (task_id,role,worker_id,provider,model,status,cost_microusd) ON agent_runs TO %I', role_name);
-    EXECUTE format('GRANT UPDATE (status,input_tokens,output_tokens,cost_microusd,error,finished_at) ON agent_runs TO %I', role_name);
+    EXECUTE format('GRANT INSERT (task_id,role,worker_id,provider,model,status) ON agent_runs TO %I', role_name);
+    EXECUTE format('GRANT UPDATE (status,error,finished_at) ON agent_runs TO %I', role_name);
     EXECUTE format('GRANT INSERT (task_id,created_by,artifact_type,title,content,evidence) ON agent_artifacts TO %I', role_name);
     EXECUTE format('GRANT INSERT (task_id,action,requested_by,payload,status) ON agent_approvals TO %I', role_name);
     EXECUTE format('GRANT USAGE,SELECT ON SEQUENCE agent_tasks_id_seq,agent_messages_id_seq,agent_runs_id_seq,agent_artifacts_id_seq,agent_approvals_id_seq TO %I', role_name);
