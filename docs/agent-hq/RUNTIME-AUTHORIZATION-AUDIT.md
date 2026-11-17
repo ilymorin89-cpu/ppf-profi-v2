@@ -1,3 +1,6 @@
+
+> **Historical pre-migration audit.** This snapshot predates the integrated runtime RLS migrations 0009/0010 and authenticated principal registry. Do not treat its statements that runtime RLS or 19-role identities are absent as current. Use [CURRENT-STATUS.md](./CURRENT-STATUS.md) and [BILLING-RECONCILIATION-AUDIT.md](./BILLING-RECONCILIATION-AUDIT.md) for the current state.
+
 # Agent HQ — runtime authorization audit and implementation gates
 
 Status: read-only code audit against `agent-hq/enable-research-tools` (2026-11-17). This document records verified gaps; it does not change runtime permissions or authorize a database migration.
