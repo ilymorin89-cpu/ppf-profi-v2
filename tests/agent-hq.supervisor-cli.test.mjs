@@ -7,11 +7,12 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const databaseUrl = process.env.AGENT_HQ_TEST_DATABASE_URL;
+const supervisorUrl = process.env.AGENT_HQ_ROLE_TEST_URL_SUPERVISOR;
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const runNode = (script, args = []) => spawnSync(process.execPath, [script, ...args], {
+const runNode = (script, args = [], overrides = {}) => spawnSync(process.execPath, [script, ...args], {
   cwd: root,
   encoding: "utf8",
-  env: { ...process.env, NODE_ENV: "test", DATABASE_URL: databaseUrl, AGENT_HQ_TEST_APPROVER_UIDS: String(process.getuid?.() ?? "") }
+  env: { ...process.env, NODE_ENV: "test", DATABASE_URL: databaseUrl, AGENT_HQ_TEST_APPROVER_UIDS: String(process.getuid?.() ?? ""), ...overrides }
 });
 
 test("Agent HQ supervisor executes the real parent → QA → consolidation lifecycle", async t => {
@@ -35,7 +36,7 @@ test("Agent HQ supervisor executes the real parent → QA → consolidation life
     await sql`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
       VALUES (${specialist.id},'seo','result','SEO evidence',${evidence})`;
 
-    const first = runNode("scripts/agent-hq-supervisor.mjs", ["--once"]);
+    const first = runNode("scripts/agent-hq-supervisor.mjs", ["--once"], { DATABASE_URL: supervisorUrl });
     assert.equal(first.status, 0, first.stderr || first.stdout);
     const [qa] = await sql`SELECT id,status FROM agent_tasks
       WHERE parent_task_id=${parentId} AND assigned_role='qa_security'`;
@@ -52,7 +53,7 @@ test("Agent HQ supervisor executes the real parent → QA → consolidation life
     await sql`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
       VALUES (${qa.id},'qa_security','review','QA verdict','VERDICT: PASS\\nAcceptance criteria verified')`;
 
-    const second = runNode("scripts/agent-hq-supervisor.mjs", ["--once"]);
+    const second = runNode("scripts/agent-hq-supervisor.mjs", ["--once"], { DATABASE_URL: supervisorUrl });
     assert.equal(second.status, 0, second.stderr || second.stdout);
     const [completed] = await sql`SELECT status FROM agent_tasks WHERE id=${parentId}`;
     assert.equal(completed.status, "done");
