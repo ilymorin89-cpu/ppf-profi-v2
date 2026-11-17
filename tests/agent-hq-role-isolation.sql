@@ -13,6 +13,7 @@ DO $roles$ DECLARE role_name TEXT; BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='agent_coordinator') THEN CREATE ROLE agent_coordinator LOGIN PASSWORD 'ci_agent_coordinator' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS; END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='agent_supervisor') THEN CREATE ROLE agent_supervisor LOGIN PASSWORD 'ci_agent_supervisor' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS; END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='agent_operator') THEN CREATE ROLE agent_operator LOGIN PASSWORD 'ci_agent_operator' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS; END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='agent_hq_fn_owner_ci') THEN CREATE ROLE agent_hq_fn_owner_ci NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS; END IF;
 END $roles$;
 
 GRANT CONNECT ON DATABASE agent_hq_test TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor,agent_operator;
@@ -161,6 +162,28 @@ AS $role_map$
 $role_map$;
 REVOKE ALL ON FUNCTION public.agent_role_for_session() FROM PUBLIC;
 
+-- CI-only proof of the required trusted aggregate boundary. This function is
+-- owned by the disposable database owner and MUST NOT be copied to production.
+CREATE OR REPLACE FUNCTION public.agent_test_budget_totals()
+RETURNS TABLE(daily_cost BIGINT, monthly_cost BIGINT)
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $budget_totals$
+  SELECT
+    COALESCE(SUM(cost_microusd) FILTER (WHERE started_at >= date_trunc('day',now())),0)::BIGINT,
+    COALESCE(SUM(cost_microusd) FILTER (WHERE started_at >= date_trunc('month',now())),0)::BIGINT
+  FROM public.agent_runs
+$budget_totals$;
+GRANT USAGE,CREATE ON SCHEMA public TO agent_hq_fn_owner_ci;
+GRANT SELECT ON public.agent_runs TO agent_hq_fn_owner_ci;
+ALTER FUNCTION public.agent_test_budget_totals() OWNER TO agent_hq_fn_owner_ci;
+REVOKE CREATE ON SCHEMA public FROM agent_hq_fn_owner_ci;
+REVOKE ALL ON FUNCTION public.agent_test_budget_totals() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.agent_test_budget_totals()
+  TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
+
 CREATE OR REPLACE FUNCTION public.agent_can_insert_own_artifact(p_task_id BIGINT, p_created_by TEXT)
 RETURNS BOOLEAN
 LANGUAGE SQL
@@ -181,6 +204,7 @@ GRANT EXECUTE ON FUNCTION public.agent_role_for_session() TO agent_operator;
 DO $roles$ DECLARE role_name TEXT; BEGIN
   FOREACH role_name IN ARRAY ARRAY['agent_web_engineer','agent_geo','agent_growth','agent_analytics','agent_vk_strategist','agent_copywriter','agent_designer','agent_image_generator','agent_storyteller','agent_community_manager','agent_content_seo','agent_ads_manager','agent_trend_scout','agent_auto_news_editor','agent_auto_law_monitor','agent_fact_checker'] LOOP
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_role_for_session() TO %I', role_name);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_test_budget_totals() TO %I', role_name);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_has_task_access(BIGINT) TO %I', role_name);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_can_insert_own_artifact(BIGINT,TEXT) TO %I', role_name);
   END LOOP;
@@ -237,6 +261,8 @@ CREATE POLICY message_insert_sender ON agent_messages FOR INSERT WITH CHECK (
 CREATE POLICY run_read_own_role ON agent_runs FOR SELECT USING (
   session_user='agent_supervisor' OR role = COALESCE(public.agent_role_for_session(), '__denied__')
 );
+-- CI-only definer owner may read aggregate inputs, but no runtime LOGIN is a member of this role.
+CREATE POLICY run_budget_aggregate_fn_owner ON agent_runs FOR SELECT TO agent_hq_fn_owner_ci USING (true);
 CREATE POLICY run_insert_own_role ON agent_runs FOR INSERT WITH CHECK (
   session_user='agent_supervisor' OR (
     role = COALESCE(public.agent_role_for_session(), '__denied__')

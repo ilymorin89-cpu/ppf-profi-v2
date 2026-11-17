@@ -63,6 +63,13 @@ Use small functions rather than broad direct UPDATE privileges for transitions t
 
 Function signatures, ownership, policy exemptions and grants must be generated from the final SQL inventory and reviewed individually. Do not grant broad EXECUTE on a generic table-operation function.
 
+
+## Global budget aggregation under RLS
+
+The worker currently sums `agent_runs.cost_microusd` directly to enforce daily/monthly caps. The CI `run_read_own_role` policy intentionally restricts each worker to its own role's run rows. With distinct per-role LOGINs, that direct aggregate will be filtered by RLS and undercount reservations/settlements belonging to other roles. Do not grant workers cross-role SELECT on `agent_runs` to work around this.
+
+The production design must expose a narrow, fixed-search-path `agent_budget_totals()` / `agent_reserve_budget()` function owned by the non-login function owner (or a dedicated budget service identity). It returns only global totals and performs the atomic reservation under the same advisory/ledger lock; it never returns raw run rows. Tests must create reservations from at least two role identities, prove each role cannot read the other's run, and prove the trusted aggregate sees the combined amount and refuses the over-cap reservation.
+
 ## Direct table access that may remain
 
 Only simple read paths should remain direct, with column-limited SELECT and RLS:

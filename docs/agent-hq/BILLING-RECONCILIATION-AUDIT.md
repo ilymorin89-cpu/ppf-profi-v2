@@ -38,6 +38,13 @@ A failed HTTP request or interrupted multi-turn run can have incurred provider-s
 
 The database stores aggregate input/output token counts and total cost, but the run record does not retain a provider response/request identifier, pricing version, per-turn usage, individual search-call usage, or an import/reconciliation status against provider billing exports. Configured prices may not be identical to the actual account invoice after discounts, regional rates, taxes or pricing changes.
 
+
+### 6. Global cap aggregation conflicts with per-role RLS
+
+The worker's daily/monthly cap check runs a direct `SELECT SUM(cost_microusd) FROM agent_runs`. The disposable RLS harness defines `run_read_own_role`, which limits a worker LOGIN to rows whose `role` matches its authenticated `session_user`. Under that policy, a worker's aggregate sees only its own role's runs, not the other workers' reservations or settlements. Therefore the global daily/monthly cap calculation is not globally correct once workers use the intended per-role LOGINs and RLS policies.
+
+Do not solve this by broadening worker SELECT on `agent_runs`. Add a narrow fixed-search-path budget aggregate/reservation function owned by the reviewed non-login function owner (or a dedicated budget service identity). It should return only aggregate totals and perform the reservation under the same serialization lock; it must not expose other roles' run rows. Add a test with two different worker roles and reservations proving each worker's raw run visibility remains role-scoped while the trusted aggregate returns the global total.
+
 ## Required design before enabling paid calls
 
 1. **Separate reservation from settlement.** Add immutable reservation amount, settled amount, currency, state, timestamps and a pricing-version reference. Never overwrite the reservation evidence.
@@ -54,7 +61,7 @@ The database stores aggregate input/output token counts and total cost, but the 
 ## Acceptance tests still needed
 
 - Reservation at cap succeeds; one micro-USD over cap fails before provider request.
-- Concurrent reservations cannot jointly exceed daily/monthly hard caps.
+- Concurrent reservations cannot jointly exceed daily/monthly hard caps, including reservations from other roles hidden by RLS.
 - Settlement and reservation serialize; a new run sees the settled amount, not stale reservation.
 - Actual cost above reservation records the full cost and trips a durable circuit breaker.
 - Actual cost below reservation releases the unused amount without losing audit history.
