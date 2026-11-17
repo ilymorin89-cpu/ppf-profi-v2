@@ -575,3 +575,58 @@ test("Agent HQ supervisor rejects a non-supervisor PostgreSQL LOGIN", {
   assert.notEqual(result.status, 0, "Supervisor must reject a worker login before lifecycle SQL.");
   assert.match(result.stderr, /must authenticate as PostgreSQL LOGIN "agent_supervisor"/i);
 });
+
+
+test("Agent HQ supervisor blocks expired leases with active or unknown provider reservations", async () => {
+  assert.ok(databaseUrl, "Set AGENT_HQ_TEST_DATABASE_URL to a disposable PostgreSQL database.");
+  assert.ok(supervisorUrl, "Missing isolated supervisor test login.");
+  assert.notEqual(databaseUrl, process.env.DATABASE_URL, "Test database must not equal DATABASE_URL.");
+  const sql = postgres(databaseUrl, { max: 4, idle_timeout: 5 });
+  const marker = randomUUID();
+  const fixtures = [];
+  try {
+    for (const state of ["active", "unknown"]) {
+      const [task] = await sql`INSERT INTO agent_tasks
+        (assigned_role,title,objective,expected_output,created_by,status,attempts,max_attempts,lease_owner,lease_until)
+        VALUES ('seo',${"Crash recovery " + state + " " + marker},'Simulate worker crash after possible provider call',
+          'Must be blocked for reconciliation','integration-test','running',1,3,${"crashed-" + state},now()-interval '5 minutes')
+        RETURNING id`;
+      const [run] = await sql`INSERT INTO agent_runs
+        (task_id,role,worker_id,provider,model,status,cost_microusd)
+        VALUES (${task.id},'seo',${"crashed-" + state},'test_stub','test-model','failed',0)
+        RETURNING id`;
+      const [reservation] = await sql`INSERT INTO agent_budget_reservations
+        (run_id,task_id,role,worker_id,idempotency_key,reserved_microusd,price_snapshot,day_key,month_key,state)
+        VALUES (${run.id},${task.id},'seo',${"crashed-" + state},${"crash-" + state + "-" + marker},
+          10000,${JSON.stringify({pricing_version:"test-v1",input_price:100000,output_price:100000,search_price:0,
+            estimated_input_tokens:10000,max_output_tokens:256,max_turns:1,max_search_calls:0,model:"test-model",provider:"test_stub"})}::jsonb,
+          CURRENT_DATE,date_trunc('month',now())::date,${state}) RETURNING id`;
+      await sql`INSERT INTO agent_budget_ledger(reservation_id,event_key,event_type,amount_microusd,metadata)
+        VALUES (${reservation.id},${"crash-event-" + state + "-" + marker},${state === "active" ? "reserved" : "unknown"},
+          10000,'{}'::jsonb)`;
+      fixtures.push({taskId:task.id,runId:run.id,reservationId:reservation.id,state});
+    }
+    const result = runNode("scripts/agent-hq-supervisor.mjs", ["--once"], { DATABASE_URL: supervisorUrl });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    for (const fixture of fixtures) {
+      const [task] = await sql`SELECT status,lease_owner,lease_until FROM agent_tasks WHERE id=${fixture.taskId}`;
+      assert.equal(task.status,"blocked",fixture.state + " reservation must prevent automatic retry");
+      assert.equal(task.lease_owner,null);
+      assert.equal(task.lease_until,null);
+      const [reservation] = await sql`SELECT state FROM agent_budget_reservations WHERE id=${fixture.reservationId}`;
+      assert.equal(reservation.state,fixture.state,"Supervisor must not release or rewrite financial state");
+      const [message] = await sql`SELECT body FROM agent_messages
+        WHERE task_id=${fixture.taskId} AND to_role='coordinator' AND idempotency_key=${"budget-recovery-" + fixture.taskId}`;
+      assert.ok(message?.body.includes("operator reconciliation"),"Coordinator must be notified of the reconciliation gate");
+    }
+  } finally {
+    for (const fixture of fixtures) {
+      await sql`DELETE FROM agent_budget_ledger WHERE reservation_id=${fixture.reservationId}`;
+      await sql`DELETE FROM agent_budget_settlements WHERE reservation_id=${fixture.reservationId}`;
+      await sql`DELETE FROM agent_budget_reservations WHERE id=${fixture.reservationId}`;
+      await sql`DELETE FROM agent_runs WHERE id=${fixture.runId}`;
+      await sql`DELETE FROM agent_tasks WHERE id=${fixture.taskId}`;
+    }
+    await sql.end({ timeout: 5 });
+  }
+});
