@@ -181,7 +181,7 @@ test("Agent HQ supervisor and approval lifecycle (disposable database only)", as
         VALUES (${qa.id},'qa_security','review','QA verdict','VERDICT: PASS\\nAll acceptance criteria met')`;
 
       const [qaArtifact] = await sql`SELECT content FROM agent_artifacts WHERE task_id=${qa.id}`;
-      assert.match(qaArtifact.content, /VERDICT:\\s*PASS/i);
+      assert.match(qaArtifact.content, /VERDICT:\s*PASS/i);
       const artifacts = await sql`SELECT a.id,a.created_by,a.title,a.content
         FROM agent_artifacts a JOIN agent_tasks c ON c.id=a.task_id
         WHERE c.parent_task_id=${parentId} ORDER BY a.created_at`;
