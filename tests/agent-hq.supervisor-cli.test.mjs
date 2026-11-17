@@ -528,6 +528,16 @@ test("Agent HQ bus send derives sender from authenticated PostgreSQL LOGIN", asy
       const visibleTask = await seo`SELECT id,assigned_role FROM agent_tasks WHERE id=${taskId}`;
       assert.equal(visibleTask.length, 1, "SEO LOGIN must see its own task before sending a task-scoped message.");
       assert.equal(visibleTask[0].assigned_role, "seo");
+      const [policyProbe] = await seo`SELECT
+        public.agent_role_for_session() AS mapped_role,
+        EXISTS (SELECT 1 FROM public.agent_tasks WHERE id=${taskId} AND assigned_role='seo') AS owns_task`;
+      assert.equal(policyProbe.mapped_role, "seo");
+      assert.equal(policyProbe.owns_task, true);
+      const probeBody = "direct RLS probe " + marker;
+      await seo`INSERT INTO agent_messages
+        (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
+        VALUES (${taskId},${randomUUID()},'seo','coordinator','status',${probeBody},${randomUUID()})`;
+      await seo`DELETE FROM agent_messages WHERE body=${probeBody}`.catch(() => {});
     } finally {
       await seo.end({ timeout: 5 });
     }
