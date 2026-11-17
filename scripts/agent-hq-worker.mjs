@@ -93,7 +93,7 @@ async function runTask(task) {
   const estimatedInputTokens = Math.ceil((task.objective.length + task.title.length + task.expected_output.length + JSON.stringify(task.acceptance_criteria || []).length + 40000) / 4);
   let run;
   try {
-    [run] = await sql.begin(async tx => {
+    run = await sql.begin(async tx => {
       // A transaction-scoped advisory lock serializes global budget reservations
       // without granting workers UPDATE privilege on the budget configuration.
       await tx`SELECT pg_advisory_xact_lock(781234, 1)`;
