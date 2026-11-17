@@ -44,7 +44,7 @@ GRANT INSERT (task_id,conversation_id,from_role,to_role,kind,body,evidence,in_re
   ON agent_messages TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
 
 GRANT INSERT (task_id,role,worker_id,provider,model,status)
-  ON agent_runs TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
+  ON agent_runs TO agent_hq_budget_owner_ci;
 GRANT UPDATE (status,error,finished_at)
   ON agent_runs TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
 
