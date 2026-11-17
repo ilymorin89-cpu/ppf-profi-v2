@@ -215,7 +215,6 @@ GRANT EXECUTE ON FUNCTION public.agent_role_for_session() TO agent_operator;
 DO $roles$ DECLARE role_name TEXT; BEGIN
   FOREACH role_name IN ARRAY ARRAY['agent_web_engineer','agent_geo','agent_growth','agent_analytics','agent_vk_strategist','agent_copywriter','agent_designer','agent_image_generator','agent_storyteller','agent_community_manager','agent_content_seo','agent_ads_manager','agent_trend_scout','agent_auto_news_editor','agent_auto_law_monitor','agent_fact_checker'] LOOP
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_role_for_session() TO %I', role_name);
-    EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_test_budget_totals() TO %I', role_name);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_has_task_access(BIGINT) TO %I', role_name);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_can_insert_own_artifact(BIGINT,TEXT) TO %I', role_name);
   END LOOP;
