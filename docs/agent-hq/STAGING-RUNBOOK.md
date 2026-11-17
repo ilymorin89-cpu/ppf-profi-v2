@@ -45,6 +45,16 @@ psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0009_agent_hq_runtim
 psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0010_agent_hq_authenticated_worker_identity.sql
 ```
 
+Use a separate staging database URL for runtime. The staging database name is pinned to `agent_hq_staging`; do not point this procedure at the production database. Before creating worker services, register all 19 unique worker LOGINs and immutable worker IDs in `agent_worker_principals`, and create distinct `agent_supervisor` and `agent_operator` LOGINs. Keep both SECURITY DEFINER function-owner roles as NOLOGIN.
+
+Run the fail-closed preflight with a TLS-enabled, read-only-capable staging migration/verification account. It checks the exact database name, TLS, the disabled budget, all 19 enabled principals, unique LOGINs/worker IDs, least-privilege LOGIN attributes, separate supervisor/operator LOGINs and NOLOGIN function owners. It makes no changes and makes no provider calls:
+
+```sh
+STAGING_DATABASE_URL='postgresql://<staging-verifier>:<secret>@<staging-host>:5432/agent_hq_staging?sslmode=require' npm run agent-hq:staging-preflight
+```
+
+Do not paste the URL into chat, shell history or CI logs. Supply it through the host secret manager/environment injection. The command must print `result: PASS`; otherwise stop and fix the reported blocker.
+
 Use a separate staging database URL for runtime. Verify that the budget row exists and remains disabled:
 
 ```sql
@@ -123,7 +133,7 @@ For a full delegated lifecycle, start the specialist workers with their own role
 
 ## 7. Service management and rollback
 
-Use systemd (or an equivalent process supervisor) with one service instance per role and a separate supervisor process. Keep automatic restart enabled, but rate-limit restarts and alert on repeated failures. Do not expose worker ports publicly; workers do not need inbound HTTP access.
+Use systemd (or an equivalent process supervisor) with one service instance per role and a separate supervisor process. Keep automatic restart enabled, but rate-limit restarts and alert on repeated failures. Do not expose worker ports publicly; workers do not need inbound HTTP access. The supplied units send SIGTERM, use mixed process-group termination and allow 150 seconds for graceful shutdown. The supervisor finishes its current database cycle, wakes immediately from its polling sleep, and closes its database pool. Verify `systemctl stop` completes within the configured timeout and inspect service logs before restarting.
 
 Workers handle `SIGTERM` and `SIGINT` by stopping new claims and aborting an in-flight provider request. A failed heartbeat also aborts the active request and stops further tool execution. If a provider request may already have been accepted, the reservation is marked `unknown` and retained for operator reconciliation; it is never automatically released merely because shutdown or lease loss interrupted the response. Allow the service manager a bounded stop timeout longer than the provider request cancellation and database cleanup window, then verify the worker exited and inspect unknown reservations before restarting affected tasks.
 
