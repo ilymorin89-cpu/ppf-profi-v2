@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS public.agent_budget_settlements (
 
 REVOKE ALL ON public.agent_budget_reservations,public.agent_budget_ledger,public.agent_budget_settlements FROM PUBLIC;
 REVOKE ALL ON SEQUENCE public.agent_budget_reservations_id_seq,public.agent_budget_ledger_id_seq,public.agent_budget_settlements_id_seq FROM PUBLIC;
-GRANT USAGE,SELECT ON SEQUENCE public.agent_budget_reservations_id_seq,public.agent_budget_ledger_id_seq,public.agent_budget_settlements_id_seq TO agent_hq_budget_owner;
+GRANT USAGE,SELECT ON SEQUENCE public.agent_runs_id_seq,public.agent_budget_reservations_id_seq,public.agent_budget_ledger_id_seq,public.agent_budget_settlements_id_seq TO agent_hq_budget_owner;
 
 GRANT USAGE ON SCHEMA public TO agent_hq_budget_owner;
 GRANT SELECT ON public.agent_tasks,public.agent_budget_config TO agent_hq_budget_owner;
@@ -196,16 +196,6 @@ BEGIN
 
   -- One locked budget row serializes every reservation transaction.
   SELECT * INTO v_budget FROM public.agent_budget_config WHERE id=1;
-  -- Recheck idempotency after the serialized budget lock to handle concurrent retries.
-  SELECT * INTO v_existing FROM public.agent_budget_reservations WHERE idempotency_key=p_idempotency_key;
-  IF FOUND THEN
-    IF v_existing.task_id<>p_task_id OR v_existing.role<>v_role OR v_existing.worker_id<>p_worker_id
-       OR v_existing.price_snapshot->>'model'<>p_model THEN
-      RAISE EXCEPTION 'idempotency key reused with different parameters' USING ERRCODE='23505';
-    END IF;
-    RETURN QUERY SELECT v_existing.run_id,v_existing.id,v_existing.reserved_microusd;
-    RETURN;
-  END IF;
   IF NOT FOUND OR NOT v_budget.enabled OR v_budget.daily_cap_microusd<=0
      OR v_budget.monthly_cap_microusd<=0 OR v_budget.per_run_cap_microusd<=0
      OR v_budget.input_price_per_million_microusd<=0
