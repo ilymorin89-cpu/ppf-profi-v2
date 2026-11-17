@@ -63,6 +63,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Reject high and critical dependency advisories
+        run: npm audit --audit-level=high
       - name: Apply Agent HQ migrations to disposable PostgreSQL
         run: |
           psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0003_agent_hq.sql
