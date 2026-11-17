@@ -28,6 +28,12 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
       VALUES ('qa_security',${"QA " + marker},'QA test','Verdict','integration-test') RETURNING id`;
     [parentTask] = await admin`INSERT INTO agent_tasks (assigned_role,title,objective,expected_output,created_by,status)
       VALUES ('coordinator',${"Parent " + marker},'Parent test','Summary','integration-test','review') RETURNING id`;
+    await admin`UPDATE agent_tasks SET parent_task_id=${parentTask.id} WHERE id IN (${seoTask.id},${qaTask.id})`;
+    await admin`INSERT INTO agent_task_access (task_id,principal,access_reason)
+      VALUES (${seoTask.id},'qa_security','qa_review'),
+             (${qaTask.id},'qa_security','qa_review'),
+             (${seoTask.id},'coordinator','coordinator_oversight'),
+             (${qaTask.id},'coordinator','coordinator_oversight')`;
     [seoArtifact] = await admin`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
       VALUES (${seoTask.id},'seo','result','SEO artifact',${marker}) RETURNING id`;
 
@@ -48,7 +54,21 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
     const ownArtifacts = await seo`SELECT id FROM agent_artifacts WHERE id=${seoArtifact.id}`;
     const qaArtifacts = await qa`SELECT id FROM agent_artifacts WHERE id=${seoArtifact.id}`;
     assert.equal(ownArtifacts.length, 1);
-    assert.equal(qaArtifacts.length, 0, "QA cannot read unrelated specialist artifacts");
+    assert.equal(qaArtifacts.length, 1, "QA can read sibling specialist artifacts explicitly granted for this parent review");
+    const coordinatorChildTasks = await coordinator`SELECT id FROM agent_tasks WHERE id IN (${seoTask.id},${qaTask.id}) ORDER BY id`;
+    assert.equal(coordinatorChildTasks.length, 2, "Coordinator can inspect explicitly granted child tasks");
+    const coordinatorArtifacts = await coordinator`SELECT id FROM agent_artifacts WHERE id=${seoArtifact.id}`;
+    assert.equal(coordinatorArtifacts.length, 1, "Coordinator can read explicitly granted child artifacts");
+    const qaSiblingTasks = await qa`SELECT id FROM agent_tasks WHERE id=${seoTask.id}`;
+    assert.equal(qaSiblingTasks.length, 1, "QA can inspect sibling task metadata for its parent review");
+    await assert.rejects(
+      coordinator`INSERT INTO agent_task_access (task_id,principal,access_reason)
+        VALUES (${qaTask.id},'seo','coordinator_oversight')`,
+      error => ["42501","23514"].includes(error.code),
+      "Coordinator cannot grant access or impersonate another principal"
+    );
+    const seoAccess = await seo`SELECT task_id FROM agent_task_access WHERE task_id=${seoTask.id}`;
+    assert.equal(seoAccess.length, 0, "Specialist cannot read another role's access grants");
 
     const [seoMessage] = await admin`INSERT INTO agent_messages
       (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
