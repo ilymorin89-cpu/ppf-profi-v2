@@ -122,17 +122,22 @@ function runProcess(role, script, fixture) {
 async function cleanup() {
   if (parentId !== null) {
     await sql.begin(async tx => {
-      const taskPredicate = tx`task_id IN (
-        SELECT id FROM public.agent_tasks
-        WHERE id=${parentId} OR parent_task_id=${parentId}
-      )`;
       await tx`DELETE FROM public.agent_budget_ledger
-        WHERE reservation_id IN (SELECT id FROM public.agent_budget_reservations WHERE ${taskPredicate})`;
+        WHERE reservation_id IN (
+          SELECT id FROM public.agent_budget_reservations
+          WHERE task_id IN (SELECT id FROM public.agent_tasks WHERE id=${parentId} OR parent_task_id=${parentId})
+        )`;
       await tx`DELETE FROM public.agent_budget_settlements
-        WHERE reservation_id IN (SELECT id FROM public.agent_budget_reservations WHERE ${taskPredicate})`;
-      await tx`DELETE FROM public.agent_budget_reservations WHERE ${taskPredicate}`;
-      await tx`DELETE FROM public.agent_runs WHERE ${taskPredicate}`;
-      await tx`DELETE FROM public.agent_messages WHERE ${taskPredicate}`;
+        WHERE reservation_id IN (
+          SELECT id FROM public.agent_budget_reservations
+          WHERE task_id IN (SELECT id FROM public.agent_tasks WHERE id=${parentId} OR parent_task_id=${parentId})
+        )`;
+      await tx`DELETE FROM public.agent_budget_reservations
+        WHERE task_id IN (SELECT id FROM public.agent_tasks WHERE id=${parentId} OR parent_task_id=${parentId})`;
+      await tx`DELETE FROM public.agent_runs
+        WHERE task_id IN (SELECT id FROM public.agent_tasks WHERE id=${parentId} OR parent_task_id=${parentId})`;
+      await tx`DELETE FROM public.agent_messages
+        WHERE task_id IN (SELECT id FROM public.agent_tasks WHERE id=${parentId} OR parent_task_id=${parentId})`;
       await tx`DELETE FROM public.agent_tasks WHERE parent_task_id=${parentId}`;
       await tx`DELETE FROM public.agent_tasks WHERE id=${parentId}`;
     });
