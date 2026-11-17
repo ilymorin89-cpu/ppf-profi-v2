@@ -773,7 +773,7 @@ test("Agent HQ trusted budget tables and run accounting are inaccessible to work
     await assert.rejects(seo`UPDATE agent_tasks SET lease_owner='forged-worker' WHERE id=${taskId}`,e=>e.code==="42501");
     const [taskLifecycleAcl]=await admin`SELECT
       has_function_privilege('agent_seo','public.agent_task_heartbeat(bigint,text)','EXECUTE') AS heartbeat,
-      has_function_privilege('agent_seo','public.agent_task_transition(bigint,text,text)','EXECUTE') AS transition,
+      has_function_privilege('agent_seo','public.agent_task_transition(bigint,text,text,bigint)','EXECUTE') AS transition,
       has_function_privilege('public','public.agent_task_heartbeat(bigint,text)','EXECUTE') AS public_heartbeat`;
     assert.equal(taskLifecycleAcl.heartbeat,true);
     assert.equal(taskLifecycleAcl.transition,true);
