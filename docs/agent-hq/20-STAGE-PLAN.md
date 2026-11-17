@@ -1,3 +1,6 @@
+
+> **Historical snapshot — do not use as the current launch checklist.** This plan contains pre-migration and pre-19-role status statements that are no longer current. Use [CURRENT-STATUS.md](./CURRENT-STATUS.md) for the live PR stack, implemented migrations, current CI state and remaining launch gates. The exact old CI run references below apply only to their historical SHAs.
+
 # Agent HQ — 20-stage safe implementation plan
 
 Scope: isolated Agent HQ branch only. Production website, production database `default_db`, Timeweb deployment settings, credentials, network rules, external publishing, advertising spend and worker activation are out of scope without separate explicit approval.

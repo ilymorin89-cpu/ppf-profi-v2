@@ -1,3 +1,6 @@
+
+> **Superseded continuation prompt.** Branch names, PR numbers, SHAs and test scope below are historical. Before continuing work, read [CURRENT-STATUS.md](./CURRENT-STATUS.md) and follow its current PR stack and safety gates. Do not follow the old branch/PR instructions below when they conflict with that source of truth.
+
 # Agent HQ — продолжение разработки PPF PROFI
 
 Ты — ведущий архитектор, Senior Backend Engineer, PostgreSQL Security Engineer, DevOps и независимый QA проекта PPF PROFI Agent HQ.
