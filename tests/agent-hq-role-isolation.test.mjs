@@ -321,3 +321,56 @@ test("Agent HQ worker rejects a database LOGIN that does not match AGENT_ROLE", 
   assert.notEqual(result.status, 0, "Worker must reject mismatched database identity before claiming work.");
   assert.match(result.stderr, /must authenticate as PostgreSQL LOGIN "agent_qa_security"/i);
 });
+
+
+test("Agent HQ SECURITY DEFINER helpers use a dedicated NOLOGIN non-BYPASSRLS owner", {
+  skip: !adminUrl
+}, async () => {
+  const admin = postgres(adminUrl, { max: 1 });
+  try {
+    const [owner] = await admin`SELECT rolcanlogin,rolsuper,rolcreatedb,rolcreaterole,rolbypassrls
+      FROM pg_roles WHERE rolname='agent_hq_fn_owner_ci'`;
+    assert.ok(owner, "Dedicated CI function owner must exist");
+    assert.equal(owner.rolcanlogin, false);
+    assert.equal(owner.rolsuper, false);
+    assert.equal(owner.rolcreatedb, false);
+    assert.equal(owner.rolcreaterole, false);
+    assert.equal(owner.rolbypassrls, false);
+
+    const helpers = await admin`
+      SELECT p.proname,r.rolname AS owner,p.prosecdef,p.proconfig
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid=p.pronamespace
+      JOIN pg_roles r ON r.oid=p.proowner
+      WHERE n.nspname='public'
+        AND p.proname IN (
+          'agent_has_task_access',
+          'agent_can_grant_task_access',
+          'agent_is_valid_coordinator_parent',
+          'agent_role_for_session',
+          'agent_can_insert_own_artifact',
+          'agent_test_budget_totals'
+        )`;
+    assert.equal(helpers.length, 6, "All reviewed SECURITY DEFINER helpers must be present");
+    for (const helper of helpers) {
+      assert.equal(helper.owner, "agent_hq_fn_owner_ci", helper.proname + " owner");
+      assert.equal(helper.prosecdef, true, helper.proname + " must be SECURITY DEFINER");
+      assert.ok(
+        Array.isArray(helper.proconfig) && helper.proconfig.some(value => value.startsWith("search_path=")),
+        helper.proname + " must pin search_path"
+      );
+    }
+
+    const [membership] = await admin`SELECT COUNT(*)::int AS count
+      FROM pg_auth_members WHERE roleid='agent_hq_fn_owner_ci'::regrole`;
+    assert.equal(membership.count, 0, "No runtime LOGIN may inherit or SET ROLE to the function owner");
+
+    const tableOwners = await admin`SELECT c.relname,r.rolname AS owner
+      FROM pg_class c JOIN pg_roles r ON r.oid=c.relowner
+      WHERE c.relname IN ('agent_tasks','agent_task_access','agent_runs') AND c.relkind='r'`;
+    assert.ok(tableOwners.every(row => row.owner !== "agent_hq_fn_owner_ci"),
+      "Function owner must not own protected tables");
+  } finally {
+    await admin.end();
+  }
+});
