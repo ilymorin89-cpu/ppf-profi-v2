@@ -57,6 +57,7 @@ jobs:
       AGENT_HQ_TEST_DATABASE_URL: postgres://agent_test:agent_test@localhost:5432/agent_hq_test
       AGENT_HQ_ROLE_TEST_URL_SEO: postgres://agent_seo:ci_agent_seo@localhost:5432/agent_hq_test
       AGENT_HQ_ROLE_TEST_URL_QA: postgres://agent_qa_security:ci_agent_qa@localhost:5432/agent_hq_test
+      AGENT_HQ_ROLE_TEST_URL_QA_SECURITY: postgres://agent_qa_security:ci_agent_qa@localhost:5432/agent_hq_test
       AGENT_HQ_ROLE_TEST_URL_COORDINATOR: postgres://agent_coordinator:ci_agent_coordinator@localhost:5432/agent_hq_test
       AGENT_HQ_ROLE_TEST_URL_SUPERVISOR: postgres://agent_supervisor:ci_agent_supervisor@localhost:5432/agent_hq_test
       AGENT_HQ_ROLE_TEST_URL_OPERATOR: postgres://agent_operator:ci_agent_operator@localhost:5432/agent_hq_test
@@ -107,28 +108,48 @@ jobs:
           node --check tests/agent-hq.role-matrix.test.mjs
       - name: Run PostgreSQL integration tests
         run: npm run agent-hq:test
-      - name: Run deterministic no-spend worker simulation against disposable PostgreSQL
+      - name: Run deterministic no-spend core team simulation against disposable PostgreSQL
         shell: bash
         run: |
           set -euo pipefail
-          TASK_ID=""
+          TASK_IDS=()
           cleanup() {
-            if [ -n "$TASK_ID" ]; then
-              psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -c "DELETE FROM agent_messages WHERE task_id=$TASK_ID; DELETE FROM agent_artifacts WHERE task_id=$TASK_ID; DELETE FROM agent_runs WHERE task_id=$TASK_ID; DELETE FROM agent_tasks WHERE id=$TASK_ID;" || true
-            fi
+            for task_id in "${TASK_IDS[@]}"; do
+              psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -c "DELETE FROM agent_messages WHERE task_id=$task_id; DELETE FROM agent_artifacts WHERE task_id=$task_id; DELETE FROM agent_runs WHERE task_id=$task_id; DELETE FROM agent_tasks WHERE id=$task_id;" || true
+            done
             psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -c "UPDATE agent_budget_config SET enabled=false,daily_cap_microusd=0,monthly_cap_microusd=0,per_run_cap_microusd=0,input_price_per_million_microusd=0,output_price_per_million_microusd=0,updated_at=now() WHERE id=1;" || true
           }
           trap cleanup EXIT
+          # The integration suite intentionally leaves negative-test fixtures behind.
+          # Clear only queued fixtures in this disposable CI database so workers cannot
+          # accidentally claim an older task instead of the simulation's own task.
+          psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -c "UPDATE agent_tasks SET status='cancelled',updated_at=now() WHERE assigned_role IN ('coordinator','seo','qa_security') AND status='queued';"
           psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -c "UPDATE agent_budget_config SET enabled=true,daily_cap_microusd=1000000,monthly_cap_microusd=5000000,per_run_cap_microusd=100000,input_price_per_million_microusd=1,output_price_per_million_microusd=1,web_search_price_microusd_per_call=0,updated_at=now() WHERE id=1;"
-          TASK_ID="$(psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -Atqc "INSERT INTO agent_tasks (title,objective,expected_output,assigned_role,created_by) VALUES ('CI no-spend simulation ${GITHUB_RUN_ID}','Complete one deterministic local simulation pass','Persist one artifact and complete the task','seo','owner') RETURNING id;")"
+          COORDINATOR_TASK_ID="$(psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -Atqc "INSERT INTO agent_tasks (title,objective,expected_output,assigned_role,created_by) VALUES ('CI no-spend coordinator ${GITHUB_RUN_ID}','Complete one deterministic coordinator pass','Persist one artifact and enter review','coordinator','owner') RETURNING id;")"
+          TASK_IDS+=("$COORDINATOR_TASK_ID")
+          SEO_TASK_ID="$(psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -Atqc "INSERT INTO agent_tasks (title,objective,expected_output,assigned_role,created_by) VALUES ('CI no-spend SEO ${GITHUB_RUN_ID}','Complete one deterministic SEO pass','Persist one artifact and complete the task','seo','owner') RETURNING id;")"
+          TASK_IDS+=("$SEO_TASK_ID")
+          QA_TASK_ID="$(psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -Atqc "INSERT INTO agent_tasks (title,objective,expected_output,assigned_role,created_by) VALUES ('CI no-spend QA ${GITHUB_RUN_ID}','Complete one deterministic QA pass','Persist one artifact and complete the task','qa_security','owner') RETURNING id;")"
+          TASK_IDS+=("$QA_TASK_ID")
+          npm run agent-hq:simulate -- check coordinator
+          npm run agent-hq:simulate -- run coordinator
+          # The deterministic coordinator fixture returns text rather than delegating.
+          # Move its completed task into review to exercise the supervisor's review pass.
+          psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -c "UPDATE agent_tasks SET status='review',completed_at=NULL,updated_at=now() WHERE id=$COORDINATOR_TASK_ID;"
           npm run agent-hq:simulate -- check seo
           npm run agent-hq:simulate -- run seo
-          RESULT="$(psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -Atqc "SELECT t.status || '|' || (SELECT count(*) FROM agent_artifacts a WHERE a.task_id=t.id) || '|' || (SELECT count(*) FROM agent_runs r WHERE r.task_id=t.id AND r.status='succeeded' AND r.provider='test_stub' AND r.cost_microusd=0) FROM agent_tasks t WHERE t.id=$TASK_ID;")"
-          if [ "$RESULT" != "done|1|1" ]; then
-            echo "Unexpected no-spend simulation result: $RESULT"
-            exit 1
-          fi
-          echo "Deterministic no-spend worker simulation completed successfully for task $TASK_ID."
+          npm run agent-hq:simulate -- check qa_security
+          npm run agent-hq:simulate -- run qa_security
+          npm run agent-hq:simulate -- check supervisor
+          npm run agent-hq:simulate -- run supervisor
+          for task_id in "${TASK_IDS[@]}"; do
+            RESULT="$(psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -Atqc "SELECT t.status || '|' || (SELECT count(*) FROM agent_artifacts a WHERE a.task_id=t.id) || '|' || (SELECT count(*) FROM agent_runs r WHERE r.task_id=t.id AND r.status='succeeded' AND r.provider='test_stub' AND r.cost_microusd=0) FROM agent_tasks t WHERE t.id=$task_id;")"
+            if [ "$RESULT" != "done|1|1" ]; then
+              echo "Unexpected no-spend simulation result for task $task_id: $RESULT"
+              exit 1
+            fi
+          done
+          echo "Deterministic no-spend core team simulation completed successfully."
       - name: Verify systemd unit syntax
         run: systemd-analyze verify deploy/systemd/agent-hq-worker@.service deploy/systemd/agent-hq-supervisor.service
       - name: Validate Docker Compose configuration
