@@ -26,7 +26,7 @@ function usage() {
 }
 
 function compose(args) {
-  const result = spawnSync("docker", ["compose", "-f", "docker-compose.agent-hq-test.yml", ...args], {
+  const result = spawnSync("docker", ["compose", "-p", "ppf-agent-hq-no-egress-test", "-f", "docker-compose.agent-hq-test.yml", ...args], {
     stdio: "inherit",
     env: process.env,
     shell: process.platform === "win32"
