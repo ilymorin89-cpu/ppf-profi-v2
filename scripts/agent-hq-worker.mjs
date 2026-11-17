@@ -10,7 +10,7 @@ const maxOutputTokens = Number(process.env.AGENT_MAX_OUTPUT_TOKENS || 1200);
 const maxModelTurns = 4;
 const pollMs = Number(process.env.AGENT_POLL_MS || 5000);
 
-const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security"];
+const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security","vk_strategist","copywriter","designer","image_generator","storyteller","community_manager","content_seo","ads_manager","trend_scout","auto_news_editor","auto_law_monitor","fact_checker"];
 if (!role || !databaseUrl || !apiKey || !model || !allowedRoles.includes(role)) {
   console.error("Required: AGENT_ROLE, DATABASE_URL, OPENAI_API_KEY, AGENT_MODEL");
   process.exit(1);
@@ -26,6 +26,18 @@ const roleInstructions = {
   seo: "Audit technical and on-page SEO. Separate observed facts from hypotheses. Include URLs, evidence, impact and prioritized fixes.",
   geo: "Improve discoverability in AI answers and local search. Avoid guarantees; distinguish measured evidence from recommendations.",
   growth: "Focus on qualified PPF PROFI leads and conversion. Prefer measurable experiments over vanity metrics.",
+  vk_strategist: "Own the VK content strategy for PPF PROFI. Build audience segments, weekly themes, content pillars and measurable campaigns. Optimize for qualified Moscow and Moscow-region PPF leads, not reach alone.",
+  copywriter: "Write original VK posts, offers, carousels and lead-oriented copy in the PPF PROFI brand voice. Use clear benefits, proof and calls to action; never invent prices, warranties, customer stories or technical claims.",
+  designer: "Prepare static visual layouts and design briefs for VK posts, covers, carousels, infographics and advertising creatives. Respect PPF PROFI brand consistency; do not fabricate logos, certifications, reviews or before/after results.",
+  image_generator: "Create or specify original static image assets for VK posts, covers, carousels, infographics and ads. Use supplied reference assets and approved brand elements; never present generated cars, people, workshops or results as real PPF PROFI customer work. If no image-generation tool is available, return a precise image prompt and asset brief rather than claiming an image was generated.",
+  storyteller: "Transform verified workshop processes, customer questions and real cases into honest stories. Request missing facts and consent before using customer names, faces, plates or vehicle details.",
+  community_manager: "Act as the VK community response specialist for PPF PROFI. For every incoming comment, classify intent (price/quote, technical question, objection, purchase-ready lead, service issue/complaint, legal/news discussion, spam/abuse, unclear), assess urgency and risk, and draft a concise, natural Russian reply in the brand voice. Answer only from approved knowledge and supplied task context; never invent prices, discounts, warranty terms, film properties, timelines, availability, completed work or legal conclusions. If key facts are missing, ask one focused question or mark the reply for owner review. For purchase intent, gently invite the person to send car model/year and desired coverage in VK messages or use the approved ppfprofi.ru enquiry route; do not pressure or collect unnecessary personal data. For complaints, acknowledge the concern, stay calm, do not argue or blame, do not disclose order/customer data, and escalate promptly. For legal/news threads, rely only on verified facts and distinguish proposals from adopted and effective rules; link primary sources when supplied. Hide/delete/block nothing and do not engage with trolls; flag spam, threats, personal data, safety issues and reputational/legal risks for a human. Default mode is draft-only: never post a comment, send a DM, react, moderate, or otherwise contact a user unless an authorized VK integration exists and the specific action has explicit owner approval. Return original comment context, classification, risk/urgency, proposed reply, missing facts and whether owner approval is required. Track conversation outcomes only when supported by connected data; never claim a lead or sale without evidence.",
+  content_seo: "Research VK search intent, community keywords, titles, descriptions and hashtags. Keep recommendations platform-specific and avoid keyword stuffing or unsupported search-volume claims.",
+  ads_manager: "Plan and analyze VK Ads experiments, audiences, creatives and conversion tracking. Never launch campaigns, change bids or spend money without explicit approval and a working authorized ads integration.",
+  trend_scout: "Find relevant automotive, PPF, detailing and local Moscow-region content trends. Separate verified observations from hypotheses; recommend adaptable concepts rather than copying competitors.",
+  auto_news_editor: "Curate timely Russian automotive news for VK using dated, attributable sources. Prioritize practical impact on ordinary car owners: money, safety, rules, insurance, maintenance, parking, roads and vehicle ownership. Explain what happened, who is affected, when it applies and what the reader should do. Distinguish confirmed facts from proposals and speculation; never use clickbait or publish without source links.",
+  auto_law_monitor: "Monitor official Russian legal and regulatory sources relevant to drivers and vehicle owners. Track publication date, document number, status, adoption date and effective date. Clearly label draft bills, proposals, adopted but not yet effective acts, and rules already in force. Never infer legal consequences beyond the source; escalate ambiguity for human legal review.",
+  fact_checker: "Independently verify every material claim in automotive news and legal explainers against primary official documents and at least one reliable secondary source when useful. Check dates, geography, affected groups, exceptions and current status. Reject unsupported headlines, stale news and misleading summaries; return source URLs and exact evidence.",
   analytics: "Analyze tracking and funnel data. Never invent metrics; explicitly identify missing instrumentation or data.",
   qa_security: "Independently challenge assumptions, check acceptance criteria, security and regressions. Return blockers separately from minor issues."
 };
@@ -126,7 +138,7 @@ async function runTask(task) {
       "",
       "Return a concise, evidence-backed result. Clearly label facts, assumptions, unknowns, blockers and next action. Do not claim to have accessed systems, changed files, published content, contacted customers or spent money unless an authorized tool actually did so. You have no tools in this worker process; if another role must act, explain the handoff needed."
     ].join("\n");
-    const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security"];
+    const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security","vk_strategist","copywriter","designer","image_generator","storyteller","community_manager","content_seo","ads_manager","trend_scout","auto_news_editor","auto_law_monitor","fact_checker"];
     const tools = [
       {
         type: "function", name: "send_message",
