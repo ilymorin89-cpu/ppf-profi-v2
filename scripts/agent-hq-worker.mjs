@@ -237,7 +237,10 @@ async function runTask(task) {
       // The deterministic test provider can model an ambiguous accepted request
       // without making a network call. Honor this marker only in NODE_ENV=test.
       if (testStubMode && data.__test_provider_outcome === "ambiguous") {
+        // The deterministic provider accepted the request, but its outcome is unknown.
+        // Stop before parsing output or settling; retain the reservation for reconciliation.
         providerCallStarted = true;
+        throw new Error("Deterministic test provider simulated an ambiguous accepted request");
       }
       totalInputTokens += Number(data.usage?.input_tokens || 0);
       totalOutputTokens += Number(data.usage?.output_tokens || 0);

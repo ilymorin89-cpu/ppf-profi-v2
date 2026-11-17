@@ -2,14 +2,15 @@ name: Agent HQ checks
 
 on:
   push:
-    branches: ["agent-hq-runtime-skeleton", "feat/vk-content-army", "agent-hq/enable-research-tools"]
+    branches: ["agent-hq-runtime-skeleton", "feat/vk-content-army", "agent-hq/enable-research-tools", "agent-hq/**"]
     paths:
       - "scripts/agent-hq-*.mjs"
       - "scripts/agent-hq-*.sh"
+      - "scripts/agent-hq-db-connectivity-check.mjs"
       - "docker-compose.agent-hq-test.yml"
       - "tests/agent-hq*.mjs"
       - "tests/agent-hq*.sql"
-      - "Dockerfile.agent-hq"
+      - "tests/agent-hq-db-connectivity-check.test.mjs"
       - "Dockerfile.agent-hq"
       - "drizzle/0003_agent_hq.sql"
       - "drizzle/0004_agent_budget.sql"
@@ -31,6 +32,8 @@ on:
     paths:
       - "scripts/agent-hq-*.mjs"
       - "tests/agent-hq*.mjs"
+      - "scripts/agent-hq-db-connectivity-check.mjs"
+      - "tests/agent-hq-db-connectivity-check.test.mjs"
       - "drizzle/0003_agent_hq.sql"
       - "drizzle/0004_agent_budget.sql"
       - "drizzle/0005_agent_approval_idempotency.sql"
@@ -141,6 +144,8 @@ jobs:
           node --check scripts/agent-hq-launch.mjs
           node --check scripts/agent-hq-simulate.mjs
           node --check scripts/agent-hq-test-assert.mjs
+          node --check scripts/agent-hq-db-connectivity-check.mjs
+          node --test tests/agent-hq-db-connectivity-check.test.mjs
           node --check tests/agent-hq.integration.test.mjs
           node --check tests/agent-hq.role-matrix.test.mjs
       - name: Run PostgreSQL integration tests
