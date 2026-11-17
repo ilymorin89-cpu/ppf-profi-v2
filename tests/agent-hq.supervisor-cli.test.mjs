@@ -512,6 +512,7 @@ test("Agent HQ bus send derives sender from authenticated PostgreSQL LOGIN", asy
   const marker = randomUUID();
   const ownBody = "authenticated sender " + marker;
   const forgedBody = "forged sender " + marker;
+  const probeBody = "direct RLS probe " + marker;
   let taskId;
   try {
     const [task] = await sql`INSERT INTO agent_tasks
@@ -533,7 +534,6 @@ test("Agent HQ bus send derives sender from authenticated PostgreSQL LOGIN", asy
         EXISTS (SELECT 1 FROM public.agent_tasks WHERE id=${taskId} AND assigned_role='seo') AS owns_task`;
       assert.equal(policyProbe.mapped_role, "seo");
       assert.equal(policyProbe.owns_task, true);
-      const probeBody = "direct RLS probe " + marker;
       await seo`INSERT INTO agent_messages
         (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
         VALUES (${taskId},${randomUUID()},'seo','coordinator','status',${probeBody},${randomUUID()})`;
@@ -552,7 +552,7 @@ test("Agent HQ bus send derives sender from authenticated PostgreSQL LOGIN", asy
     assert.equal(rows[0].from_role, "seo");
     assert.equal(rows[0].to_role, "coordinator");
   } finally {
-    await sql`DELETE FROM agent_messages WHERE body IN (${ownBody},${forgedBody})`;
+    await sql`DELETE FROM agent_messages WHERE body IN (${ownBody},${forgedBody},${probeBody})`;
     if (taskId) await sql`DELETE FROM agent_tasks WHERE id=${taskId}`;
     await sql.end({ timeout: 5 });
   }
