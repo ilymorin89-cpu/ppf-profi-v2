@@ -1,5 +1,6 @@
 services:
   gateway:
+    profiles: ["optional-health"]
     build:
       context: .
       dockerfile: Dockerfile.agent-hq
@@ -18,17 +19,17 @@ services:
     command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_COORDINATOR:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
-      AGENT_MODEL: ${AGENT_MODEL:-test-model}
-      NODE_ENV: ${NODE_ENV:-test}
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      NODE_ENV: test
       AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
       AGENT_ROLE: coordinator
       AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
       AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
       AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-false}
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
       AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
     restart: unless-stopped
 
@@ -39,17 +40,17 @@ services:
     command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_COMMUNITY_MANAGER:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
-      AGENT_MODEL: ${AGENT_MODEL:-test-model}
-      NODE_ENV: ${NODE_ENV:-test}
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      NODE_ENV: test
       AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
       AGENT_ROLE: community_manager
       AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
       AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
       AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-false}
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
       AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
     restart: unless-stopped
 
@@ -60,17 +61,17 @@ services:
     command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_QA_SECURITY:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
-      AGENT_MODEL: ${AGENT_MODEL:-test-model}
-      NODE_ENV: ${NODE_ENV:-test}
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      NODE_ENV: test
       AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
       AGENT_ROLE: qa_security
       AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
       AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
       AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-false}
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
       AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
     restart: unless-stopped
 
@@ -81,17 +82,17 @@ services:
     command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_WEB_ENGINEER:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
-      AGENT_MODEL: ${AGENT_MODEL:-test-model}
-      NODE_ENV: ${NODE_ENV:-test}
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      NODE_ENV: test
       AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
       AGENT_ROLE: web_engineer
       AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
       AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
       AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-false}
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
       AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
     restart: unless-stopped
 
@@ -102,17 +103,17 @@ services:
     command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_SEO:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
-      AGENT_MODEL: ${AGENT_MODEL:-test-model}
-      NODE_ENV: ${NODE_ENV:-test}
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      NODE_ENV: test
       AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
       AGENT_ROLE: seo
       AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
       AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
       AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-false}
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
       AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
     restart: unless-stopped
 
@@ -123,17 +124,17 @@ services:
     command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_ANALYTICS:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
-      AGENT_MODEL: ${AGENT_MODEL:-test-model}
-      NODE_ENV: ${NODE_ENV:-test}
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      NODE_ENV: test
       AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
       AGENT_ROLE: analytics
       AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
       AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
       AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-false}
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
       AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
     restart: unless-stopped
 
@@ -144,17 +145,17 @@ services:
     command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_GEO:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
-      AGENT_MODEL: ${AGENT_MODEL:-test-model}
-      NODE_ENV: ${NODE_ENV:-test}
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      NODE_ENV: test
       AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
       AGENT_ROLE: geo
       AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
       AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
       AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-false}
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
       AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
     restart: unless-stopped
 
@@ -165,17 +166,17 @@ services:
     command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_GROWTH:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
-      AGENT_MODEL: ${AGENT_MODEL:-test-model}
-      NODE_ENV: ${NODE_ENV:-test}
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      NODE_ENV: test
       AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
       AGENT_ROLE: growth
       AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
       AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
       AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-false}
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
       AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
     restart: unless-stopped
 
@@ -186,17 +187,17 @@ services:
     command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_VK_STRATEGIST:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
-      AGENT_MODEL: ${AGENT_MODEL:-test-model}
-      NODE_ENV: ${NODE_ENV:-test}
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      NODE_ENV: test
       AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
       AGENT_ROLE: vk_strategist
       AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
       AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
       AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-false}
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
       AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
     restart: unless-stopped
 
@@ -207,17 +208,17 @@ services:
     command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_COPYWRITER:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
-      AGENT_MODEL: ${AGENT_MODEL:-test-model}
-      NODE_ENV: ${NODE_ENV:-test}
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      NODE_ENV: test
       AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
       AGENT_ROLE: copywriter
       AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
       AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
       AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-false}
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
       AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
     restart: unless-stopped
 
@@ -228,17 +229,17 @@ services:
     command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_DESIGNER:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
-      AGENT_MODEL: ${AGENT_MODEL:-test-model}
-      NODE_ENV: ${NODE_ENV:-test}
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      NODE_ENV: test
       AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
       AGENT_ROLE: designer
       AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
       AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
       AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-false}
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
       AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
     restart: unless-stopped
 
@@ -249,17 +250,17 @@ services:
     command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_IMAGE_GENERATOR:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
-      AGENT_MODEL: ${AGENT_MODEL:-test-model}
-      NODE_ENV: ${NODE_ENV:-test}
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      NODE_ENV: test
       AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
       AGENT_ROLE: image_generator
       AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
       AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
       AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-false}
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
       AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
     restart: unless-stopped
 
@@ -270,17 +271,17 @@ services:
     command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_STORYTELLER:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
-      AGENT_MODEL: ${AGENT_MODEL:-test-model}
-      NODE_ENV: ${NODE_ENV:-test}
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      NODE_ENV: test
       AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
       AGENT_ROLE: storyteller
       AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
       AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
       AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-false}
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
       AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
     restart: unless-stopped
 
@@ -291,17 +292,17 @@ services:
     command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_CONTENT_SEO:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
-      AGENT_MODEL: ${AGENT_MODEL:-test-model}
-      NODE_ENV: ${NODE_ENV:-test}
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      NODE_ENV: test
       AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
       AGENT_ROLE: content_seo
       AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
       AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
       AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-false}
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
       AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
     restart: unless-stopped
 
@@ -312,17 +313,17 @@ services:
     command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_ADS_MANAGER:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
-      AGENT_MODEL: ${AGENT_MODEL:-test-model}
-      NODE_ENV: ${NODE_ENV:-test}
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      NODE_ENV: test
       AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
       AGENT_ROLE: ads_manager
       AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
       AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
       AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-false}
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
       AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
     restart: unless-stopped
 
@@ -333,17 +334,17 @@ services:
     command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_TREND_SCOUT:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
-      AGENT_MODEL: ${AGENT_MODEL:-test-model}
-      NODE_ENV: ${NODE_ENV:-test}
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      NODE_ENV: test
       AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
       AGENT_ROLE: trend_scout
       AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
       AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
       AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-false}
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
       AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
     restart: unless-stopped
 
@@ -354,17 +355,17 @@ services:
     command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_AUTO_NEWS_EDITOR:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
-      AGENT_MODEL: ${AGENT_MODEL:-test-model}
-      NODE_ENV: ${NODE_ENV:-test}
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      NODE_ENV: test
       AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
       AGENT_ROLE: auto_news_editor
       AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
       AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
       AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-false}
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
       AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
     restart: unless-stopped
 
@@ -375,17 +376,17 @@ services:
     command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_AUTO_LAW_MONITOR:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
-      AGENT_MODEL: ${AGENT_MODEL:-test-model}
-      NODE_ENV: ${NODE_ENV:-test}
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      NODE_ENV: test
       AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
       AGENT_ROLE: auto_law_monitor
       AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
       AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
       AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-false}
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
       AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
     restart: unless-stopped
 
@@ -396,17 +397,17 @@ services:
     command: ["sh", "-lc", "if [ \"$AGENT_HQ_WORKERS_ENABLED\" != \"true\" ] || [ \"$NODE_ENV\" != \"test\" ] || [ -z \"$AGENT_HQ_TEST_RESPONSES_JSON\" ]; then echo 'Agent HQ workers disabled; no-spend test fixture required'; exec sleep infinity; fi; exec node scripts/agent-hq-worker.mjs"]
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_FACT_CHECKER:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-test-no-provider-call}
-      AGENT_MODEL: ${AGENT_MODEL:-test-model}
-      NODE_ENV: ${NODE_ENV:-test}
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      NODE_ENV: test
       AGENT_HQ_TEST_RESPONSES_JSON: ${AGENT_HQ_TEST_RESPONSES_JSON:-}
       AGENT_ROLE: fact_checker
       AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
       AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-1200}
       AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
-      AGENT_WEB_SEARCH_ENABLED: ${AGENT_WEB_SEARCH_ENABLED:-false}
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      AGENT_GITHUB_REPOSITORY: ${AGENT_GITHUB_REPOSITORY:-}
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
       AGENT_GITHUB_REF: ${AGENT_GITHUB_REF:-main}
     restart: unless-stopped
 
@@ -418,6 +419,6 @@ services:
     environment:
       DATABASE_URL: ${AGENT_HQ_DATABASE_URL_SUPERVISOR:-}
       AGENT_HQ_WORKERS_ENABLED: ${AGENT_HQ_WORKERS_ENABLED:-false}
-      NODE_ENV: ${NODE_ENV:-test}
+      NODE_ENV: test
       AGENT_POLL_MS: ${AGENT_POLL_MS:-5000}
     restart: unless-stopped
