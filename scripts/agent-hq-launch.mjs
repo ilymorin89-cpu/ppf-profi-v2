@@ -95,10 +95,12 @@ if (!["check", "start", "stop"].includes(command)) {
   usage();
   throw new Error(`Unknown command "${command}".`);
 }
-const services = validate(requestedGroup);
+const services = groups[requestedGroup];
+if (!services) throw new Error(`Unknown group "${requestedGroup}". Choose: ${Object.keys(groups).join(", ")}.`);
 if (command === "stop") {
   compose(["stop", ...services]);
 } else {
+  validate(requestedGroup);
   console.log(`Configuration valid for group "${requestedGroup}": ${services.join(", ")}`);
   if (command === "start") {
     await checkBudget();
