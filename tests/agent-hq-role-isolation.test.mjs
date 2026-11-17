@@ -361,9 +361,32 @@ test("Agent HQ SECURITY DEFINER helpers use a dedicated NOLOGIN non-BYPASSRLS ow
       );
     }
 
-    const [membership] = await admin`SELECT COUNT(*)::int AS count
-      FROM pg_auth_members WHERE roleid='agent_hq_fn_owner_ci'::regrole`;
-    assert.equal(membership.count, 0, "No runtime LOGIN may inherit or SET ROLE to the function owner");
+    const runtimeLogins = [
+      "agent_web_engineer", "agent_geo", "agent_growth", "agent_analytics",
+      "agent_vk_strategist", "agent_copywriter", "agent_designer", "agent_image_generator",
+      "agent_storyteller", "agent_community_manager", "agent_content_seo", "agent_ads_manager",
+      "agent_trend_scout", "agent_auto_news_editor", "agent_auto_law_monitor", "agent_fact_checker",
+      "agent_seo", "agent_qa_security", "agent_coordinator", "agent_supervisor", "agent_operator"
+    ];
+    const memberships = await admin`SELECT member.rolname AS member, granted.rolname AS granted_role
+      FROM pg_auth_members m
+      JOIN pg_roles granted ON granted.oid=m.roleid
+      JOIN pg_roles member ON member.oid=m.member
+      WHERE granted.rolname='agent_hq_fn_owner_ci'`;
+    assert.equal(memberships.length, 0, "No role may inherit or SET ROLE to the function owner");
+
+    const budgetExec = await admin`
+      SELECT r.rolname, has_function_privilege(r.oid, 'public.agent_test_budget_totals()', 'EXECUTE') AS allowed
+      FROM pg_roles r WHERE r.rolname = ANY(${runtimeLogins})
+    `;
+    assert.equal(budgetExec.length, runtimeLogins.length, "All runtime roles must exist for function ACL verification");
+    assert.ok(budgetExec.every(row => row.allowed === false),
+      "Runtime LOGINs must not receive direct EXECUTE on the test-only global budget aggregate");
+
+    const [publicBudgetExec] = await admin`
+      SELECT has_function_privilege('public', 'public.agent_test_budget_totals()', 'EXECUTE') AS allowed
+    `;
+    assert.equal(publicBudgetExec.allowed, false, "PUBLIC must not execute the test-only aggregate");
 
     const tableOwners = await admin`SELECT c.relname,r.rolname AS owner
       FROM pg_class c JOIN pg_roles r ON r.oid=c.relowner
