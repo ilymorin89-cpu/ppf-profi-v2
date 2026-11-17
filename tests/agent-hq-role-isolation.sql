@@ -219,8 +219,6 @@ ALTER TABLE agent_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_messages FORCE ROW LEVEL SECURITY;
 ALTER TABLE agent_runs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_runs FORCE ROW LEVEL SECURITY;
-CREATE POLICY run_budget_owner_insert ON agent_runs FOR INSERT TO agent_hq_budget_owner_ci WITH CHECK (true);
-CREATE POLICY run_budget_owner_update ON agent_runs FOR UPDATE TO agent_hq_budget_owner_ci USING (true) WITH CHECK (true);
 
 ALTER TABLE agent_artifacts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_artifacts FORCE ROW LEVEL SECURITY;
@@ -565,8 +563,6 @@ CREATE POLICY message_insert_sender ON agent_messages FOR INSERT WITH CHECK (
   )
 );
 
-CREATE POLICY run_budget_owner_insert ON agent_runs FOR INSERT TO agent_hq_budget_owner_ci WITH CHECK(true);
-CREATE POLICY run_budget_owner_update ON agent_runs FOR UPDATE TO agent_hq_budget_owner_ci USING(true) WITH CHECK(true);
 CREATE POLICY run_read_own_role ON agent_runs FOR SELECT USING (
   session_user='agent_supervisor' OR role = COALESCE(public.agent_role_for_session(), '__denied__')
 );
