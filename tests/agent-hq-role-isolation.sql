@@ -5,10 +5,11 @@ DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='agent_qa_security') THEN CREATE ROLE agent_qa_security LOGIN PASSWORD 'ci_agent_qa' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS; END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='agent_coordinator') THEN CREATE ROLE agent_coordinator LOGIN PASSWORD 'ci_agent_coordinator' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS; END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='agent_supervisor') THEN CREATE ROLE agent_supervisor LOGIN PASSWORD 'ci_agent_supervisor' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS; END IF;
-END $$;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='agent_operator') THEN CREATE ROLE agent_operator LOGIN PASSWORD 'ci_agent_operator' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS; END IF;
+END $;
 
-GRANT CONNECT ON DATABASE agent_hq_test TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
-GRANT USAGE ON SCHEMA public TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
+GRANT CONNECT ON DATABASE agent_hq_test TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor,agent_operator;
+GRANT USAGE ON SCHEMA public TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor,agent_operator;
 
 CREATE TABLE IF NOT EXISTS agent_task_access (
   task_id BIGINT NOT NULL REFERENCES agent_tasks(id) ON DELETE CASCADE,
@@ -43,6 +44,9 @@ GRANT INSERT (task_id,created_by,artifact_type,title,content,evidence)
   ON agent_artifacts TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
 GRANT INSERT (task_id,action,requested_by,payload,status)
   ON agent_approvals TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
+GRANT SELECT (id,task_id,action,status,decided_by,decision_note,decided_at),
+  UPDATE (status,decided_by,decision_note,decided_at)
+  ON agent_approvals TO agent_operator;
 GRANT INSERT (task_id,principal,access_reason) ON agent_task_access TO agent_supervisor;
 
 GRANT USAGE,SELECT ON SEQUENCE agent_tasks_id_seq,agent_messages_id_seq,agent_runs_id_seq,agent_artifacts_id_seq,agent_approvals_id_seq
@@ -230,6 +234,10 @@ CREATE POLICY approval_read_requester ON agent_approvals FOR SELECT USING (
     WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
     WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
 );
+CREATE POLICY approval_operator_read ON agent_approvals FOR SELECT USING (session_user='agent_operator');
+CREATE POLICY approval_operator_decide ON agent_approvals FOR UPDATE
+  USING (session_user='agent_operator' AND status='pending')
+  WITH CHECK (session_user='agent_operator' AND status IN ('approved','rejected') AND decided_by IS NOT NULL AND decided_at IS NOT NULL);
 CREATE POLICY approval_insert_requester ON agent_approvals FOR INSERT WITH CHECK (
   session_user='agent_supervisor' OR (
     status='pending'
