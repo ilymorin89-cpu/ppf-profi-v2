@@ -64,6 +64,7 @@ Required variables:
 - `AGENT_MODEL`: exact model identifier approved for staging.
 - `AGENT_ROLE`: one of `coordinator`, `web_engineer`, `seo`, `geo`, `growth`, `analytics`, `qa_security`, `vk_strategist`, `copywriter`, `designer`, `image_generator`, `storyteller`, `community_manager`, `content_seo`, `ads_manager`, `trend_scout`, `auto_news_editor`, `auto_law_monitor`, `fact_checker`.
 - Optional: `AGENT_MAX_OUTPUT_TOKENS`, `AGENT_POLL_MS`, `AGENT_WORKER_ID`, `AGENT_WEB_SEARCH_ENABLED`.
+- For the local operator CLI only: `AGENT_HQ_APPROVER_UIDS`, a comma-separated allowlist of numeric Linux UIDs authorized to approve/reject requests. Set this in a root-owned operator environment, not in worker role files. The CLI derives the actor from the process UID; callers cannot supply an arbitrary owner name. This is an OS-account gate, not a substitute for a protected authenticated dashboard or database-enforced role isolation.
 - Optional read-only repository inspection: `GITHUB_TOKEN` with only Contents: Read permission, `AGENT_GITHUB_REPOSITORY=owner/repo`, and `AGENT_GITHUB_REF` set to the reviewed branch. Never grant Contents: Write to the agent token.
 
 Do not paste secrets into chat, commit them, or reuse production credentials. Use the host's secret manager if available.
@@ -113,7 +114,7 @@ For a full delegated lifecycle, start the specialist workers with their own role
 - Confirm QA blocks a parent without an explicit `VERDICT: PASS`.
 - Confirm disabled/exhausted budgets prevent model calls and block tasks with a coordinator notification.
 - Confirm expired leases recover and retries stop at `max_attempts`.
-- Confirm pending approvals are only recorded; no worker can execute them. Owner decisions can be recorded through the bus CLI with `approve <id> <owner> [note]` or `reject <id> <owner> [note]`; these commands do not execute the requested action.
+- Confirm pending approvals are only recorded; no worker can execute them. Owner decisions can be recorded through the trusted local bus CLI with `approve <id> [note]` or `reject <id> [note]`, but only when the process UID is listed in `AGENT_HQ_APPROVER_UIDS`; the audit actor is recorded as `uid:<number>`. These commands do not execute the requested action. Do not expose the CLI directly over a network.
 - Inspect `node scripts/agent-hq-bus.mjs status` and host logs after every test.
 
 ## 7. Service management and rollback
