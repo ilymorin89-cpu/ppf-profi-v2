@@ -10,6 +10,8 @@ const databaseUrl = process.env.AGENT_HQ_TEST_DATABASE_URL;
 const supervisorUrl = process.env.AGENT_HQ_ROLE_TEST_URL_SUPERVISOR;
 const operatorUrl = process.env.AGENT_HQ_ROLE_TEST_URL_OPERATOR;
 const seoUrl = process.env.AGENT_HQ_ROLE_TEST_URL_SEO;
+const coordinatorUrl = process.env.AGENT_HQ_ROLE_TEST_URL_COORDINATOR;
+const qaUrl = process.env.AGENT_HQ_ROLE_TEST_URL_QA;
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const runNode = (script, args = [], overrides = {}) => spawnSync(process.execPath, [script, ...args], {
   cwd: root,
@@ -190,36 +192,168 @@ test("Agent HQ runs coordinator → SEO → QA → supervisor under separate Pos
   }
 });
 
-test("Agent HQ supervisor blocks a parent when QA does not PASS", async () => {
+test("Agent HQ routes QA REVISE through coordinator revision and a fresh QA PASS", async () => {
   assert.ok(databaseUrl, "Set AGENT_HQ_TEST_DATABASE_URL to a disposable PostgreSQL database.");
+  assert.ok(supervisorUrl && coordinatorUrl && seoUrl && qaUrl, "Missing isolated coordinator, SEO, QA or supervisor login.");
   assert.notEqual(databaseUrl, process.env.DATABASE_URL, "Test database must not equal DATABASE_URL.");
-  const sql = postgres(databaseUrl, { max: 3, idle_timeout: 5 });
+  const sql = postgres(databaseUrl, { max: 4, idle_timeout: 5 });
+  const marker = randomUUID();
   let parentId;
+  let previousBudget;
   try {
+    [previousBudget] = await sql`SELECT * FROM agent_budget_config WHERE id=1`;
+    await sql`UPDATE agent_budget_config SET enabled=true,
+      daily_cap_microusd=100000000,monthly_cap_microusd=100000000,
+      per_run_cap_microusd=10000000,input_price_per_million_microusd=1000,
+      output_price_per_million_microusd=1000,web_search_price_microusd_per_call=0 WHERE id=1`;
+
     const [parent] = await sql`INSERT INTO agent_tasks
-      (assigned_role,title,objective,expected_output,created_by,status)
-      VALUES ('coordinator',${"Supervisor REVISE " + randomUUID()},'Reject QA','Blocked','integration-test','review')
-      RETURNING id`;
+      (assigned_role,title,objective,expected_output,acceptance_criteria,created_by,status)
+      VALUES ('coordinator',${"QA revision cycle " + marker},
+        'Delegate specialist work, revise after QA objection, and obtain a fresh QA PASS',
+        'Consolidated revised evidence','["Revised SEO evidence exists","QA returns PASS"]'::jsonb,
+        'integration-test','review') RETURNING id`;
     parentId = parent.id;
-    const [specialist] = await sql`INSERT INTO agent_tasks
+
+    const [firstSpecialist] = await sql`INSERT INTO agent_tasks
       (parent_task_id,assigned_role,title,objective,expected_output,created_by,status)
-      VALUES (${parentId},'seo','Completed specialist','Evidence','Evidence','integration-test','done')
+      VALUES (${parentId},'seo','Initial SEO evidence','Initial evidence','Evidence','integration-test','done')
       RETURNING id`;
     await sql`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
-      VALUES (${specialist.id},'seo','result','Evidence','Test evidence')`;
-    const first = runNode("scripts/agent-hq-supervisor.mjs", ["--once"], { DATABASE_URL: supervisorUrl });
-    assert.equal(first.status, 0, first.stderr || first.stdout);
-    const [qa] = await sql`SELECT id FROM agent_tasks
-      WHERE parent_task_id=${parentId} AND assigned_role='qa_security'`;
-    await sql`UPDATE agent_tasks SET status='done',completed_at=now() WHERE id=${qa.id}`;
+      VALUES (${firstSpecialist.id},'seo','result','Initial SEO evidence','Initial evidence; missing required page-level proof')`;
+
+    const firstSupervisor = runNode("scripts/agent-hq-supervisor.mjs", ["--once"], { DATABASE_URL: supervisorUrl });
+    assert.equal(firstSupervisor.status, 0, firstSupervisor.stderr || firstSupervisor.stdout);
+    const [firstQa] = await sql`SELECT id,status,created_at FROM agent_tasks
+      WHERE parent_task_id=${parentId} AND assigned_role='qa_security' ORDER BY created_at,id LIMIT 1`;
+    assert.ok(firstQa, "Supervisor must create the first independent QA task");
+    await sql`UPDATE agent_tasks SET status='done',completed_at=now() WHERE id=${firstQa.id}`;
     await sql`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
-      VALUES (${qa.id},'qa_security','review','QA verdict','VERDICT: REVISE\\nEvidence missing')`;
-    const second = runNode("scripts/agent-hq-supervisor.mjs", ["--once"], { DATABASE_URL: supervisorUrl });
-    assert.equal(second.status, 0, second.stderr || second.stdout);
-    const [blocked] = await sql`SELECT status FROM agent_tasks WHERE id=${parentId}`;
-    assert.equal(blocked.status, "blocked");
+      VALUES (${firstQa.id},'qa_security','review','Initial QA verdict',
+        ${"VERDICT: REVISE\\nMissing page-level evidence; request revised specialist work for " + marker})`;
+
+    const revisePass = runNode("scripts/agent-hq-supervisor.mjs", ["--once"], { DATABASE_URL: supervisorUrl });
+    assert.equal(revisePass.status, 0, revisePass.stderr || revisePass.stdout);
+    const [requeued] = await sql`SELECT status FROM agent_tasks WHERE id=${parentId}`;
+    assert.equal(requeued.status, "queued", "QA REVISE must return the coordinator task to its queue when attempts remain");
+
+    const coordinatorResponses = [
+      {
+        output: [{
+          type: "function_call",
+          name: "delegate_task",
+          call_id: "delegate-seo-revision",
+          arguments: JSON.stringify({
+            role: "seo",
+            title: "Revised SEO evidence",
+            objective: "Address the QA objection with page-level evidence and a concrete fix",
+            acceptance_criteria: ["Include page-level evidence", "Resolve the QA objection"],
+            priority: 5
+          })
+        }],
+        usage: { input_tokens: 0, output_tokens: 0 }
+      },
+      {
+        output: [{
+          type: "message",
+          content: [{ type: "output_text", text: "Coordinator revised the task plan and delegated new SEO evidence." }]
+        }],
+        usage: { input_tokens: 0, output_tokens: 0 }
+      }
+    ];
+    const coordinatorRun = runNode("scripts/agent-hq-worker.mjs", ["--once"], {
+      DATABASE_URL: coordinatorUrl,
+      AGENT_ROLE: "coordinator",
+      AGENT_WORKER_ID: "coordinator-revision-" + marker,
+      OPENAI_API_KEY: "test-key-never-used",
+      AGENT_MODEL: "gpt-4.1-mini",
+      AGENT_WEB_SEARCH_ENABLED: "false",
+      AGENT_HQ_TEST_RESPONSES_JSON: JSON.stringify(coordinatorResponses)
+    });
+    assert.equal(coordinatorRun.status, 0, coordinatorRun.stderr || coordinatorRun.stdout);
+    const [parentReview] = await sql`SELECT status,attempts FROM agent_tasks WHERE id=${parentId}`;
+    assert.equal(parentReview.status, "review");
+    assert.equal(parentReview.attempts, 1);
+    const [revisedSpecialist] = await sql`SELECT id,status,created_at FROM agent_tasks
+      WHERE parent_task_id=${parentId} AND assigned_role='seo' AND id<>${firstSpecialist.id}
+      ORDER BY created_at DESC LIMIT 1`;
+    assert.ok(revisedSpecialist, "Coordinator must create a new specialist task after QA REVISE");
+    assert.equal(revisedSpecialist.status, "queued");
+
+    const seoRun = runNode("scripts/agent-hq-worker.mjs", ["--once"], {
+      DATABASE_URL: seoUrl,
+      AGENT_ROLE: "seo",
+      AGENT_WORKER_ID: "seo-revision-" + marker,
+      OPENAI_API_KEY: "test-key-never-used",
+      AGENT_MODEL: "gpt-4.1-mini",
+      AGENT_WEB_SEARCH_ENABLED: "false",
+      AGENT_HQ_TEST_RESPONSES_JSON: JSON.stringify({
+        output: [{
+          type: "message",
+          content: [{ type: "output_text", text: "Revised SEO evidence " + marker + ": verified page-level crawl and metadata proof." }]
+        }],
+        usage: { input_tokens: 0, output_tokens: 0 }
+      })
+    });
+    assert.equal(seoRun.status, 0, seoRun.stderr || seoRun.stdout);
+    const [revisedDone] = await sql`SELECT status FROM agent_tasks WHERE id=${revisedSpecialist.id}`;
+    assert.equal(revisedDone.status, "done");
+
+    const revisionSupervisor = runNode("scripts/agent-hq-supervisor.mjs", ["--once"], { DATABASE_URL: supervisorUrl });
+    assert.equal(revisionSupervisor.status, 0, revisionSupervisor.stderr || revisionSupervisor.stdout);
+    const qaRows = await sql`SELECT id,status,created_at FROM agent_tasks
+      WHERE parent_task_id=${parentId} AND assigned_role='qa_security' ORDER BY created_at,id`;
+    assert.equal(qaRows.length, 2, "Supervisor must create a fresh QA task after revised specialist work completes");
+    assert.equal(qaRows[1].status, "queued");
+    const grants = await sql`SELECT principal,access_reason FROM agent_task_access WHERE task_id=${revisedSpecialist.id}`;
+    assert.ok(grants.some(row => row.principal === "qa_security" && row.access_reason === "qa_review"));
+
+    const qaRun = runNode("scripts/agent-hq-worker.mjs", ["--once"], {
+      DATABASE_URL: qaUrl,
+      AGENT_ROLE: "qa_security",
+      AGENT_WORKER_ID: "qa-revision-" + marker,
+      OPENAI_API_KEY: "test-key-never-used",
+      AGENT_MODEL: "gpt-4.1-mini",
+      AGENT_WEB_SEARCH_ENABLED: "false",
+      AGENT_HQ_TEST_RESPONSES_JSON: JSON.stringify({
+        output: [{
+          type: "message",
+          content: [{ type: "output_text", text: "VERDICT: PASS\\nReviewed revised specialist evidence " + marker + "; prior blocker resolved." }]
+        }],
+        usage: { input_tokens: 0, output_tokens: 0 }
+      })
+    });
+    assert.equal(qaRun.status, 0, qaRun.stderr || qaRun.stdout);
+    const finalSupervisor = runNode("scripts/agent-hq-supervisor.mjs", ["--once"], { DATABASE_URL: supervisorUrl });
+    assert.equal(finalSupervisor.status, 0, finalSupervisor.stderr || finalSupervisor.stdout);
+
+    const [completed] = await sql`SELECT status FROM agent_tasks WHERE id=${parentId}`;
+    assert.equal(completed.status, "done");
+    const [consolidated] = await sql`SELECT content FROM agent_artifacts
+      WHERE task_id=${parentId} AND artifact_type='consolidated' ORDER BY created_at DESC LIMIT 1`;
+    assert.ok(consolidated);
+    assert.match(consolidated.content, new RegExp("Revised SEO evidence " + marker));
+    assert.match(consolidated.content, /VERDICT: PASS/);
   } finally {
-    if (parentId) await sql`DELETE FROM agent_tasks WHERE id=${parentId}`;
+    if (parentId) {
+      const children = await sql`SELECT id FROM agent_tasks WHERE parent_task_id=${parentId}`;
+      const taskIds = [parentId, ...children.map(row => row.id)];
+      await sql`DELETE FROM agent_budget_ledger WHERE reservation_id IN
+        (SELECT id FROM agent_budget_reservations WHERE task_id=ANY(${taskIds}::bigint[]))`;
+      await sql`DELETE FROM agent_budget_settlements WHERE reservation_id IN
+        (SELECT id FROM agent_budget_reservations WHERE task_id=ANY(${taskIds}::bigint[]))`;
+      await sql`DELETE FROM agent_budget_reservations WHERE task_id=ANY(${taskIds}::bigint[])`;
+      await sql`DELETE FROM agent_messages WHERE task_id=ANY(${taskIds}::bigint[])`;
+      await sql`DELETE FROM agent_runs WHERE task_id=ANY(${taskIds}::bigint[])`;
+      await sql`DELETE FROM agent_tasks WHERE id=ANY(${taskIds}::bigint[])`;
+    }
+    if (previousBudget) await sql`UPDATE agent_budget_config SET enabled=${previousBudget.enabled},
+      daily_cap_microusd=${previousBudget.daily_cap_microusd},
+      monthly_cap_microusd=${previousBudget.monthly_cap_microusd},
+      per_run_cap_microusd=${previousBudget.per_run_cap_microusd},
+      input_price_per_million_microusd=${previousBudget.input_price_per_million_microusd},
+      output_price_per_million_microusd=${previousBudget.output_price_per_million_microusd},
+      web_search_price_microusd_per_call=${previousBudget.web_search_price_microusd_per_call} WHERE id=1`;
     await sql.end({ timeout: 5 });
   }
 });
