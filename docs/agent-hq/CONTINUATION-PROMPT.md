@@ -111,3 +111,26 @@
 
 ## Правило честности
 Не подменять реальный запуск unit/integration test, проверкой конфигурации или SQL role matrix. Не называть все 19 ролей работающими, пока каждая из 19 не обработала отдельную тестовую задачу на disposable DB. Не объявлять полный orchestration E2E готовым, пока не пройдены Coordinator → specialists → Supervisor → QA REVISE → revision → QA PASS → final → settlement.
+
+## Дополнение к состоянию на 17.11.2026, после CI run 44138354968
+
+### Новые изменения
+- scripts/agent-hq-supervisor.mjs: QA REVISE теперь возвращает Coordinator parent в queued, если остались попытки; Coordinator должен создать новые specialist tasks. Supervisor создаёт отдельную свежую QA-задачу после завершения revised specialist tasks. При исчерпании попыток parent блокируется.
+- tests/agent-hq.supervisor-cli.test.mjs: добавлены E2E тесты QA REVISE → Coordinator revision → revised specialist → fresh QA PASS → consolidated result, а также проверки исчерпания попыток.
+- docker-compose.agent-hq-test.yml: standalone Compose-файл, не объединяемый с production/runtime Compose. Описывает 19 worker services, Supervisor, disposable PostgreSQL, db-init и assertion runner; только internal Docker network, нет published ports, нет egress, DB на tmpfs.
+- scripts/agent-hq-test-bootstrap.sh: URL жёстко закреплён на postgres://agent_test:agent_test@postgres:5432/agent_hq_test; внешние DB URL не принимаются.
+- scripts/agent-hq-test-assert.mjs: проверяет 19 ролей, test_stub provider, успешные runs, artifacts, settled reservations и нулевую фактическую стоимость.
+- tests/agent-hq-role-isolation.sql: все 22 policy declarations предваряются DROP POLICY IF EXISTS, чтобы disposable harness можно было повторно применить.
+- CI job all-19-container-e2e запускает только standalone Compose stack; db-init выполняется один раз как dependency service_completed_successfully.
+- Security audit: production dependencies блокируются при high/critical advisories (npm audit --omit=dev --audit-level=high); полный audit devDependencies остаётся видимым отдельным continue-on-error шагом. На проверенном run production audit вернул 0 vulnerabilities; dev audit показал 14 high и 4 moderate (цепочки drizzle-kit/esbuild и eslint/picomatch). Не применять npm audit fix --force без анализа breaking changes.
+
+### Обнаруженные CI проблемы и их устранение
+- Run 44136812265 завершился failure: прежний Compose overlay наследовал production/runtime worker guard и воркеры оставались disabled.
+- Run 44138354968 завершился failure: bootstrap запускался дважды (explicit compose run --rm db-init и затем повторно как Compose dependency), что приводило к duplicate policy error и повторному seed. Удалён explicit db-init invocation; роль-изоляционный SQL сделан idempotent.
+- Run 44137646791 показал старое ожидание в тесте: QA REVISE блокировал parent. Ожидание заменено на requeue при наличии попыток и добавлена отдельная проверка block при exhausted attempts.
+- Run 44138277094 показал, что QA REVISE requeue тест ещё не обновлён; этот тест исправлен в commit edf7d7efc4bf8540ec523e781c30daa1aa312ab4.
+
+### Последняя CI точка
+- PR #116 head после обновления workflow и SQL harness: 9f925282052bc2a54cf75915072fd1c063bcf042.
+- Run 44139088192 запущен для этого точного SHA. На момент записи jobs ещё in_progress; success не подтверждён.
+- Не утверждать, что 19-role E2E пройден, пока all-19-container-e2e не завершился success и assertion report не показал 19/19, zero cost, 0 open reservations.
