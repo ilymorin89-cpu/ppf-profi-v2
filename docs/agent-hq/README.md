@@ -1,50 +1,34 @@
 # PPF PROFI Agent HQ
 
-Status: architecture foundation only. No autonomous workers are running yet.
+**Current status:** runtime implementation and 19-role authorization foundation are present in the repository. No live worker processes are running and paid operation is not approved.
 
-## Goal
-Build a real multi-agent system. Agents are separate worker processes with distinct role instructions, permissions, budgets and run histories. They communicate through durable PostgreSQL messages and tasks; the coordinator does not manually relay every message.
+Use [CURRENT-STATUS.md](./CURRENT-STATUS.md) as the source of truth for current branches, PR dependencies, CI status, Timeweb blockers and launch gates.
 
-## MVP roles
-1. Coordinator: decomposes goals, assigns work, resolves dependencies and escalates decisions.
-2. Web Engineer: analyzes and proposes code changes on feature branches and opens PRs.
-3. SEO / Indexing: audits crawlability, metadata, sitemap, robots, Yandex and Google indexation.
-4. GEO / AI Visibility: measures visibility in Alice and answer engines and produces evidence-backed recommendations.
-5. Growth / Leads: proposes experiments for qualified PPF leads, landing pages and channels.
-6. Analytics: evaluates funnel, Metrika events, lead quality and experiments.
-7. Independent QA / Security: challenges findings, checks evidence and blocks unsafe releases.
+## Implemented foundation
 
-MVP uses seven logical roles but only 1–3 worker processes initially. Roles do not imply seven simultaneously running paid model sessions.
+- 19 specialist worker roles with durable PostgreSQL tasks, messages, runs, artifacts and approvals.
+- Trusted budget reservations, settlements, ledger events and operator reconciliation functions.
+- Runtime RLS and authenticated PostgreSQL principal identity.
+- Separate LOGIN identities for each worker role, Supervisor and Operator.
+- Coordinator delegation, Supervisor lifecycle, QA review and lease recovery.
+- Deterministic disposable PostgreSQL tests, no-egress four-agent orchestration and all-19-container test stack.
+- Read-only Timeweb PostgreSQL connectivity diagnostic.
+- Draft live runtime Compose with one database URL per worker role and disabled-by-default gates.
 
-## Communication model
-PostgreSQL is the durable source of truth. Planned tables: agent_tasks, agent_messages, agent_runs, agent_artifacts and agent_approvals. Messages are append-only and addressed to roles/tasks with correlation IDs. Workers claim tasks transactionally, post messages, and can create bounded child tasks. The QA agent can return an objection with evidence. The coordinator resolves it or escalates to the owner.
+## Runtime safety
 
-## Task lifecycle
-queued -> claimed -> running -> review -> done. Alternative states: blocked, cancelled, dead_letter. Workers use leases and heartbeats. Expired leases return to queue with an incremented attempt count. Exceeded retry, cost or time limits go to dead letter.
+- All worker and Supervisor gates default to false.
+- No worker may use a shared database owner or website database credential.
+- Web search and GitHub read integration default off.
+- Provider ambiguity retains a budget reservation for operator reconciliation.
+- Production deployment, external publishing, advertising and outreach remain approval-gated.
 
-## Guardrails
-- No production deploy, paid advertising, external outreach, deletion, schema migration or secret changes without explicit owner approval.
-- No secrets in prompts, logs, messages, artifacts or Git.
-- Read-only research first. Code changes on isolated branches; tests and QA required before PR approval.
-- Per-task and daily spend ceilings; hard timeouts; max attempts; circuit breaker; dead-letter state.
-- No unbounded agent spawning. MVP cap: 3 concurrent worker processes, 7 logical roles, max 3 retries and max 10 child tasks per parent.
-- Claims require evidence (URL, file path, test output, metric range) or must be labelled as a hypothesis.
+## Test and deployment separation
 
-## Proposed stack
-Keep the existing Next.js customer website independent. Use the existing PostgreSQL database as durable task/message store and a separate Node.js worker service. Add an orchestration layer with explicit state transitions. Select LangGraph or a small typed state machine after architecture research. Do not add Redis, vector DB or paid SaaS until a measured need exists.
+Use docker-compose.agent-hq-test.yml and docker-compose.agent-hq-four-agent-test.yml only for deterministic no-egress tests with the test_stub provider and disposable PostgreSQL.
 
-## Current repository status
-This branch contains architecture docs only. No worker runtime, API key, database migration, server process or deployment has been created. Production main branch is untouched.
+The root docker-compose.yml in the current candidate branch is the live runtime Compose. It must not be used for no-spend simulation. It is still a Draft PR candidate and must pass exact-head CI and a dedicated staging preflight before Timeweb selects it.
 
-## Implementation increments
-1. Finalize provider and cost policy.
-2. Add schema migration and typed task/message repository.
-3. Add worker runtime with lease, heartbeat, retry and dead-letter.
-4. Add model adapter, role prompts and tool permission registry.
-5. Add coordinator and QA handoff loop.
-6. Add read-only admin dashboard and audit log.
-7. Run sandbox simulation with mock agents; connect live providers only after approval.
-8. Deploy worker separately after credentials and hosting approval.
+## Historical documents
 
-## Acceptance criteria
-At least three independent worker processes can exchange messages through PostgreSQL; agents can create bounded child tasks; QA can block and request revision; restart does not lose tasks or duplicate side effects; retry/time/spend ceilings are enforced; production actions require recorded owner approval.
+Documents titled as audits, design snapshots or readiness reports may contain historical status statements. Read their superseded banners and compare them with CURRENT-STATUS.md before relying on them.
