@@ -431,7 +431,7 @@ test("Agent HQ worker rejects a database LOGIN that does not match AGENT_ROLE", 
     }
   });
   assert.notEqual(result.status, 0, "Worker must reject mismatched database identity before claiming work.");
-  assert.match(result.stderr, /must authenticate as PostgreSQL LOGIN "agent_qa_security"/i);
+  assert.match(result.stderr, /no enabled authenticated Agent HQ principal for configured role "qa_security"/i);
 });
 
 
@@ -451,16 +451,16 @@ test("Agent HQ concurrent reservations cannot overspend the daily cap", {
       web_search_price_microusd_per_call=0 WHERE id=1`;
     const [a]=await admin`INSERT INTO agent_tasks(assigned_role,title,objective,expected_output,created_by,
       status,lease_owner,lease_until,budget_limit_microusd)
-      VALUES('seo','concurrent budget A','test','test','integration-test','claimed','seo-budget-a',
+      VALUES('seo','concurrent budget A','test','test','integration-test','claimed','test-seo',
         now()+interval '5 minutes',5000) RETURNING id`;
     const [b]=await admin`INSERT INTO agent_tasks(assigned_role,title,objective,expected_output,created_by,
       status,lease_owner,lease_until,budget_limit_microusd)
-      VALUES('seo','concurrent budget B','test','test','integration-test','claimed','seo-budget-b',
+      VALUES('seo','concurrent budget B','test','test','integration-test','claimed','test-seo',
         now()+interval '5 minutes',5000) RETURNING id`;
     taskIds.push(a.id,b.id);
     const calls=await Promise.allSettled([
-      workerA`SELECT * FROM agent_budget_reserve(${a.id},'seo-budget-a','test_stub','test-model',10000,256,1,0,${'parallel-a-'+randomUUID()})`,
-      workerB`SELECT * FROM agent_budget_reserve(${b.id},'seo-budget-b','test_stub','test-model',10000,256,1,0,${'parallel-b-'+randomUUID()})`
+      workerA`SELECT * FROM agent_budget_reserve(${a.id},'test-seo','test_stub','test-model',10000,256,1,0,${'parallel-a-'+randomUUID()})`,
+      workerB`SELECT * FROM agent_budget_reserve(${b.id},'test-seo','test_stub','test-model',10000,256,1,0,${'parallel-b-'+randomUUID()})`
     ]);
     assert.equal(calls.filter(x=>x.status==="fulfilled").length,1,
       "The serialized budget reservation lock must admit only one run at the exact daily cap");
@@ -691,28 +691,28 @@ test("Agent HQ enforces monthly, task and per-run reservation caps", {
     };
     const reserve=async (taskId,workerId,key) => seo`SELECT * FROM agent_budget_reserve(
       ${taskId},${workerId},'test_stub','test-model',10000,1024,1,0,${key})`;
-    const firstTask=await createTask(5000,"seo-monthly-cap-a");
-    const [first]=await reserve(firstTask,"seo-monthly-cap-a","monthly-cap-a-"+randomUUID());
+    const firstTask=await createTask(5000,"test-seo");
+    const [first]=await reserve(firstTask,"test-seo","monthly-cap-a-"+randomUUID());
     assert.equal(Number(first.reserved_microusd),1103);
-    const secondTask=await createTask(5000,"seo-monthly-cap-b");
+    const secondTask=await createTask(5000,"test-seo");
     await assert.rejects(
-      reserve(secondTask,"seo-monthly-cap-b","monthly-cap-b-"+randomUUID()),
+      reserve(secondTask,"test-seo","monthly-cap-b-"+randomUUID()),
       e=>e.code==="P0001",
       "A second reservation must be rejected at the monthly cap"
     );
 
     await admin`UPDATE agent_budget_config SET monthly_cap_microusd=100000 WHERE id=1`;
-    const taskLimited=await createTask(1102,"seo-task-cap");
+    const taskLimited=await createTask(1102,"test-seo");
     await assert.rejects(
-      reserve(taskLimited,"seo-task-cap","task-cap-"+randomUUID()),
+      reserve(taskLimited,"test-seo","task-cap-"+randomUUID()),
       e=>e.code==="P0001",
       "A reservation must not exceed the task-level budget"
     );
 
     await admin`UPDATE agent_budget_config SET per_run_cap_microusd=1102 WHERE id=1`;
-    const runLimited=await createTask(5000,"seo-run-cap");
+    const runLimited=await createTask(5000,"test-seo");
     await assert.rejects(
-      reserve(runLimited,"seo-run-cap","run-cap-"+randomUUID()),
+      reserve(runLimited,"test-seo","run-cap-"+randomUUID()),
       e=>e.code==="P0001",
       "A reservation must not exceed the per-run budget"
     );
