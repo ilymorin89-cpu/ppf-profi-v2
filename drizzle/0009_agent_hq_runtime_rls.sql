@@ -275,12 +275,14 @@ $worker_grants$;
 
 GRANT INSERT (parent_task_id,title,objective,expected_output,acceptance_criteria,assigned_role,status,priority,attempts,max_attempts,budget_limit_microusd,created_by)
   ON public.agent_tasks TO agent_coordinator,agent_supervisor;
+GRANT UPDATE (status,attempts,lease_owner,lease_until,updated_at,completed_at)
+  ON public.agent_tasks TO agent_supervisor;
 GRANT INSERT (task_id,principal,access_reason) ON public.agent_task_access TO agent_supervisor;
 GRANT SELECT (id,task_id,action,status,decided_by,decision_note,decided_at),
   UPDATE (status,decided_by,decision_note,decided_at) ON public.agent_approvals TO agent_operator;
 GRANT USAGE,SELECT ON SEQUENCE public.agent_tasks_id_seq TO agent_coordinator,agent_supervisor;
-REVOKE UPDATE ON public.agent_tasks FROM agent_supervisor,agent_operator;
-REVOKE UPDATE (status,attempts,lease_owner,lease_until,updated_at,completed_at) ON public.agent_tasks FROM agent_supervisor,agent_operator;
+REVOKE UPDATE ON public.agent_tasks FROM agent_operator;
+REVOKE UPDATE (status,attempts,lease_owner,lease_until,updated_at,completed_at) ON public.agent_tasks FROM agent_operator;
 
 DO $assert_roles$
 DECLARE role_name TEXT;
