@@ -220,6 +220,11 @@ async function runTask(task) {
         throw new Error(`OpenAI API ${response.status}: ${detail}`);
       }
       data = await response.json();
+      // The deterministic test provider can model an ambiguous accepted request
+      // without making a network call. Honor this marker only in NODE_ENV=test.
+      if (testStubMode && data.__test_provider_outcome === "ambiguous") {
+        providerCallStarted = true;
+      }
       totalInputTokens += Number(data.usage?.input_tokens || 0);
       totalOutputTokens += Number(data.usage?.output_tokens || 0);
       totalWebSearchCalls += (data.output || []).filter(item => item.type === "web_search_call").length;
