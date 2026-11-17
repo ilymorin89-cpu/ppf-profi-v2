@@ -387,8 +387,10 @@ BEGIN
   SELECT * INTO v_res FROM public.agent_budget_reservations WHERE id=p_reservation_id AND role=v_role AND worker_id=p_worker_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'reservation not owned by caller' USING ERRCODE='42501'; END IF;
   IF v_res.state='released' THEN
-    IF EXISTS (SELECT 1 FROM public.agent_budget_ledger WHERE reservation_id=v_res.id AND event_key='release:'||p_idempotency_key) THEN RETURN true; END IF;
-    RAISE EXCEPTION 'reservation was released with a different idempotency key' USING ERRCODE='23505';
+    IF EXISTS (SELECT 1 FROM public.agent_budget_ledger
+      WHERE reservation_id=v_res.id AND event_key='release:'||p_idempotency_key
+        AND metadata->>'reason'=p_reason) THEN RETURN true; END IF;
+    RAISE EXCEPTION 'reservation was released with different idempotency evidence' USING ERRCODE='23505';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM public.agent_tasks t WHERE t.id=v_res.task_id
     AND t.assigned_role=v_role AND t.lease_owner=v_res.worker_id
@@ -420,8 +422,10 @@ BEGIN
   SELECT * INTO v_res FROM public.agent_budget_reservations WHERE id=p_reservation_id AND role=v_role AND worker_id=p_worker_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'reservation not owned by caller' USING ERRCODE='42501'; END IF;
   IF v_res.state='unknown' THEN
-    IF EXISTS (SELECT 1 FROM public.agent_budget_ledger WHERE reservation_id=v_res.id AND event_key='unknown:'||p_event_key) THEN RETURN true; END IF;
-    RAISE EXCEPTION 'reservation is already unknown under a different event key' USING ERRCODE='23505';
+    IF EXISTS (SELECT 1 FROM public.agent_budget_ledger
+      WHERE reservation_id=v_res.id AND event_key='unknown:'||p_event_key
+        AND metadata->>'reason'=p_reason) THEN RETURN true; END IF;
+    RAISE EXCEPTION 'reservation is already unknown with different event evidence' USING ERRCODE='23505';
   END IF;
   IF v_res.state IN ('settled','released') THEN RETURN true; END IF;
   IF v_res.state<>'active' THEN RAISE EXCEPTION 'reservation is not active' USING ERRCODE='55000'; END IF;
@@ -457,7 +461,8 @@ BEGIN
     SELECT * INTO v_existing FROM public.agent_budget_settlements WHERE reservation_id=v_res.id;
     IF v_existing.idempotency_key=p_idempotency_key
        AND v_existing.input_tokens=p_input_tokens AND v_existing.output_tokens=p_output_tokens
-       AND v_existing.web_search_calls=p_search_calls THEN
+       AND v_existing.web_search_calls=p_search_calls
+       AND v_existing.provider_reference IS NOT DISTINCT FROM p_provider_reference THEN
       RETURN v_existing.actual_cost_microusd;
     END IF;
     RAISE EXCEPTION 'reservation already reconciled with different evidence' USING ERRCODE='23505';
@@ -507,8 +512,14 @@ BEGIN
     RAISE EXCEPTION 'operator confirmation required for no-charge reconciliation' USING ERRCODE='42501';
   END IF;
   SELECT * INTO v_res FROM public.agent_budget_reservations WHERE id=p_reservation_id FOR UPDATE;
-  IF FOUND AND v_res.state='released' AND EXISTS (SELECT 1 FROM public.agent_budget_ledger WHERE reservation_id=v_res.id AND event_key='reconcile:'||p_idempotency_key) THEN
-    RETURN true;
+  IF FOUND AND v_res.state='released' THEN
+    IF EXISTS (SELECT 1 FROM public.agent_budget_ledger
+      WHERE reservation_id=v_res.id AND event_key='reconcile:'||p_idempotency_key
+        AND metadata->>'confirmation_reference'=p_confirmation_reference
+        AND metadata->>'confirmed_no_charge'='true') THEN
+      RETURN true;
+    END IF;
+    RAISE EXCEPTION 'reservation was reconciled with different no-charge evidence' USING ERRCODE='23505';
   END IF;
   IF NOT FOUND OR v_res.state NOT IN ('active','unknown') THEN
     RAISE EXCEPTION 'only active or unknown reservations can be reconciled' USING ERRCODE='55000';
