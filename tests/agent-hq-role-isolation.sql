@@ -234,20 +234,26 @@ ALTER TABLE agent_task_access ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_task_access FORCE ROW LEVEL SECURITY;
 
 -- The NOLOGIN function owner gets only the row reads required by reviewed helpers.
+DROP POLICY IF EXISTS task_fn_owner_read ON agent_tasks;
 CREATE POLICY task_fn_owner_read ON agent_tasks FOR SELECT TO agent_hq_fn_owner_ci USING (true);
+DROP POLICY IF EXISTS task_access_fn_owner_read ON agent_task_access;
 CREATE POLICY task_access_fn_owner_read ON agent_task_access FOR SELECT TO agent_hq_fn_owner_ci USING (true);
 
+DROP POLICY IF EXISTS task_read_explicit_access ON agent_tasks;
 CREATE POLICY task_read_explicit_access ON agent_tasks FOR SELECT USING (
   public.agent_has_task_access(agent_tasks.id)
 );
+DROP POLICY IF EXISTS task_read_own_role ON agent_tasks;
 CREATE POLICY task_read_own_role ON agent_tasks FOR SELECT USING (
   session_user='agent_supervisor' OR assigned_role = COALESCE(public.agent_role_for_session(), '__denied__')
 );
+DROP POLICY IF EXISTS task_update_own_role ON agent_tasks;
 CREATE POLICY task_update_own_role ON agent_tasks FOR UPDATE USING (
   session_user='agent_supervisor' OR assigned_role = COALESCE(public.agent_role_for_session(), '__denied__')
 ) WITH CHECK (
   session_user='agent_supervisor' OR assigned_role = COALESCE(public.agent_role_for_session(), '__denied__')
 );
+DROP POLICY IF EXISTS task_insert_coordinator ON agent_tasks;
 CREATE POLICY task_insert_coordinator ON agent_tasks FOR INSERT WITH CHECK (
   session_user='agent_supervisor' OR (
     session_user='agent_coordinator' AND created_by='coordinator'
@@ -259,9 +265,11 @@ CREATE POLICY task_insert_coordinator ON agent_tasks FOR INSERT WITH CHECK (
   )
 );
 
+DROP POLICY IF EXISTS message_read_recipient ON agent_messages;
 CREATE POLICY message_read_recipient ON agent_messages FOR SELECT USING (
   session_user='agent_supervisor' OR to_role = COALESCE(public.agent_role_for_session(), '__denied__')
 );
+DROP POLICY IF EXISTS message_insert_sender ON agent_messages;
 CREATE POLICY message_insert_sender ON agent_messages FOR INSERT WITH CHECK (
   session_user='agent_supervisor' OR (
     from_role = COALESCE(public.agent_role_for_session(), '__denied__')
@@ -270,11 +278,14 @@ CREATE POLICY message_insert_sender ON agent_messages FOR INSERT WITH CHECK (
   )
 );
 
+DROP POLICY IF EXISTS run_read_own_role ON agent_runs;
 CREATE POLICY run_read_own_role ON agent_runs FOR SELECT USING (
   session_user='agent_supervisor' OR role = COALESCE(public.agent_role_for_session(), '__denied__')
 );
 -- CI-only definer owner may read aggregate inputs, but no runtime LOGIN is a member of this role.
+DROP POLICY IF EXISTS run_budget_aggregate_fn_owner ON agent_runs;
 CREATE POLICY run_budget_aggregate_fn_owner ON agent_runs FOR SELECT TO agent_hq_fn_owner_ci USING (true);
+DROP POLICY IF EXISTS run_insert_own_role ON agent_runs;
 CREATE POLICY run_insert_own_role ON agent_runs FOR INSERT WITH CHECK (
   session_user='agent_supervisor' OR (
     role = COALESCE(public.agent_role_for_session(), '__denied__')
@@ -282,40 +293,50 @@ CREATE POLICY run_insert_own_role ON agent_runs FOR INSERT WITH CHECK (
     AND EXISTS (SELECT 1 FROM agent_tasks t WHERE t.id=agent_runs.task_id AND t.assigned_role=role)
   )
 );
+DROP POLICY IF EXISTS run_update_own_role ON agent_runs;
 CREATE POLICY run_update_own_role ON agent_runs FOR UPDATE USING (
   session_user='agent_supervisor' OR role = COALESCE(public.agent_role_for_session(), '__denied__')
 ) WITH CHECK (
   session_user='agent_supervisor' OR role = COALESCE(public.agent_role_for_session(), '__denied__')
 );
 
+DROP POLICY IF EXISTS task_access_read_own ON agent_task_access;
 CREATE POLICY task_access_read_own ON agent_task_access FOR SELECT USING (
   session_user='agent_supervisor' OR principal=COALESCE(public.agent_role_for_session(), '__denied__')
 );
+DROP POLICY IF EXISTS task_access_insert_supervisor ON agent_task_access;
 CREATE POLICY task_access_insert_supervisor ON agent_task_access FOR INSERT
   WITH CHECK (public.agent_can_grant_task_access(principal));
 
+DROP POLICY IF EXISTS artifact_read_explicit_access ON agent_artifacts;
 CREATE POLICY artifact_read_explicit_access ON agent_artifacts FOR SELECT USING (
   public.agent_has_task_access(agent_artifacts.task_id)
 );
+DROP POLICY IF EXISTS artifact_read_own_task ON agent_artifacts;
 CREATE POLICY artifact_read_own_task ON agent_artifacts FOR SELECT USING (
   session_user='agent_supervisor' OR EXISTS (
     SELECT 1 FROM agent_tasks t WHERE t.id=task_id AND t.assigned_role = COALESCE(public.agent_role_for_session(), '__denied__')
   )
 );
+DROP POLICY IF EXISTS artifact_insert_own_task ON agent_artifacts;
 CREATE POLICY artifact_insert_own_task ON agent_artifacts FOR INSERT WITH CHECK (
   session_user='agent_supervisor' OR public.agent_can_insert_own_artifact(task_id,created_by)
 );
 
+DROP POLICY IF EXISTS approval_read_requester ON agent_approvals;
 CREATE POLICY approval_read_requester ON agent_approvals FOR SELECT USING (
   CASE
     WHEN session_user IN ('agent_supervisor','agent_operator') THEN TRUE
     ELSE requested_by = COALESCE(public.agent_role_for_session(), '__denied__')
   END
 );
+DROP POLICY IF EXISTS approval_operator_read ON agent_approvals;
 CREATE POLICY approval_operator_read ON agent_approvals FOR SELECT USING (session_user='agent_operator');
+DROP POLICY IF EXISTS approval_operator_decide ON agent_approvals;
 CREATE POLICY approval_operator_decide ON agent_approvals FOR UPDATE
   USING (session_user='agent_operator' AND status='pending')
   WITH CHECK (session_user='agent_operator' AND status IN ('approved','rejected') AND decided_by IS NOT NULL AND decided_at IS NOT NULL);
+DROP POLICY IF EXISTS approval_insert_requester ON agent_approvals;
 CREATE POLICY approval_insert_requester ON agent_approvals FOR INSERT WITH CHECK (
   session_user='agent_supervisor' OR (
     status='pending'
@@ -323,4 +344,5 @@ CREATE POLICY approval_insert_requester ON agent_approvals FOR INSERT WITH CHECK
     AND EXISTS (SELECT 1 FROM agent_tasks t WHERE t.id=agent_approvals.task_id AND t.assigned_role=requested_by)
   )
 );
+DROP POLICY IF EXISTS budget_read_only ON agent_budget_config;
 CREATE POLICY budget_read_only ON agent_budget_config FOR SELECT USING (true);
