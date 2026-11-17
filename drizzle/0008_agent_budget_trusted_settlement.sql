@@ -397,7 +397,7 @@ AS $unknown$
 DECLARE v_role TEXT; v_res public.agent_budget_reservations%ROWTYPE;
 BEGIN
   v_role:=public.agent_budget_role_for_session();
-  IF v_role IS NULL OR p_worker_id IS NULL OR p_worker_id='' OR p_reason IS NULL OR length(p_reason) NOT BETWEEN 1 AND 500
+  IF v_role IS NULL OR p_worker_id IS DISTINCT FROM public.agent_worker_id_for_session() OR p_worker_id IS NULL OR p_worker_id='' OR p_reason IS NULL OR length(p_reason) NOT BETWEEN 1 AND 500
      OR p_event_key IS NULL OR length(p_event_key) NOT BETWEEN 8 AND 160 THEN
     RAISE EXCEPTION 'invalid unknown reservation request' USING ERRCODE='22023';
   END IF;
@@ -618,7 +618,7 @@ AS $heartbeat$
 DECLARE v_role TEXT;
 BEGIN
   v_role:=public.agent_budget_role_for_session();
-  IF v_role IS NULL OR p_worker_id IS NULL OR p_worker_id='' THEN
+  IF v_role IS NULL OR p_worker_id IS DISTINCT FROM public.agent_worker_id_for_session() OR p_worker_id IS NULL OR p_worker_id='' THEN
     RAISE EXCEPTION 'invalid task heartbeat identity' USING ERRCODE='42501';
   END IF;
   UPDATE public.agent_tasks SET status='running',
@@ -642,7 +642,7 @@ DECLARE
   v_target TEXT;
 BEGIN
   v_role:=public.agent_budget_role_for_session();
-  IF v_role IS NULL OR p_worker_id IS NULL OR p_worker_id=''
+  IF v_role IS NULL OR p_worker_id IS DISTINCT FROM public.agent_worker_id_for_session() OR p_worker_id IS NULL OR p_worker_id=''
      OR p_transition NOT IN ('complete','blocked','retry','dead_letter') THEN
     RAISE EXCEPTION 'invalid task transition request' USING ERRCODE='22023';
   END IF;
