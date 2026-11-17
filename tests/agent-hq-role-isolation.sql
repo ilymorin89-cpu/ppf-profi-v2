@@ -326,6 +326,9 @@ BEGIN
     WHERE id=p_task_id AND assigned_role=v_role AND status IN ('claimed','running')
       AND lease_owner=p_worker_id AND lease_until > clock_timestamp()
     FOR UPDATE;
+  IF EXISTS (SELECT 1 FROM public.agent_budget_reservations WHERE task_id=p_task_id AND state IN ('active','unknown')) THEN
+    RAISE EXCEPTION 'task already has an open budget reservation' USING ERRCODE='23505';
+  END IF;
   IF NOT FOUND THEN RAISE EXCEPTION 'task lease not owned by caller' USING ERRCODE='42501'; END IF;
   SELECT * INTO v_budget FROM public.agent_budget_config WHERE id=1 FOR UPDATE;
   IF NOT FOUND OR NOT v_budget.enabled OR v_budget.daily_cap_microusd<=0
