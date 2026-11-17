@@ -94,7 +94,10 @@ async function runTask(task) {
   let run;
   try {
     [run] = await sql.begin(async tx => {
-      const [budget] = await tx`SELECT * FROM agent_budget_config WHERE id=1 FOR UPDATE`;
+      // A transaction-scoped advisory lock serializes global budget reservations
+      // without granting workers UPDATE privilege on the budget configuration.
+      await tx`SELECT pg_advisory_xact_lock(781234, 1)`;
+      const [budget] = await tx`SELECT * FROM agent_budget_config WHERE id=1`;
       if (!budget || !budget.enabled || budget.daily_cap_microusd <= 0 || budget.monthly_cap_microusd <= 0 || budget.per_run_cap_microusd <= 0) {
         throw new Error("Agent budget is disabled or has zero caps; refusing model call");
       }
