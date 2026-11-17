@@ -45,8 +45,9 @@ AS $snapshot$
     'principals',(SELECT jsonb_build_object(
       'total',count(*),'enabled',count(*) FILTER (WHERE p.enabled),
       'distinct_logins',count(DISTINCT p.login_role),'distinct_worker_ids',count(DISTINCT p.worker_id),
-      'safe_login_flags',bool_and(r.rolcanlogin AND NOT r.rolsuper AND NOT r.rolcreatedb
-        AND NOT r.rolcreaterole AND NOT r.rolinherit AND NOT r.rolbypassrls)
+      'roles',jsonb_agg(p.role ORDER BY p.role),
+      'safe_login_flags',COALESCE(bool_and(r.rolcanlogin AND NOT r.rolsuper AND NOT r.rolcreatedb
+        AND NOT r.rolcreaterole AND NOT r.rolinherit AND NOT r.rolbypassrls),false)
     ) FROM public.agent_worker_principals p
       LEFT JOIN pg_roles r ON r.rolname=p.login_role),
     'privileged',(SELECT jsonb_build_object(
