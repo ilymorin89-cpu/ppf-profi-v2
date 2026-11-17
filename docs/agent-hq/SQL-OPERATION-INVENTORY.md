@@ -45,6 +45,8 @@ Runtime startup now independently verifies the actual PostgreSQL `session_user`:
 
 The CI harness was strengthened to transfer all SECURITY DEFINER helpers (role mapping, scoped task access, coordinator-parent validation, artifact ownership and test budget aggregation) to a dedicated NOLOGIN, non-BYPASSRLS function-owner role. That role receives only the SELECT rights and RLS read policies required by those helpers; runtime LOGINs are not members and the function owner does not own protected tables. Catalog assertions verify owner, SECURITY DEFINER, fixed search_path, role flags, memberships and table ownership.
 
+The CI-only `agent_test_budget_totals()` helper is deliberately not executable by any runtime LOGIN or `PUBLIC`. The role-matrix test calls it only through the disposable database-owner connection to prove that per-role RLS hides other workers' run rows while a trusted test-only aggregate can see the global fixture total. This helper is not a production budget API and must never be copied into a production migration. Production workers still require a separate atomic reservation/settlement service path; the current worker's direct `SUM(agent_runs.cost_microusd)` is role-local under the intended RLS policy.
+
 These tests do **not** prove production authorization:
 - the CI harness now models a dedicated `agent_hq_fn_owner_ci NOLOGIN NOBYPASSRLS` owner for SECURITY DEFINER helpers and checks its ownership/ACL boundary; production still needs a separately provisioned and reviewed function owner, privileges and policies;
 - there is no reviewed production non-login function owner and no production RLS migration;
