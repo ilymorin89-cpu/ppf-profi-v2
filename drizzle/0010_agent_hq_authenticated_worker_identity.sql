@@ -42,6 +42,7 @@ $worker_identity$;
 
 ALTER FUNCTION public.agent_worker_id_for_session() OWNER TO agent_hq_runtime_fn_owner;
 REVOKE ALL ON FUNCTION public.agent_worker_id_for_session() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.agent_worker_id_for_session() TO agent_hq_budget_owner;
 
 DO $worker_exec$
 DECLARE role_name TEXT;
