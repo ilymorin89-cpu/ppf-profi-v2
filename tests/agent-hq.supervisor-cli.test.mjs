@@ -485,7 +485,7 @@ test("Agent HQ supervisor blocks QA REVISE and exhausted specialist work", async
       WHERE task_id=${reviseParent.id} AND to_role='coordinator' AND kind='objection'
       ORDER BY created_at DESC LIMIT 1`;
     assert.ok(objection, "QA REVISE must notify the coordinator.");
-    assert.match(objection.body, /VERDICT: REVISE/i);
+    assert.ok(objection.body.includes("VERDICT: REVISE"), "Supervisor must preserve the explicit QA REVISE verdict in its objection.");
 
     const [deadState] = await sql`SELECT status FROM agent_tasks WHERE id=${deadParent.id}`;
     assert.equal(deadState.status, "blocked", "Dead-letter specialist work must block the parent.");
