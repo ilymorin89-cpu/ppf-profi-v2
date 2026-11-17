@@ -5,6 +5,8 @@ on:
     branches: ["agent-hq-runtime-skeleton", "feat/vk-content-army", "agent-hq/enable-research-tools"]
     paths:
       - "scripts/agent-hq-*.mjs"
+      - "scripts/agent-hq-*.sh"
+      - "docker-compose.agent-hq-test.yml"
       - "tests/agent-hq*.mjs"
       - "tests/agent-hq*.sql"
       - "Dockerfile.agent-hq"
@@ -107,6 +109,7 @@ jobs:
           node --check scripts/agent-hq-supervisor.mjs
           node --check scripts/agent-hq-launch.mjs
           node --check scripts/agent-hq-simulate.mjs
+          node --check scripts/agent-hq-test-assert.mjs
           node --check tests/agent-hq.integration.test.mjs
           node --check tests/agent-hq.role-matrix.test.mjs
       - name: Run PostgreSQL integration tests
@@ -156,9 +159,40 @@ jobs:
       - name: Verify systemd unit syntax
         run: systemd-analyze verify deploy/systemd/agent-hq-worker@.service deploy/systemd/agent-hq-supervisor.service
       - name: Validate Docker Compose configuration
-        run: docker compose -f docker-compose.yml config --quiet
+        run: |
+          docker compose -f docker-compose.yml config --quiet
+          docker compose -f docker-compose.yml -f docker-compose.agent-hq-test.yml config --quiet
       - name: Build Agent HQ runtime container (no deployment)
         run: docker build --file Dockerfile.agent-hq --tag ppf-agent-hq:ci .
+
+  all-19-container-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run all 19 workers on an isolated no-egress disposable PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          compose() {
+            docker compose -f docker-compose.yml -f docker-compose.agent-hq-test.yml "$@"
+          }
+          cleanup() {
+            compose logs --no-color --tail=80 || true
+            compose down --volumes --remove-orphans || true
+          }
+          trap cleanup EXIT
+
+          # The overlay uses an internal-only Docker network and an in-memory DB.
+          # No host port is published; worker containers have no outbound network.
+          compose up -d postgres
+          compose run --rm db-init
+          compose up -d --build \
+            coordinator web_engineer seo geo growth analytics qa_security \
+            vk_strategist copywriter designer image_generator storyteller \
+            community_manager content_seo ads_manager trend_scout \
+            auto_news_editor auto_law_monitor fact_checker supervisor
+          compose run --rm test-assert
+          echo "All 19 role containers completed deterministic zero-cost tasks."
 
   website-build:
     runs-on: ubuntu-latest
