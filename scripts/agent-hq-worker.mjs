@@ -339,9 +339,9 @@ async function runTask(task) {
       result = "Delegation submitted. The supervisor will inspect child tasks, wait for completion and independent QA, then consolidate the result.";
     }
     if (!result) throw new Error("Model returned no text output");
-    const settlementKey = "agent-settle-" + createHash("sha256")
-      .update(JSON.stringify([run.id, totalInputTokens, totalOutputTokens, totalWebSearchCalls])).digest("hex");
     const providerReference = typeof data?.id === "string" ? data.id : null;
+    const settlementKey = "agent-settle-" + createHash("sha256")
+      .update(JSON.stringify([run.id, totalInputTokens, totalOutputTokens, totalWebSearchCalls, providerReference])).digest("hex");
     const [settlement] = await sql`SELECT public.agent_budget_settle(
       ${run.reservationId}, ${workerId}, ${totalInputTokens}, ${totalOutputTokens},
       ${totalWebSearchCalls}, ${settlementKey}, ${providerReference}
