@@ -84,6 +84,23 @@ $grant_check$;
 REVOKE ALL ON FUNCTION public.agent_can_grant_task_access(TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.agent_can_grant_task_access(TEXT) TO agent_supervisor;
 
+CREATE OR REPLACE FUNCTION public.agent_is_valid_coordinator_parent(p_parent_task_id BIGINT)
+RETURNS BOOLEAN
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $parent_check$
+  SELECT session_user='agent_coordinator' AND EXISTS (
+    SELECT 1 FROM public.agent_tasks parent
+    WHERE parent.id=p_parent_task_id
+      AND parent.assigned_role='coordinator'
+      AND parent.status IN ('claimed','running','review')
+  )
+$parent_check$;
+REVOKE ALL ON FUNCTION public.agent_is_valid_coordinator_parent(BIGINT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.agent_is_valid_coordinator_parent(BIGINT) TO agent_coordinator;
+
 ALTER TABLE agent_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_tasks FORCE ROW LEVEL SECURITY;
 ALTER TABLE agent_messages ENABLE ROW LEVEL SECURITY;
@@ -123,10 +140,7 @@ CREATE POLICY task_insert_coordinator ON agent_tasks FOR INSERT WITH CHECK (
     AND status='queued' AND attempts=0 AND lease_owner IS NULL AND lease_until IS NULL
     AND completed_at IS NULL
     AND parent_task_id IS NOT NULL
-    AND EXISTS (SELECT 1 FROM agent_tasks parent
-      WHERE parent.id=agent_tasks.parent_task_id
-        AND parent.assigned_role='coordinator'
-        AND parent.status IN ('claimed','running','review'))
+    AND public.agent_is_valid_coordinator_parent(agent_tasks.parent_task_id)
   )
 );
 
