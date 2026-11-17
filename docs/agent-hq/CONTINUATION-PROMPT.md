@@ -134,3 +134,39 @@
 - PR #116 head после обновления workflow и SQL harness: 9f925282052bc2a54cf75915072fd1c063bcf042.
 - Run 44139088192 запущен для этого точного SHA. На момент записи jobs ещё in_progress; success не подтверждён.
 - Не утверждать, что 19-role E2E пройден, пока all-19-container-e2e не завершился success и assertion report не показал 19/19, zero cost, 0 open reservations.
+## Дополнение к продолжению работ — 17.11.2026, исправления all-19-container-e2e
+
+### Новые точные выводы по CI
+- Run 44139088192 (SHA 9f925282052bc2a54cf75915072fd1c063bcf042): website-build и syntax прошли, all-19-container-e2e упал. Assertion показал 38 строк вместо 19. Логи подтвердили, что bootstrap был выполнен дважды и дважды добавил по 19 seed tasks.
+- Причина повторного bootstrap: test-assert имел depends_on db-init. Compose повторно запускал one-shot db-init при compose run --rm test-assert. Исправление в commit 7320fef7c74fa0d11fb9ee369073659b4cbff7e8: убрана зависимость test-assert от db-init. CI workflow запускает test-assert только после старта worker stack, который сам дожидается db-init.
+- Run 44139793958 на SHA dd57f5921ea2854be3ff9dcbd51c25a6f7e0f6b6 ещё не отражает исправление duplicate seed и не должен считаться валидным итогом.
+- Run 44140165698 на SHA 910fac2799a77817f3cdbb231cdcb009beb36807 включает one-shot worker commands, но не включает последнее исправление test-assert dependency.
+- В docker-compose.agent-hq-test.yml все 19 worker команд теперь используют node scripts/agent-hq-worker.mjs --once; Supervisor использует --once. Это важно: бесконечный poll мешал одноразовому smoke test завершаться.
+- Последний commit на момент этого дополнения: 7320fef7c74fa0d11fb9ee369073659b4cbff7e8. Новый CI run для него должен быть проверен отдельно; пока нет terminal conclusion, E2E не считается успешным.
+
+### Обязательные проверки следующего шага
+1. Проверить PR #116 head и CI run, запущенный на SHA 7320fef7c74fa0d11fb9ee369073659b4cbff7e8. Получить terminal conclusion для website-build, syntax и all-19-container-e2e.
+2. Если E2E падает, читать логи all-19-container-e2e и исправлять первопричину, а не увеличивать timeout наугад.
+3. В успешном assertion отчёте подтвердить ровно 19 уникальных ролей, 19 успешных runs, test_stub, минимум 19 persisted artifacts, actual cost 0 и open reservations 0.
+4. Если контейнеры снова не завершаются, проверить фактический Compose command для каждого worker: только --once. Проверить, что test-assert не перезапускает db-init и не создаёт seed rows.
+5. Smoke test всех 19 ролей не выдавать за полный coordinator→specialists→QA→revision→final workflow. Последний workflow остаётся отдельным E2E этапом и должен тестироваться отдельным сценарием.
+6. После зелёного 19-role smoke test перейти к полной сквозной симуляции с отдельным root task и проверкой Message Bus, Supervisor, QA revision/reject, budget settlement, persisted history.
+
+### Сохранение границ безопасности
+- Работать только в agent-hq/budget-settlement-security-staging и связанных staging branches; main сейчас SHA 99a6665b70709c0af1ed37df97a1d4415776e992.
+- PR #116 остаётся Draft и не слит. PR #117 остаётся Draft и не слит; он удаляет единственный случайно попавший в main файл scripts/agent-hq-test-preflight.mjs. Для возврата main в чистое состояние требуется отдельное разрешение пользователя на merge PR #117.
+- Не выполнять production migrations, deploy, production DB access, реальные API, публикации, Telegram/VK сообщения, внешние рассылки или платные вызовы. Не менять секреты.
+- При любом создании/обновлении файла обязательно указывать branch явно. Не вызывать create_file/update_file без branch.
+
+### PROMPT ДЛЯ СЛЕДУЮЩЕГО СЕАНСА
+Ты — ведущий архитектор, Senior Backend Engineer, PostgreSQL Security Engineer и DevOps-инженер проекта PPF PROFI Agent HQ. Продолжай реальную разработку репозитория ilymorin89-cpu/ppf-profi-v2 строго с актуального состояния staging branch agent-hq/budget-settlement-security-staging. Сначала получи фактический PR #116 head SHA, main SHA, последние CI run IDs и terminal conclusions. Не доверяй этому документу как текущему состоянию, если GitHub показывает более новые данные.
+
+Цель: безопасно довести Agent HQ с 19 специализированными ролями, Coordinator и Supervisor до проверенного изолированного тестового запуска. Работай по порядку: (1) завершить 19-role disposable no-egress smoke test; (2) построить и пройти полный coordinator→specialists→Message Bus→QA→revision/reject→Coordinator final E2E; (3) проверить budget reservation/settlement, idempotency, crash recovery и persisted history; (4) подготовить recovery/runbook и отдельный production readiness checklist.
+
+Жёсткие запреты без отдельного явного разрешения пользователя: не менять main; не сливать PR #116/#117; не выполнять production migrations; не подключаться для изменений к production PostgreSQL; не деплоить на Timeweb; не менять секреты и рабочие токены; не запускать платные API, внешние поиски, публикации, рассылки или реальные Telegram/VK сообщения; не тратить деньги. Все тесты — disposable PostgreSQL, internal-only Docker network, deterministic fixtures и test adapters. Никакого production traffic. Любые лимиты бюджета пока только тестовые и не являются разрешением тратить реальные деньги.
+
+Работай самостоятельно, не ограничивайся планом. Перед изменением прочитай точные файлы и тесты, найди первопричину, сделай минимальный исправляющий commit в staging branch, дождись CI terminal conclusion, прочитай логи и подтверди результат. Никогда не заявляй PASS по статусу in_progress. Разделяй проверенный факт, предположение и оставшийся риск. Не скрывай ошибки и не выдавай role smoke test за полный E2E.
+
+Особое внимание: Compose test stack должен запускать каждого worker ровно один раз (node scripts/agent-hq-worker.mjs --once), Supervisor тоже один раз. db-init должен выполниться строго один раз. test-assert не должен зависеть от db-init, иначе Compose может повторно выполнить bootstrap и добавить дублирующие seed tasks. Проверяй, что assertion ожидает ровно 19 уникальных role tasks, успешные test_stub runs, artifacts, нулевую стоимость и отсутствие active/unknown reservations.
+
+После каждого этапа фиксируй точные SHA, CI run URL, статусы всех jobs, количество ролей/задач/artifacts, итоговую стоимость и открытые reservations. Если есть неустранённый блокер — укажи его прямо и продолжай работу над ним. Перед любым действием, затрагивающим main, production, внешние сервисы или реальные деньги, остановись и запроси явное разрешение пользователя.
