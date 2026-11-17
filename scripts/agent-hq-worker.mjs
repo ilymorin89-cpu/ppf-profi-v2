@@ -324,8 +324,7 @@ async function runTask(task) {
       result += "\n\nSources checked by the agent:\n" + deduplicatedCitations.map(item => "- " + (item.title ? item.title + ": " : "") + item.url).join("\n");
     }
     if (!result && role === "coordinator") {
-      const children = await sql`SELECT id,assigned_role,title,status FROM agent_tasks WHERE parent_task_id=${task.id} ORDER BY created_at`;
-      if (children.length) result = `Delegated ${children.length} specialist task(s). The supervisor will wait for their completion and independent QA before closing this parent task.\n${JSON.stringify(children)}`;
+      result = "Delegation submitted. The supervisor will inspect child tasks, wait for completion and independent QA, then consolidate the result.";
     }
     if (!result) throw new Error("Model returned no text output");
     const usage = { input_tokens: totalInputTokens, output_tokens: totalOutputTokens };
@@ -340,8 +339,8 @@ async function runTask(task) {
     });
     await sql.begin(async tx => {
       const [owned] = await tx`UPDATE agent_tasks SET
-        status=CASE WHEN ${role}='coordinator' AND EXISTS (SELECT 1 FROM agent_tasks child WHERE child.parent_task_id=${task.id}) THEN 'review' ELSE 'done' END,
-        completed_at=CASE WHEN ${role}='coordinator' AND EXISTS (SELECT 1 FROM agent_tasks child WHERE child.parent_task_id=${task.id}) THEN NULL ELSE now() END,
+        status=CASE WHEN ${role}='coordinator' THEN 'review' ELSE 'done' END,
+        completed_at=CASE WHEN ${role}='coordinator' THEN NULL ELSE now() END,
         lease_owner=NULL,lease_until=NULL,updated_at=now()
         WHERE id=${task.id} AND lease_owner=${workerId} AND status IN ('claimed','running')
         RETURNING id,title,status`;
