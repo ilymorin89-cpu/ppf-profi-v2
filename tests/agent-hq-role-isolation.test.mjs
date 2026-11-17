@@ -23,7 +23,7 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
   const coordinator = postgres(roleUrls.coordinator, { max: 1 });
   const supervisor = postgres(roleUrls.supervisor, { max: 1 });
   const marker = randomUUID();
-  let seoTask, qaTask, parentTask, unrelatedParent, unrelatedTask, seoArtifact, unrelatedArtifact;
+  let seoTask, qaTask, parentTask, unrelatedParent, unrelatedTask, delegatedTaskId, seoArtifact, unrelatedArtifact;
   try {
     [seoTask] = await admin`INSERT INTO agent_tasks (assigned_role,title,objective,expected_output,created_by)
       VALUES ('seo',${"SEO " + marker},'SEO test','Evidence','integration-test') RETURNING id`;
@@ -196,6 +196,7 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
       (parent_task_id,assigned_role,title,objective,expected_output,created_by)
       VALUES (${parentTask.id},'seo','Delegated child','Do bounded work','Evidence','coordinator')`;
     const [delegated] = await coordinator`SELECT currval('agent_tasks_id_seq') AS id`;
+    delegatedTaskId = delegated.id;
     assert.ok(delegated.id, "Coordinator can create a child under its own parent without SELECT-before-grant");
     const beforeGrant = await coordinator`SELECT id FROM agent_tasks WHERE id=${delegated.id}`;
     assert.equal(beforeGrant.length, 0, "Coordinator cannot read child before supervisor grant");
@@ -225,6 +226,7 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
     if (seoTask) await admin`DELETE FROM agent_tasks WHERE id=${seoTask.id}`;
     if (qaTask) await admin`DELETE FROM agent_tasks WHERE id=${qaTask.id}`;
     if (unrelatedTask) await admin`DELETE FROM agent_tasks WHERE id=${unrelatedTask.id}`;
+    if (delegatedTaskId) await admin`DELETE FROM agent_tasks WHERE id=${delegatedTaskId}`;
     await Promise.all([admin.end(),seo.end(),qa.end(),coordinator.end(),supervisor.end()]);
   }
 });
