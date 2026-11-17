@@ -285,3 +285,97 @@ test("Agent HQ worker refuses all model calls while the budget is disabled", asy
     await sql.end({ timeout: 5 });
   }
 });
+
+
+test("Agent HQ supervisor does not create duplicate QA tasks on repeated passes", async () => {
+  assert.ok(databaseUrl, "Set AGENT_HQ_TEST_DATABASE_URL to a disposable PostgreSQL database.");
+  assert.ok(supervisorUrl, "Missing isolated supervisor test login.");
+  assert.notEqual(databaseUrl, process.env.DATABASE_URL, "Test database must not equal DATABASE_URL.");
+  const sql = postgres(databaseUrl, { max: 3, idle_timeout: 5 });
+  let parentId;
+  try {
+    const [parent] = await sql`INSERT INTO agent_tasks
+      (assigned_role,title,objective,expected_output,created_by,status)
+      VALUES ('coordinator',${"Supervisor idempotency " + randomUUID()},'Check repeated supervisor passes','One QA task','integration-test','review')
+      RETURNING id`;
+    parentId = parent.id;
+    const [specialist] = await sql`INSERT INTO agent_tasks
+      (parent_task_id,assigned_role,title,objective,expected_output,created_by,status)
+      VALUES (${parentId},'seo','Completed specialist','Evidence','Evidence','integration-test','done')
+      RETURNING id`;
+    await sql`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
+      VALUES (${specialist.id},'seo','result','Evidence','Idempotency test evidence')`;
+
+    for (let pass = 0; pass < 2; pass++) {
+      const result = runNode("scripts/agent-hq-supervisor.mjs", ["--once"], { DATABASE_URL: supervisorUrl });
+      assert.equal(result.status, 0, result.stderr || result.stdout);
+    }
+    const qaRows = await sql`SELECT id,status FROM agent_tasks
+      WHERE parent_task_id=${parentId} AND assigned_role='qa_security'`;
+    assert.equal(qaRows.length, 1, "Repeated supervisor passes must preserve exactly one QA task.");
+    assert.equal(qaRows[0].status, "queued");
+  } finally {
+    if (parentId) await sql`DELETE FROM agent_tasks WHERE id=${parentId}`;
+    await sql.end({ timeout: 5 });
+  }
+});
+
+test("Agent HQ supervisor blocks parent when completed QA has no explicit verdict", async () => {
+  assert.ok(databaseUrl, "Set AGENT_HQ_TEST_DATABASE_URL to a disposable PostgreSQL database.");
+  assert.ok(supervisorUrl, "Missing isolated supervisor test login.");
+  assert.notEqual(databaseUrl, process.env.DATABASE_URL, "Test database must not equal DATABASE_URL.");
+  const sql = postgres(databaseUrl, { max: 3, idle_timeout: 5 });
+  let parentId;
+  try {
+    const [parent] = await sql`INSERT INTO agent_tasks
+      (assigned_role,title,objective,expected_output,created_by,status)
+      VALUES ('coordinator',${"Supervisor missing verdict " + randomUUID()},'Require explicit QA verdict','Blocked','integration-test','review')
+      RETURNING id`;
+    parentId = parent.id;
+    const [specialist] = await sql`INSERT INTO agent_tasks
+      (parent_task_id,assigned_role,title,objective,expected_output,created_by,status)
+      VALUES (${parentId},'seo','Completed specialist','Evidence','Evidence','integration-test','done')
+      RETURNING id`;
+    await sql`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
+      VALUES (${specialist.id},'seo','result','Evidence','Evidence without a verdict')`;
+    const first = runNode("scripts/agent-hq-supervisor.mjs", ["--once"], { DATABASE_URL: supervisorUrl });
+    assert.equal(first.status, 0, first.stderr || first.stdout);
+    const [qa] = await sql`SELECT id FROM agent_tasks
+      WHERE parent_task_id=${parentId} AND assigned_role='qa_security'`;
+    assert.ok(qa, "Supervisor must create the QA task.");
+    await sql`UPDATE agent_tasks SET status='done',completed_at=now() WHERE id=${qa.id}`;
+    await sql`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
+      VALUES (${qa.id},'qa_security','review','QA without verdict','Review complete, but no PASS or REVISE marker.')`;
+    const second = runNode("scripts/agent-hq-supervisor.mjs", ["--once"], { DATABASE_URL: supervisorUrl });
+    assert.equal(second.status, 0, second.stderr || second.stdout);
+    const [blocked] = await sql`SELECT status FROM agent_tasks WHERE id=${parentId}`;
+    assert.equal(blocked.status, "blocked", "Missing or ambiguous QA verdict must fail closed.");
+  } finally {
+    if (parentId) await sql`DELETE FROM agent_tasks WHERE id=${parentId}`;
+    await sql.end({ timeout: 5 });
+  }
+});
+
+test("Agent HQ supervisor recovers expired worker leases without enabling workers", async () => {
+  assert.ok(databaseUrl, "Set AGENT_HQ_TEST_DATABASE_URL to a disposable PostgreSQL database.");
+  assert.ok(supervisorUrl, "Missing isolated supervisor test login.");
+  assert.notEqual(databaseUrl, process.env.DATABASE_URL, "Test database must not equal DATABASE_URL.");
+  const sql = postgres(databaseUrl, { max: 2, idle_timeout: 5 });
+  let taskId;
+  try {
+    const [task] = await sql`INSERT INTO agent_tasks
+      (assigned_role,title,objective,expected_output,created_by,status,attempts,max_attempts,lease_owner,lease_until)
+      VALUES ('seo',${"Expired lease " + randomUUID()},'Recover stale lease','Queued again','integration-test','running',1,3,'stale-worker',now()-interval '5 minutes')
+      RETURNING id`;
+    taskId = task.id;
+    const result = runNode("scripts/agent-hq-supervisor.mjs", ["--once"], { DATABASE_URL: supervisorUrl });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    const [recovered] = await sql`SELECT status,lease_owner,lease_until FROM agent_tasks WHERE id=${taskId}`;
+    assert.equal(recovered.status, "queued");
+    assert.equal(recovered.lease_owner, null);
+    assert.equal(recovered.lease_until, null);
+  } finally {
+    if (taskId) await sql`DELETE FROM agent_tasks WHERE id=${taskId}`;
+    await sql.end({ timeout: 5 });
+  }
+});
