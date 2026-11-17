@@ -55,6 +55,8 @@ Historical successful CI evidence:
 - PR #127 reports a successful disposable backup/restore/rollback proof.
 These are historical proofs for their exact tested SHAs, not proof that the current #137 head passes.
 
+Current #137 branch head: 5bc2588294b0481d3363148d3a7ba38bf959346c. Latest workflow run #644 on earlier head 5e2804b9ad259be0985a38590abd274e4a63328b and PR run #643 on 6bc635b4877a6f64a17715bf0a3a04c6eb3cd4f2 again created the expected jobs but every job failed before the first step; step arrays remain empty. The exact latest head has not passed CI.
+
 ## Current follow-on changes
 
 ### PR #136 — budget envelope
