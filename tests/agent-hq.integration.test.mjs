@@ -2,9 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import postgres from "postgres";
 import { randomUUID } from "node:crypto";
-import { calculateRunCost, mayExecuteToolCalls, parseApprovalPayload, uniqueCitations } from "../scripts/agent-hq-helpers.mjs";
+import { AGENT_ROLES, calculateRunCost, mayExecuteToolCalls, parseApprovalPayload, requireAgentRole, resolveApproverIdentity, uniqueCitations } from "../scripts/agent-hq-helpers.mjs";
 
 test("Agent HQ worker safety helpers", async () => {
+  assert.ok(AGENT_ROLES.includes("coordinator"));
+  assert.equal(requireAgentRole("seo"), "seo");
+  assert.throws(() => requireAgentRole("owner"), /not allowlisted/);
+  assert.equal(resolveApproverIdentity({ uid: 1001, allowedUids: "1001,1002" }), "uid:1001");
+  assert.throws(() => resolveApproverIdentity({ uid: 1003, allowedUids: "1001,1002" }), /not authorized/);
+  assert.throws(() => resolveApproverIdentity({ uid: 1001, allowedUids: "" }), /not authorized/);
   assert.deepEqual(parseApprovalPayload('{"mode":"review"}'), { mode: "review" });
   assert.deepEqual(parseApprovalPayload("plain text approval context"), { text: "plain text approval context" });
   assert.deepEqual(parseApprovalPayload(""), {});
