@@ -74,4 +74,6 @@ jobs:
           git add package.json package-lock.json
           if git diff --cached --quiet; then echo 'No dependency changes'; exit 0; fi
           git commit -m 'fix(deps): patch Next.js and React security releases'
+          git fetch origin agent-hq/enable-research-tools
+          git rebase origin/agent-hq/enable-research-tools
           git push origin HEAD:agent-hq/enable-research-tools
