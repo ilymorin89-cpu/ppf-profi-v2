@@ -1,20 +1,23 @@
-x-agent-hq-test-env: &agent-hq-test-env
-  NODE_ENV: test
-  AGENT_HQ_WORKERS_ENABLED: "true"
-  OPENAI_API_KEY: test-no-provider-call
-  AGENT_MODEL: test-model
-  AGENT_HQ_TEST_RESPONSES_JSON: '{"output":[{"type":"message","content":[{"type":"output_text","text":"NO-SPEND E2E: deterministic fixture response; no external provider or tool was called."}]}],"usage":{"input_tokens":0,"output_tokens":0}}'
-  AGENT_WEB_SEARCH_ENABLED: "false"
-  GITHUB_TOKEN: ""
-  AGENT_GITHUB_REPOSITORY: ""
-
-x-agent-hq-no-spend-worker: &agent-hq-no-spend-worker
-  image: ppf-agent-hq:test
+x-agent-hq-test-worker: &agent-hq-test-worker
+  build:
+    context: .
+    dockerfile: Dockerfile.agent-hq
+  init: true
   environment:
-    <<: *agent-hq-test-env
+    NODE_ENV: test
+    AGENT_HQ_WORKERS_ENABLED: "true"
+    OPENAI_API_KEY: test-no-provider-call
+    AGENT_MODEL: test-model
+    AGENT_HQ_TEST_RESPONSES_JSON: '{"output":[{"type":"message","content":[{"type":"output_text","text":"NO-SPEND E2E: deterministic fixture response; no external provider or tool was called."}]}],"usage":{"input_tokens":0,"output_tokens":0}}'
+    AGENT_WEB_SEARCH_ENABLED: "false"
+    GITHUB_TOKEN: ""
+    AGENT_GITHUB_REPOSITORY: ""
+    AGENT_MAX_OUTPUT_TOKENS: "256"
+    AGENT_POLL_MS: "250"
   depends_on:
-    postgres:
-      condition: service_healthy
+    db-init:
+      condition: service_completed_successfully
+  restart: "no"
 
 services:
   postgres:
@@ -26,8 +29,6 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
     tmpfs:
       - /var/lib/postgresql/data
-    volumes:
-      - .:/workspace:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U agent_test -d agent_hq_test"]
       interval: 3s
@@ -48,7 +49,6 @@ services:
     restart: "no"
 
   test-assert:
-    image: ppf-agent-hq:test
     build:
       context: .
       dockerfile: Dockerfile.agent-hq
@@ -58,125 +58,357 @@ services:
       AGENT_HQ_TEST_MARKER: agent_hq_19role_e2e
       AGENT_HQ_TEST_TIMEOUT_MS: "120000"
     depends_on:
-      postgres:
-        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
     restart: "no"
 
   coordinator:
-    <<: *agent-hq-no-spend-worker
+    <<: *agent-hq-test-worker
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
     environment:
-      <<: *agent-hq-test-env
+      NODE_ENV: test
+      AGENT_HQ_WORKERS_ENABLED: "true"
+      AGENT_ROLE: coordinator
+      AGENT_WORKER_ID: test-coordinator
       DATABASE_URL: postgres://agent_coordinator:ci_agent_coordinator@postgres:5432/agent_hq_test
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      AGENT_HQ_TEST_RESPONSES_JSON: '{"output":[{"type":"message","content":[{"type":"output_text","text":"NO-SPEND E2E: deterministic fixture response; no external provider or tool was called."}]}],"usage":{"input_tokens":0,"output_tokens":0}}'
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
+      AGENT_MAX_OUTPUT_TOKENS: "256"
+      AGENT_POLL_MS: "250"
 
   web_engineer:
-    <<: *agent-hq-no-spend-worker
+    <<: *agent-hq-test-worker
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
     environment:
-      <<: *agent-hq-test-env
+      NODE_ENV: test
+      AGENT_HQ_WORKERS_ENABLED: "true"
+      AGENT_ROLE: web_engineer
+      AGENT_WORKER_ID: test-web_engineer
       DATABASE_URL: postgres://agent_web_engineer:ci_agent_web_engineer@postgres:5432/agent_hq_test
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      AGENT_HQ_TEST_RESPONSES_JSON: '{"output":[{"type":"message","content":[{"type":"output_text","text":"NO-SPEND E2E: deterministic fixture response; no external provider or tool was called."}]}],"usage":{"input_tokens":0,"output_tokens":0}}'
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
+      AGENT_MAX_OUTPUT_TOKENS: "256"
+      AGENT_POLL_MS: "250"
 
   seo:
-    <<: *agent-hq-no-spend-worker
+    <<: *agent-hq-test-worker
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
     environment:
-      <<: *agent-hq-test-env
+      NODE_ENV: test
+      AGENT_HQ_WORKERS_ENABLED: "true"
+      AGENT_ROLE: seo
+      AGENT_WORKER_ID: test-seo
       DATABASE_URL: postgres://agent_seo:ci_agent_seo@postgres:5432/agent_hq_test
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      AGENT_HQ_TEST_RESPONSES_JSON: '{"output":[{"type":"message","content":[{"type":"output_text","text":"NO-SPEND E2E: deterministic fixture response; no external provider or tool was called."}]}],"usage":{"input_tokens":0,"output_tokens":0}}'
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
+      AGENT_MAX_OUTPUT_TOKENS: "256"
+      AGENT_POLL_MS: "250"
 
   geo:
-    <<: *agent-hq-no-spend-worker
+    <<: *agent-hq-test-worker
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
     environment:
-      <<: *agent-hq-test-env
+      NODE_ENV: test
+      AGENT_HQ_WORKERS_ENABLED: "true"
+      AGENT_ROLE: geo
+      AGENT_WORKER_ID: test-geo
       DATABASE_URL: postgres://agent_geo:ci_agent_geo@postgres:5432/agent_hq_test
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      AGENT_HQ_TEST_RESPONSES_JSON: '{"output":[{"type":"message","content":[{"type":"output_text","text":"NO-SPEND E2E: deterministic fixture response; no external provider or tool was called."}]}],"usage":{"input_tokens":0,"output_tokens":0}}'
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
+      AGENT_MAX_OUTPUT_TOKENS: "256"
+      AGENT_POLL_MS: "250"
 
   growth:
-    <<: *agent-hq-no-spend-worker
+    <<: *agent-hq-test-worker
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
     environment:
-      <<: *agent-hq-test-env
+      NODE_ENV: test
+      AGENT_HQ_WORKERS_ENABLED: "true"
+      AGENT_ROLE: growth
+      AGENT_WORKER_ID: test-growth
       DATABASE_URL: postgres://agent_growth:ci_agent_growth@postgres:5432/agent_hq_test
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      AGENT_HQ_TEST_RESPONSES_JSON: '{"output":[{"type":"message","content":[{"type":"output_text","text":"NO-SPEND E2E: deterministic fixture response; no external provider or tool was called."}]}],"usage":{"input_tokens":0,"output_tokens":0}}'
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
+      AGENT_MAX_OUTPUT_TOKENS: "256"
+      AGENT_POLL_MS: "250"
 
   analytics:
-    <<: *agent-hq-no-spend-worker
+    <<: *agent-hq-test-worker
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
     environment:
-      <<: *agent-hq-test-env
+      NODE_ENV: test
+      AGENT_HQ_WORKERS_ENABLED: "true"
+      AGENT_ROLE: analytics
+      AGENT_WORKER_ID: test-analytics
       DATABASE_URL: postgres://agent_analytics:ci_agent_analytics@postgres:5432/agent_hq_test
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      AGENT_HQ_TEST_RESPONSES_JSON: '{"output":[{"type":"message","content":[{"type":"output_text","text":"NO-SPEND E2E: deterministic fixture response; no external provider or tool was called."}]}],"usage":{"input_tokens":0,"output_tokens":0}}'
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
+      AGENT_MAX_OUTPUT_TOKENS: "256"
+      AGENT_POLL_MS: "250"
 
   qa_security:
-    <<: *agent-hq-no-spend-worker
+    <<: *agent-hq-test-worker
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
     environment:
-      <<: *agent-hq-test-env
-      DATABASE_URL: postgres://agent_qa_security:ci_agent_qa_security@postgres:5432/agent_hq_test
+      NODE_ENV: test
+      AGENT_HQ_WORKERS_ENABLED: "true"
+      AGENT_ROLE: qa_security
+      AGENT_WORKER_ID: test-qa_security
+      DATABASE_URL: postgres://agent_qa_security:ci_agent_qa@postgres:5432/agent_hq_test
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      AGENT_HQ_TEST_RESPONSES_JSON: '{"output":[{"type":"message","content":[{"type":"output_text","text":"NO-SPEND E2E: deterministic fixture response; no external provider or tool was called."}]}],"usage":{"input_tokens":0,"output_tokens":0}}'
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
+      AGENT_MAX_OUTPUT_TOKENS: "256"
+      AGENT_POLL_MS: "250"
 
   vk_strategist:
-    <<: *agent-hq-no-spend-worker
+    <<: *agent-hq-test-worker
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
     environment:
-      <<: *agent-hq-test-env
+      NODE_ENV: test
+      AGENT_HQ_WORKERS_ENABLED: "true"
+      AGENT_ROLE: vk_strategist
+      AGENT_WORKER_ID: test-vk_strategist
       DATABASE_URL: postgres://agent_vk_strategist:ci_agent_vk_strategist@postgres:5432/agent_hq_test
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      AGENT_HQ_TEST_RESPONSES_JSON: '{"output":[{"type":"message","content":[{"type":"output_text","text":"NO-SPEND E2E: deterministic fixture response; no external provider or tool was called."}]}],"usage":{"input_tokens":0,"output_tokens":0}}'
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
+      AGENT_MAX_OUTPUT_TOKENS: "256"
+      AGENT_POLL_MS: "250"
 
   copywriter:
-    <<: *agent-hq-no-spend-worker
+    <<: *agent-hq-test-worker
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
     environment:
-      <<: *agent-hq-test-env
+      NODE_ENV: test
+      AGENT_HQ_WORKERS_ENABLED: "true"
+      AGENT_ROLE: copywriter
+      AGENT_WORKER_ID: test-copywriter
       DATABASE_URL: postgres://agent_copywriter:ci_agent_copywriter@postgres:5432/agent_hq_test
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      AGENT_HQ_TEST_RESPONSES_JSON: '{"output":[{"type":"message","content":[{"type":"output_text","text":"NO-SPEND E2E: deterministic fixture response; no external provider or tool was called."}]}],"usage":{"input_tokens":0,"output_tokens":0}}'
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
+      AGENT_MAX_OUTPUT_TOKENS: "256"
+      AGENT_POLL_MS: "250"
 
   designer:
-    <<: *agent-hq-no-spend-worker
+    <<: *agent-hq-test-worker
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
     environment:
-      <<: *agent-hq-test-env
+      NODE_ENV: test
+      AGENT_HQ_WORKERS_ENABLED: "true"
+      AGENT_ROLE: designer
+      AGENT_WORKER_ID: test-designer
       DATABASE_URL: postgres://agent_designer:ci_agent_designer@postgres:5432/agent_hq_test
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      AGENT_HQ_TEST_RESPONSES_JSON: '{"output":[{"type":"message","content":[{"type":"output_text","text":"NO-SPEND E2E: deterministic fixture response; no external provider or tool was called."}]}],"usage":{"input_tokens":0,"output_tokens":0}}'
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
+      AGENT_MAX_OUTPUT_TOKENS: "256"
+      AGENT_POLL_MS: "250"
 
   image_generator:
-    <<: *agent-hq-no-spend-worker
+    <<: *agent-hq-test-worker
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
     environment:
-      <<: *agent-hq-test-env
+      NODE_ENV: test
+      AGENT_HQ_WORKERS_ENABLED: "true"
+      AGENT_ROLE: image_generator
+      AGENT_WORKER_ID: test-image_generator
       DATABASE_URL: postgres://agent_image_generator:ci_agent_image_generator@postgres:5432/agent_hq_test
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      AGENT_HQ_TEST_RESPONSES_JSON: '{"output":[{"type":"message","content":[{"type":"output_text","text":"NO-SPEND E2E: deterministic fixture response; no external provider or tool was called."}]}],"usage":{"input_tokens":0,"output_tokens":0}}'
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
+      AGENT_MAX_OUTPUT_TOKENS: "256"
+      AGENT_POLL_MS: "250"
 
   storyteller:
-    <<: *agent-hq-no-spend-worker
+    <<: *agent-hq-test-worker
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
     environment:
-      <<: *agent-hq-test-env
+      NODE_ENV: test
+      AGENT_HQ_WORKERS_ENABLED: "true"
+      AGENT_ROLE: storyteller
+      AGENT_WORKER_ID: test-storyteller
       DATABASE_URL: postgres://agent_storyteller:ci_agent_storyteller@postgres:5432/agent_hq_test
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      AGENT_HQ_TEST_RESPONSES_JSON: '{"output":[{"type":"message","content":[{"type":"output_text","text":"NO-SPEND E2E: deterministic fixture response; no external provider or tool was called."}]}],"usage":{"input_tokens":0,"output_tokens":0}}'
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
+      AGENT_MAX_OUTPUT_TOKENS: "256"
+      AGENT_POLL_MS: "250"
 
   community_manager:
-    <<: *agent-hq-no-spend-worker
+    <<: *agent-hq-test-worker
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
     environment:
-      <<: *agent-hq-test-env
+      NODE_ENV: test
+      AGENT_HQ_WORKERS_ENABLED: "true"
+      AGENT_ROLE: community_manager
+      AGENT_WORKER_ID: test-community_manager
       DATABASE_URL: postgres://agent_community_manager:ci_agent_community_manager@postgres:5432/agent_hq_test
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      AGENT_HQ_TEST_RESPONSES_JSON: '{"output":[{"type":"message","content":[{"type":"output_text","text":"NO-SPEND E2E: deterministic fixture response; no external provider or tool was called."}]}],"usage":{"input_tokens":0,"output_tokens":0}}'
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
+      AGENT_MAX_OUTPUT_TOKENS: "256"
+      AGENT_POLL_MS: "250"
 
   content_seo:
-    <<: *agent-hq-no-spend-worker
+    <<: *agent-hq-test-worker
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
     environment:
-      <<: *agent-hq-test-env
+      NODE_ENV: test
+      AGENT_HQ_WORKERS_ENABLED: "true"
+      AGENT_ROLE: content_seo
+      AGENT_WORKER_ID: test-content_seo
       DATABASE_URL: postgres://agent_content_seo:ci_agent_content_seo@postgres:5432/agent_hq_test
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      AGENT_HQ_TEST_RESPONSES_JSON: '{"output":[{"type":"message","content":[{"type":"output_text","text":"NO-SPEND E2E: deterministic fixture response; no external provider or tool was called."}]}],"usage":{"input_tokens":0,"output_tokens":0}}'
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
+      AGENT_MAX_OUTPUT_TOKENS: "256"
+      AGENT_POLL_MS: "250"
 
   ads_manager:
-    <<: *agent-hq-no-spend-worker
+    <<: *agent-hq-test-worker
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
     environment:
-      <<: *agent-hq-test-env
+      NODE_ENV: test
+      AGENT_HQ_WORKERS_ENABLED: "true"
+      AGENT_ROLE: ads_manager
+      AGENT_WORKER_ID: test-ads_manager
       DATABASE_URL: postgres://agent_ads_manager:ci_agent_ads_manager@postgres:5432/agent_hq_test
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      AGENT_HQ_TEST_RESPONSES_JSON: '{"output":[{"type":"message","content":[{"type":"output_text","text":"NO-SPEND E2E: deterministic fixture response; no external provider or tool was called."}]}],"usage":{"input_tokens":0,"output_tokens":0}}'
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
+      AGENT_MAX_OUTPUT_TOKENS: "256"
+      AGENT_POLL_MS: "250"
 
   trend_scout:
-    <<: *agent-hq-no-spend-worker
+    <<: *agent-hq-test-worker
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
     environment:
-      <<: *agent-hq-test-env
+      NODE_ENV: test
+      AGENT_HQ_WORKERS_ENABLED: "true"
+      AGENT_ROLE: trend_scout
+      AGENT_WORKER_ID: test-trend_scout
       DATABASE_URL: postgres://agent_trend_scout:ci_agent_trend_scout@postgres:5432/agent_hq_test
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      AGENT_HQ_TEST_RESPONSES_JSON: '{"output":[{"type":"message","content":[{"type":"output_text","text":"NO-SPEND E2E: deterministic fixture response; no external provider or tool was called."}]}],"usage":{"input_tokens":0,"output_tokens":0}}'
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
+      AGENT_MAX_OUTPUT_TOKENS: "256"
+      AGENT_POLL_MS: "250"
 
   auto_news_editor:
-    <<: *agent-hq-no-spend-worker
+    <<: *agent-hq-test-worker
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
     environment:
-      <<: *agent-hq-test-env
+      NODE_ENV: test
+      AGENT_HQ_WORKERS_ENABLED: "true"
+      AGENT_ROLE: auto_news_editor
+      AGENT_WORKER_ID: test-auto_news_editor
       DATABASE_URL: postgres://agent_auto_news_editor:ci_agent_auto_news_editor@postgres:5432/agent_hq_test
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      AGENT_HQ_TEST_RESPONSES_JSON: '{"output":[{"type":"message","content":[{"type":"output_text","text":"NO-SPEND E2E: deterministic fixture response; no external provider or tool was called."}]}],"usage":{"input_tokens":0,"output_tokens":0}}'
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
+      AGENT_MAX_OUTPUT_TOKENS: "256"
+      AGENT_POLL_MS: "250"
 
   auto_law_monitor:
-    <<: *agent-hq-no-spend-worker
+    <<: *agent-hq-test-worker
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
     environment:
-      <<: *agent-hq-test-env
+      NODE_ENV: test
+      AGENT_HQ_WORKERS_ENABLED: "true"
+      AGENT_ROLE: auto_law_monitor
+      AGENT_WORKER_ID: test-auto_law_monitor
       DATABASE_URL: postgres://agent_auto_law_monitor:ci_agent_auto_law_monitor@postgres:5432/agent_hq_test
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      AGENT_HQ_TEST_RESPONSES_JSON: '{"output":[{"type":"message","content":[{"type":"output_text","text":"NO-SPEND E2E: deterministic fixture response; no external provider or tool was called."}]}],"usage":{"input_tokens":0,"output_tokens":0}}'
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
+      AGENT_MAX_OUTPUT_TOKENS: "256"
+      AGENT_POLL_MS: "250"
 
   fact_checker:
-    <<: *agent-hq-no-spend-worker
+    <<: *agent-hq-test-worker
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-worker.mjs"]
     environment:
-      <<: *agent-hq-test-env
+      NODE_ENV: test
+      AGENT_HQ_WORKERS_ENABLED: "true"
+      AGENT_ROLE: fact_checker
+      AGENT_WORKER_ID: test-fact_checker
       DATABASE_URL: postgres://agent_fact_checker:ci_agent_fact_checker@postgres:5432/agent_hq_test
+      OPENAI_API_KEY: test-no-provider-call
+      AGENT_MODEL: test-model
+      AGENT_HQ_TEST_RESPONSES_JSON: '{"output":[{"type":"message","content":[{"type":"output_text","text":"NO-SPEND E2E: deterministic fixture response; no external provider or tool was called."}]}],"usage":{"input_tokens":0,"output_tokens":0}}'
+      AGENT_WEB_SEARCH_ENABLED: "false"
+      GITHUB_TOKEN: ""
+      AGENT_GITHUB_REPOSITORY: ""
+      AGENT_MAX_OUTPUT_TOKENS: "256"
+      AGENT_POLL_MS: "250"
   supervisor:
-    image: ppf-agent-hq:test
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["sh", "-lc", "node scripts/agent-hq-test-preflight.mjs && exec node scripts/agent-hq-supervisor.mjs"]
+    init: true
     environment:
       NODE_ENV: test
       AGENT_HQ_WORKERS_ENABLED: "true"
@@ -184,8 +416,9 @@ services:
       DATABASE_URL: postgres://agent_supervisor:ci_agent_supervisor@postgres:5432/agent_hq_test
       AGENT_POLL_MS: "250"
     depends_on:
-      postgres:
-        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    restart: "no"
 
 networks:
   default:
