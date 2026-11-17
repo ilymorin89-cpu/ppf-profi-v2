@@ -68,6 +68,12 @@ if (command === "stop") {
     console.log("No database connection or worker process was started.");
   } else {
     compose(["up", "-d", ...services]);
-    console.log("Selected one-shot test services launched on the internal no-egress Docker network.");
+    if (requestedGroup === "all") {
+      // Wait for the 19 one-shot workers and verify persisted zero-cost evidence.
+      compose(["run", "--rm", "test-assert"]);
+      console.log("All 19 role containers passed the deterministic zero-cost assertion.");
+    } else {
+      console.log("Selected one-shot test services launched on the internal no-egress Docker network.");
+    }
   }
 }
