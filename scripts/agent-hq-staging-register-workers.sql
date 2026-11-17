@@ -80,6 +80,32 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'Worker LOGINs must not belong to any PostgreSQL role';
   END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM pg_roles
+    WHERE rolname IN ('agent_supervisor','agent_operator')
+      AND (NOT rolcanlogin OR rolsuper OR rolcreatedb OR rolcreaterole OR
+           rolinherit OR rolbypassrls)
+  ) OR (SELECT count(*) FROM pg_roles
+        WHERE rolname IN ('agent_supervisor','agent_operator')) <> 2 THEN
+    RAISE EXCEPTION 'Supervisor and operator must be separate safe NOINHERIT LOGIN roles';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM pg_auth_members m
+    JOIN pg_roles member_role ON member_role.oid=m.member
+    WHERE member_role.rolname IN ('agent_supervisor','agent_operator')
+  ) THEN
+    RAISE EXCEPTION 'Supervisor and operator LOGINs must not belong to any PostgreSQL role';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM expected_agent_hq_principals expected
+    WHERE NOT has_database_privilege(expected.login_role, current_database(), 'CONNECT')
+  ) OR NOT has_database_privilege('agent_supervisor', current_database(), 'CONNECT')
+    OR NOT has_database_privilege('agent_operator', current_database(), 'CONNECT') THEN
+    RAISE EXCEPTION 'All worker, supervisor and operator LOGINs must have CONNECT to this staging database';
+  END IF;
 END
 $assert_staging_workers$;
 
