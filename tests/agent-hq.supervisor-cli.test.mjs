@@ -31,8 +31,9 @@ test("Agent HQ supervisor executes the real parent → QA → consolidation life
       (parent_task_id,assigned_role,title,objective,expected_output,created_by,status)
       VALUES (${parentId},'seo','Specialist evidence','Produce evidence','Evidence','integration-test','done')
       RETURNING id`;
+    const evidence = `Verified specialist evidence ${marker}`;
     await sql`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
-      VALUES (${specialist.id},'seo','result','SEO evidence','Verified specialist evidence ${marker}')`;
+      VALUES (${specialist.id},'seo','result','SEO evidence',${evidence})`;
 
     const first = runNode("scripts/agent-hq-supervisor.mjs", ["--once"]);
     assert.equal(first.status, 0, first.stderr || first.stdout);
@@ -128,13 +129,13 @@ test("Agent HQ approval CLI lists, approves and rejects pending requests exactly
 
     const secondDecision = runNode("scripts/agent-hq-bus.mjs", ["approve", String(approvalIds[0]), "test-owner", "must fail"]);
     assert.notEqual(secondDecision.status, 0, "A decided approval must not be decided again.");
-    const rows = await sql`SELECT id,status,decided_by FROM agent_approvals WHERE id IN (${sql(approvalIds)}) ORDER BY id`;
+    const rows = await sql`SELECT id,status,decided_by FROM agent_approvals WHERE id = ANY(${approvalIds}::bigint[]) ORDER BY id`;
     assert.equal(rows.find(row => String(row.id) === String(approvalIds[0])).status, "approved");
     assert.equal(rows.find(row => String(row.id) === String(approvalIds[1])).status, "rejected");
     assert.ok(rows.every(row => row.decided_by === "test-owner"));
   } finally {
-    if (approvalIds.length) await sql`DELETE FROM agent_approvals WHERE id IN (${sql(approvalIds)})`;
-    if (taskIds.length) await sql`DELETE FROM agent_tasks WHERE id IN (${sql(taskIds)})`;
+    if (approvalIds.length) await sql`DELETE FROM agent_approvals WHERE id = ANY(${approvalIds}::bigint[])`;
+    if (taskIds.length) await sql`DELETE FROM agent_tasks WHERE id = ANY(${taskIds}::bigint[])`;
     await sql.end({ timeout: 5 });
   }
 });
