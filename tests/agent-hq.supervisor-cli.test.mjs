@@ -9,6 +9,7 @@ import path from "node:path";
 const databaseUrl = process.env.AGENT_HQ_TEST_DATABASE_URL;
 const supervisorUrl = process.env.AGENT_HQ_ROLE_TEST_URL_SUPERVISOR;
 const operatorUrl = process.env.AGENT_HQ_ROLE_TEST_URL_OPERATOR;
+const seoUrl = process.env.AGENT_HQ_ROLE_TEST_URL_SEO;
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const runNode = (script, args = [], overrides = {}) => spawnSync(process.execPath, [script, ...args], {
   cwd: root,
@@ -498,6 +499,61 @@ test("Agent HQ supervisor blocks QA REVISE and exhausted specialist work", async
       await sql`DELETE FROM agent_tasks WHERE parent_task_id=${id}`;
       await sql`DELETE FROM agent_tasks WHERE id=${id}`;
     }
+    await sql.end({ timeout: 5 });
+  }
+});
+
+
+test("Agent HQ bus send derives sender from authenticated PostgreSQL LOGIN", async () => {
+  assert.ok(databaseUrl, "Set AGENT_HQ_TEST_DATABASE_URL to a disposable PostgreSQL database.");
+  assert.ok(seoUrl, "Missing isolated SEO PostgreSQL LOGIN.");
+  assert.notEqual(databaseUrl, process.env.DATABASE_URL, "Test database must not equal DATABASE_URL.");
+  const sql = postgres(databaseUrl, { max: 2, idle_timeout: 5 });
+  const marker = randomUUID();
+  const ownBody = "authenticated sender " + marker;
+  const forgedBody = "forged sender " + marker;
+  const probeBody = "direct RLS probe " + marker;
+  let taskId;
+  try {
+    const [task] = await sql`INSERT INTO agent_tasks
+      (title,objective,expected_output,assigned_role,created_by)
+      VALUES (${"Bus sender auth " + marker},'Verify authenticated sender identity',
+        'A message from the matching role','seo','owner')
+      RETURNING id`;
+    taskId = task.id;
+    const seo = postgres(seoUrl, { max: 1, idle_timeout: 5 });
+    try {
+      const [identity] = await seo`SELECT session_user AS login, public.agent_role_for_session() AS role`;
+      assert.equal(identity.login, "agent_seo");
+      assert.equal(identity.role, "seo");
+      const visibleTask = await seo`SELECT id,assigned_role FROM agent_tasks WHERE id=${taskId}`;
+      assert.equal(visibleTask.length, 1, "SEO LOGIN must see its own task before sending a task-scoped message.");
+      assert.equal(visibleTask[0].assigned_role, "seo");
+      const [policyProbe] = await seo`SELECT
+        public.agent_role_for_session() AS mapped_role,
+        EXISTS (SELECT 1 FROM public.agent_tasks WHERE id=${taskId} AND assigned_role='seo') AS owns_task`;
+      assert.equal(policyProbe.mapped_role, "seo");
+      assert.equal(policyProbe.owns_task, true);
+      await seo`INSERT INTO agent_messages
+        (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
+        VALUES (${taskId},${randomUUID()},'seo','coordinator','status',${probeBody},${randomUUID()})`;
+      await seo`DELETE FROM agent_messages WHERE body=${probeBody}`.catch(() => {});
+    } finally {
+      await seo.end({ timeout: 5 });
+    }
+    const own = runNode("scripts/agent-hq-bus.mjs", ["send","seo","coordinator",String(taskId),"status",ownBody], { DATABASE_URL: seoUrl });
+    assert.equal(own.status, 0, own.stderr || own.stdout);
+    const forged = runNode("scripts/agent-hq-bus.mjs", ["send","coordinator","seo",String(taskId),"status",forgedBody], { DATABASE_URL: seoUrl });
+    assert.notEqual(forged.status, 0, "A worker must not claim another role as the sender.");
+    assert.match(forged.stderr, /authenticated PostgreSQL LOGIN/i);
+    const rows = await sql`SELECT id,task_id,from_role,to_role FROM agent_messages WHERE body=${ownBody}`;
+    assert.equal(rows.length, 1);
+    assert.equal(String(rows[0].task_id), String(taskId));
+    assert.equal(rows[0].from_role, "seo");
+    assert.equal(rows[0].to_role, "coordinator");
+  } finally {
+    await sql`DELETE FROM agent_messages WHERE body IN (${ownBody},${forgedBody},${probeBody})`;
+    if (taskId) await sql`DELETE FROM agent_tasks WHERE id=${taskId}`;
     await sql.end({ timeout: 5 });
   }
 });

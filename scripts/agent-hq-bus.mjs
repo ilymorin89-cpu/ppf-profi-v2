@@ -52,13 +52,23 @@ async function main() {
     const [from, to, rawTaskId, kind, ...bodyParts] = args;
     const body = bodyParts.join(" ");
     requireAgentRole(required(from, "fromRole"), "fromRole"); requireAgentRole(required(to, "toRole"), "toRole"); required(kind, "kind"); required(body, "message");
+    const [identity] = await sql`SELECT session_user AS login`;
+    if (identity?.login !== `agent_${from}`) {
+      throw new Error("Message sender must match the authenticated PostgreSQL LOGIN.");
+    }
     const allowed = ["request","result","question","objection","handoff","approval_request","status"];
     if (!allowed.includes(kind)) throw new Error("Unsupported message kind");
     const id = rawTaskId === "-" ? null : taskId(rawTaskId);
-    const [message] = await sql`INSERT INTO agent_messages
-      (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
-      VALUES (${id},${randomUUID()},${from},${to},${kind},${body},${randomUUID()})
-      RETURNING id,task_id,from_role,to_role,kind,body,created_at`;
+    const message = await sql.begin(async tx => {
+      await tx`INSERT INTO agent_messages
+        (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
+        VALUES (${id},${randomUUID()},${from},${to},${kind},${body},${randomUUID()})`;
+      // INSERT is allowed for the authenticated sender, but SELECT RLS only
+      // exposes recipient inbox rows. Read the generated id from this session's
+      // sequence instead of RETURNING the newly inserted, non-inbox row.
+      const [created] = await tx`SELECT currval('agent_messages_id_seq') AS id`;
+      return { id: created.id, task_id: id, from_role: from, to_role: to, kind, body };
+    });
     console.log(JSON.stringify(message, null, 2));
     return;
   }
