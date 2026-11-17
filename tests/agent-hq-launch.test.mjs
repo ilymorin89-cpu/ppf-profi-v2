@@ -76,6 +76,7 @@ test("launcher always targets the isolated test compose file", () => {
   const source = readFileSync(launcher, "utf8");
   assert.match(source, /docker-compose\.agent-hq-test\.yml/);
   assert.match(source, /ppf-agent-hq-no-egress-test/);
+  assert.match(source, /compose\(\["run", "--rm", "test-assert"\]\)/);
   assert.doesNotMatch(source, /docker-compose\.yml/);
 });
 
