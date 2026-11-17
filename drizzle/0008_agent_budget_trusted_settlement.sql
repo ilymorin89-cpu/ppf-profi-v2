@@ -164,7 +164,7 @@ DECLARE
   v_reservation BIGINT;
 BEGIN
   v_role := public.agent_budget_role_for_session();
-  IF v_role IS NULL OR p_worker_id IS NULL OR p_worker_id='' OR p_provider NOT IN ('openai','test_stub') OR p_model IS NULL OR p_model=''
+  IF v_role IS NULL OR p_worker_id IS NULL OR p_worker_id='' OR p_provider IS NULL OR p_provider NOT IN ('openai','test_stub') OR p_model IS NULL OR p_model=''
      OR p_idempotency_key IS NULL OR length(p_idempotency_key) NOT BETWEEN 8 AND 160
      OR p_estimated_input_tokens NOT BETWEEN 1 AND 10000000
      OR p_max_output_tokens NOT BETWEEN 64 AND 8192 OR p_max_turns NOT BETWEEN 1 AND 8
@@ -172,12 +172,18 @@ BEGIN
     RAISE EXCEPTION 'invalid budget reservation request' USING ERRCODE='22023';
   END IF;
 
+  SELECT * INTO v_task FROM public.agent_tasks
+    WHERE id=p_task_id AND assigned_role=v_role AND status IN ('claimed','running')
+      AND lease_owner=p_worker_id AND lease_until>clock_timestamp();
+  IF NOT FOUND THEN RAISE EXCEPTION 'task lease not owned by caller' USING ERRCODE='42501'; END IF;
+
   PERFORM pg_advisory_xact_lock(781234,1);
   SELECT * INTO v_existing FROM public.agent_budget_reservations
     WHERE idempotency_key=p_idempotency_key;
   IF FOUND THEN
     IF v_existing.task_id<>p_task_id OR v_existing.role<>v_role OR v_existing.worker_id<>p_worker_id
        OR v_existing.price_snapshot->>'model'<>p_model
+       OR v_existing.price_snapshot->>'provider'<>p_provider
        OR (v_existing.price_snapshot->>'estimated_input_tokens')::INTEGER<>p_estimated_input_tokens
        OR (v_existing.price_snapshot->>'max_output_tokens')::INTEGER<>p_max_output_tokens
        OR (v_existing.price_snapshot->>'max_turns')::INTEGER<>p_max_turns
@@ -187,11 +193,6 @@ BEGIN
     RETURN QUERY SELECT v_existing.run_id,v_existing.id,v_existing.reserved_microusd;
     RETURN;
   END IF;
-
-  SELECT * INTO v_task FROM public.agent_tasks
-    WHERE id=p_task_id AND assigned_role=v_role AND status IN ('claimed','running')
-      AND lease_owner=p_worker_id AND lease_until>clock_timestamp();
-  IF NOT FOUND THEN RAISE EXCEPTION 'task lease not owned by caller' USING ERRCODE='42501'; END IF;
 
   -- One locked budget row serializes every reservation transaction.
   SELECT * INTO v_budget FROM public.agent_budget_config WHERE id=1;
@@ -281,10 +282,6 @@ BEGIN
   SELECT * INTO v_res FROM public.agent_budget_reservations
     WHERE id=p_reservation_id AND role=v_role FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'reservation not owned by caller' USING ERRCODE='42501'; END IF;
-  SELECT * INTO v_task FROM public.agent_tasks
-    WHERE id=v_res.task_id AND assigned_role=v_role AND lease_owner=v_res.worker_id
-      AND status IN ('claimed','running');
-  IF NOT FOUND THEN RAISE EXCEPTION 'settlement requires the original active task lease' USING ERRCODE='42501'; END IF;
   IF v_res.state='settled' THEN
     SELECT * INTO v_existing FROM public.agent_budget_settlements WHERE reservation_id=v_res.id;
     IF v_existing.idempotency_key=p_idempotency_key AND v_existing.input_tokens=p_input_tokens
@@ -293,6 +290,10 @@ BEGIN
     END IF;
     RAISE EXCEPTION 'reservation already settled with different payload' USING ERRCODE='23505';
   END IF;
+  SELECT * INTO v_task FROM public.agent_tasks
+    WHERE id=v_res.task_id AND assigned_role=v_role AND lease_owner=v_res.worker_id
+      AND status IN ('claimed','running');
+  IF NOT FOUND THEN RAISE EXCEPTION 'settlement requires the original active task lease' USING ERRCODE='42501'; END IF;
   IF v_res.state NOT IN ('active','unknown') THEN
     RAISE EXCEPTION 'reservation is not settleable' USING ERRCODE='55000';
   END IF;
@@ -300,6 +301,11 @@ BEGIN
     p_input_tokens::NUMERIC*(v_res.price_snapshot->>'input_price')::BIGINT
     + p_output_tokens::NUMERIC*(v_res.price_snapshot->>'output_price')::BIGINT
   )/1000000)::BIGINT + p_search_calls::BIGINT*(v_res.price_snapshot->>'search_price')::BIGINT;
+  IF p_input_tokens > (v_res.price_snapshot->>'estimated_input_tokens')::INTEGER * (v_res.price_snapshot->>'max_turns')::INTEGER
+     OR p_output_tokens > (v_res.price_snapshot->>'max_output_tokens')::INTEGER * (v_res.price_snapshot->>'max_turns')::INTEGER
+     OR p_search_calls > (v_res.price_snapshot->>'max_search_calls')::INTEGER THEN
+    RAISE EXCEPTION 'provider usage exceeds reserved token/search envelope' USING ERRCODE='P0001';
+  END IF;
   IF v_cost>v_res.reserved_microusd THEN
     RAISE EXCEPTION 'actual usage exceeds reservation; reconciliation required' USING ERRCODE='P0001';
   END IF;
