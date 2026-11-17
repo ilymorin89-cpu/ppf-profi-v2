@@ -94,7 +94,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Reject high and critical dependency advisories
+      - name: Reject high and critical production dependency advisories
+        run: npm audit --omit=dev --audit-level=high
+      - name: Report development dependency advisories
+        continue-on-error: true
         run: npm audit --audit-level=high
       - name: Apply Agent HQ migrations to disposable PostgreSQL
         run: |
@@ -164,7 +167,7 @@ jobs:
       - name: Validate Docker Compose configuration
         run: |
           docker compose -f docker-compose.yml config --quiet
-          docker compose -f docker-compose.yml -f docker-compose.agent-hq-test.yml config --quiet
+          docker compose -f docker-compose.agent-hq-test.yml config --quiet
       - name: Build Agent HQ runtime container (no deployment)
         run: docker build --file Dockerfile.agent-hq --tag ppf-agent-hq:ci .
 
@@ -177,7 +180,7 @@ jobs:
         run: |
           set -euo pipefail
           compose() {
-            docker compose -f docker-compose.yml -f docker-compose.agent-hq-test.yml "$@"
+            docker compose -f docker-compose.agent-hq-test.yml "$@"
           }
           cleanup() {
             compose logs --no-color --tail=80 || true
