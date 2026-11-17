@@ -953,6 +953,7 @@ test("Agent HQ budget function owner has only the column privileges required by 
   const admin=postgres(adminUrl,{max:1});
   try {
     const [privileges]=await admin`SELECT
+      has_table_privilege('agent_hq_budget_owner','public.agent_runs','SELECT') AS run_select,
       has_column_privilege('agent_hq_budget_owner','public.agent_runs','task_id','INSERT') AS run_insert_task,
       has_column_privilege('agent_hq_budget_owner','public.agent_runs','cost_microusd','INSERT') AS run_insert_cost,
       has_column_privilege('agent_hq_budget_owner','public.agent_runs','status','UPDATE') AS run_update_status,
@@ -963,6 +964,7 @@ test("Agent HQ budget function owner has only the column privileges required by 
       has_column_privilege('agent_hq_budget_owner','public.agent_budget_reservations','updated_at','UPDATE') AS reservation_update_timestamp,
       has_column_privilege('agent_hq_budget_owner','public.agent_budget_reservations','worker_id','UPDATE') AS reservation_update_worker,
       has_column_privilege('agent_hq_budget_owner','public.agent_budget_reservations','reserved_microusd','UPDATE') AS reservation_update_amount`;
+    assert.equal(privileges.run_select,false);
     assert.equal(privileges.run_insert_task,true);
     assert.equal(privileges.run_insert_cost,true);
     assert.equal(privileges.run_update_status,true);
