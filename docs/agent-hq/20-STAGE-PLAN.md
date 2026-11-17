@@ -20,10 +20,10 @@ Scope: isolated Agent HQ branch only. Production website, production database `d
 - [x] 13a. Re-run both PR and push workflows at head `a7a737da3a1a9915f488af0faa0e261ecdaf8cd6`; runs `44070528396` and `44070516702` both passed `syntax` and `website-build` on 2026-11-17.
 - [ ] 14. Validate model support for hosted web search using a controlled, non-production test.
 - [ ] 15. Reconcile token and hosted-search charges against provider billing; code now caps built-in tool calls at 5 per response × 4 model turns and reserves up to 20 search calls before execution.
-- [ ] 16. Complete full role/permission/data-exposure review; CLI role allowlists and OS-UID approval gating are implemented and covered by tests, but DB-enforced per-role isolation remains open.
+- [ ] 16. Complete full role/permission/data-exposure review. Added a disposable-CI RLS prototype using separate authenticated PostgreSQL logins and tests for task/artifact isolation, anti-GUC spoofing, denied SET ROLE, budget immutability and approval-decision denial. Extended coverage to messages, runs and approvals; those expanded assertions still need a green CI run. This is a test harness, not a deployable migration; QA sibling-artifact access and full coordinator/supervisor workflows remain to be designed and tested.
 - [ ] 17. Review database grants and ensure Agent HQ remains isolated from production data.
 - [x] 18a. Generate lockfile-backed dependency update on isolated branch `agent-hq/enable-research-tools`: Next.js/eslint-config-next 16.4.6, React/React DOM 19.3.1. CI `44071860542` completed successfully for `npm ci` and lockfile generation. Full dependency audit, integration tests and website build are being run in dedicated validation workflow `44072584940` before treating the update as accepted.
-- [ ] 19. Run full CI, container build and disposable end-to-end acceptance tests.
+- [ ] 19. Run final CI on the latest dependency-updated head, build the Agent HQ container, and finish expanded role-isolation and disabled-budget acceptance tests.
 - [ ] 20. Prepare a launch checklist and obtain explicit approval before any deployment, spend or worker activation.
 
 ## Current known blockers
