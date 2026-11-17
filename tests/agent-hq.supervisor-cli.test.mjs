@@ -41,6 +41,12 @@ test("Agent HQ supervisor executes the real parent → QA → consolidation life
       WHERE parent_task_id=${parentId} AND assigned_role='qa_security'`;
     assert.ok(qa, "Supervisor must create an independent QA task.");
     assert.equal(qa.status, "queued");
+    const grants = await sql`SELECT task_id,principal,access_reason FROM agent_task_access
+      WHERE task_id=${specialist.id} ORDER BY principal`;
+    assert.ok(grants.some(row => row.principal === "coordinator" && row.access_reason === "coordinator_oversight"),
+      "Supervisor must grant coordinator scoped access to the specialist task");
+    assert.ok(grants.some(row => row.principal === "qa_security" && row.access_reason === "qa_review"),
+      "Supervisor must grant QA scoped access to specialist artifacts");
 
     await sql`UPDATE agent_tasks SET status='done',completed_at=now() WHERE id=${qa.id}`;
     await sql`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content)
