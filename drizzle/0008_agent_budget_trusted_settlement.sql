@@ -591,8 +591,9 @@ BEGIN
 END
 $heartbeat$;
 
+DROP FUNCTION IF EXISTS public.agent_task_transition(BIGINT,TEXT,TEXT);
 CREATE OR REPLACE FUNCTION public.agent_task_transition(
-  p_task_id BIGINT,p_worker_id TEXT,p_transition TEXT
+  p_task_id BIGINT,p_worker_id TEXT,p_transition TEXT,p_reservation_id BIGINT DEFAULT NULL
 ) RETURNS TEXT
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog, public
@@ -616,8 +617,8 @@ BEGIN
   END IF;
 
   IF p_transition='complete' THEN
-    IF NOT EXISTS (SELECT 1 FROM public.agent_budget_reservations
-      WHERE task_id=p_task_id AND role=v_role AND worker_id=p_worker_id AND state='settled') THEN
+    IF p_reservation_id IS NULL OR NOT EXISTS (SELECT 1 FROM public.agent_budget_reservations
+      WHERE id=p_reservation_id AND task_id=p_task_id AND role=v_role AND worker_id=p_worker_id AND state='settled') THEN
       RAISE EXCEPTION 'task completion requires a settled budget reservation' USING ERRCODE='55000';
     END IF;
     v_target:=CASE WHEN v_role='coordinator' THEN 'review' ELSE 'done' END;
@@ -649,9 +650,9 @@ END
 $transition$;
 
 ALTER FUNCTION public.agent_task_heartbeat(BIGINT,TEXT) OWNER TO agent_hq_budget_owner;
-ALTER FUNCTION public.agent_task_transition(BIGINT,TEXT,TEXT) OWNER TO agent_hq_budget_owner;
+ALTER FUNCTION public.agent_task_transition(BIGINT,TEXT,TEXT,BIGINT) OWNER TO agent_hq_budget_owner;
 REVOKE ALL ON FUNCTION public.agent_task_heartbeat(BIGINT,TEXT) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.agent_task_transition(BIGINT,TEXT,TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.agent_task_transition(BIGINT,TEXT,TEXT,BIGINT) FROM PUBLIC;
 
 DO $task_acl$
 DECLARE role_name TEXT;
@@ -666,7 +667,7 @@ BEGIN
     EXECUTE format('REVOKE UPDATE ON public.agent_tasks FROM %I',role_name);
     EXECUTE format('REVOKE UPDATE (status,attempts,lease_owner,lease_until,updated_at,completed_at) ON public.agent_tasks FROM %I',role_name);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_task_heartbeat(BIGINT,TEXT) TO %I',role_name);
-    EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_task_transition(BIGINT,TEXT,TEXT) TO %I',role_name);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_task_transition(BIGINT,TEXT,TEXT,BIGINT) TO %I',role_name);
   END LOOP;
 END
 $task_acl$;
