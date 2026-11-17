@@ -113,6 +113,12 @@ test("every Agent HQ worker login sees only its own role and cannot forge messag
           role + " must not change task budget ownership."
         );
 
+        const claimed = await sql`SELECT * FROM public.agent_task_claim(${"matrix-" + role})`;
+        assert.equal(claimed.length, 1, role + " must be able to claim exactly one task through the trusted function.");
+        assert.equal(String(claimed[0].id), String(idByRole.get(role)),
+          role + " must claim only a task assigned to its authenticated PostgreSQL role.");
+        assert.equal(claimed[0].attempts, 1);
+
         const ownInboxKey = "role-matrix-inbox-" + marker + "-" + role;
         messageKeys.push(ownInboxKey);
         await sql`INSERT INTO agent_messages
