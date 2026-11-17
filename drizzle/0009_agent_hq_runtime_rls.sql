@@ -124,7 +124,9 @@ END
 $grant_helpers$;
 GRANT EXECUTE ON FUNCTION public.agent_can_grant_task_access(TEXT) TO agent_supervisor;
 GRANT EXECUTE ON FUNCTION public.agent_is_valid_coordinator_parent(BIGINT) TO agent_coordinator,agent_supervisor;
-GRANT CONNECT ON DATABASE current_database() TO agent_operator;
+DO $operator_connect$ BEGIN
+  EXECUTE format('GRANT CONNECT ON DATABASE %I TO agent_operator',current_database());
+END $operator_connect$;
 GRANT USAGE ON SCHEMA public TO agent_operator;
 GRANT EXECUTE ON FUNCTION public.agent_role_for_session() TO agent_operator;
 
