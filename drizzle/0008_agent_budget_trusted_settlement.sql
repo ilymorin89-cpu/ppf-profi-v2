@@ -176,7 +176,11 @@ BEGIN
     WHERE idempotency_key=p_idempotency_key;
   IF FOUND THEN
     IF v_existing.task_id<>p_task_id OR v_existing.role<>v_role OR v_existing.worker_id<>p_worker_id
-       OR v_existing.price_snapshot->>'model'<>p_model THEN
+       OR v_existing.price_snapshot->>'model'<>p_model
+       OR (v_existing.price_snapshot->>'estimated_input_tokens')::INTEGER<>p_estimated_input_tokens
+       OR (v_existing.price_snapshot->>'max_output_tokens')::INTEGER<>p_max_output_tokens
+       OR (v_existing.price_snapshot->>'max_turns')::INTEGER<>p_max_turns
+       OR (v_existing.price_snapshot->>'max_search_calls')::INTEGER<>p_max_search_calls THEN
       RAISE EXCEPTION 'idempotency key reused with different parameters' USING ERRCODE='23505';
     END IF;
     RETURN QUERY SELECT v_existing.run_id,v_existing.id,v_existing.reserved_microusd;
@@ -214,7 +218,7 @@ BEGIN
     + p_max_output_tokens::NUMERIC*p_max_turns*v_budget.output_price_per_million_microusd
   )/1000000)::BIGINT + p_max_search_calls::BIGINT*v_budget.web_search_price_microusd_per_call;
   IF v_estimate<=0 OR v_estimate>v_budget.per_run_cap_microusd
-     OR (v_task.budget_limit_microusd>0 AND v_estimate + COALESCE((SELECT SUM(r.reserved_microusd) FROM public.agent_budget_reservations r WHERE r.task_id=p_task_id AND r.state IN ('active','unknown')),0) > v_task.budget_limit_microusd) THEN
+     OR (v_task.budget_limit_microusd>0 AND v_estimate + COALESCE((SELECT SUM(CASE WHEN r.state='settled' THEN st.actual_cost_microusd ELSE r.reserved_microusd END) FROM public.agent_budget_reservations r LEFT JOIN public.agent_budget_settlements st ON st.reservation_id=r.id WHERE r.task_id=p_task_id AND r.state IN ('active','unknown','settled')),0) > v_task.budget_limit_microusd) THEN
     RAISE EXCEPTION 'per-run or task budget cap exceeded' USING ERRCODE='P0001';
   END IF;
 
@@ -240,10 +244,11 @@ BEGIN
   INSERT INTO public.agent_budget_reservations(run_id,task_id,role,worker_id,idempotency_key,
     reserved_microusd,price_snapshot,day_key,month_key)
     VALUES(v_run,p_task_id,v_role,p_worker_id,p_idempotency_key,v_estimate,
-      jsonb_build_object('model',p_model,'input_price',v_budget.input_price_per_million_microusd,
+      jsonb_build_object('model',p_model,'provider',p_provider,
+        'estimated_input_tokens',p_estimated_input_tokens,'input_price',v_budget.input_price_per_million_microusd,
         'output_price',v_budget.output_price_per_million_microusd,
         'search_price',v_budget.web_search_price_microusd_per_call,
-        'max_turns',p_max_turns,'max_output_tokens',p_max_output_tokens),
+        'max_turns',p_max_turns,'max_output_tokens',p_max_output_tokens,'max_search_calls',p_max_search_calls),
       v_day,v_month) RETURNING id INTO v_reservation;
   INSERT INTO public.agent_budget_ledger(reservation_id,event_key,event_type,amount_microusd,metadata)
     VALUES(v_reservation,'reserve:'||p_idempotency_key,'reserved',v_estimate,
@@ -408,7 +413,7 @@ BEGIN
     'agent_copywriter','agent_designer','agent_image_generator','agent_storyteller',
     'agent_community_manager','agent_content_seo','agent_ads_manager','agent_trend_scout',
     'agent_auto_news_editor','agent_auto_law_monitor','agent_fact_checker','agent_seo',
-    'agent_qa_security','agent_coordinator','agent_supervisor','agent_operator'
+    'agent_qa_security','agent_coordinator'
   ] LOOP
     EXECUTE format('REVOKE INSERT,UPDATE ON public.agent_runs FROM %I',role_name);
     EXECUTE format('REVOKE INSERT (task_id,role,worker_id,provider,model,status,cost_microusd) ON public.agent_runs FROM %I',role_name);
@@ -420,4 +425,11 @@ BEGIN
   END LOOP;
 END
 $acl$;
+DO $run_revoke$
+BEGIN
+  REVOKE INSERT,UPDATE ON public.agent_runs FROM agent_supervisor,agent_operator;
+  REVOKE INSERT (task_id,role,worker_id,provider,model,status,cost_microusd) ON public.agent_runs FROM agent_supervisor,agent_operator;
+  REVOKE UPDATE (status,input_tokens,output_tokens,cost_microusd,error,finished_at) ON public.agent_runs FROM agent_supervisor,agent_operator;
+END
+$run_revoke$;
 GRANT EXECUTE ON FUNCTION public.agent_budget_reconcile_no_charge(BIGINT,TEXT,TEXT) TO agent_operator;
