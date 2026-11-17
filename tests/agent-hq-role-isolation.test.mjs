@@ -455,6 +455,62 @@ test("Agent HQ reservation and settlement are idempotent and bound to the origin
   }
 });
 
+test("Agent HQ releases a reservation only for its original worker and idempotency key", {
+  skip: !adminUrl || !roleUrls.seo
+}, async () => {
+  const admin=postgres(adminUrl,{max:2});
+  const seo=postgres(roleUrls.seo,{max:1});
+  let oldBudget;
+  let taskId;
+  try {
+    [oldBudget]=await admin`SELECT * FROM agent_budget_config WHERE id=1`;
+    await admin`UPDATE agent_budget_config SET enabled=true,daily_cap_microusd=100000,
+      monthly_cap_microusd=500000,per_run_cap_microusd=5000,
+      input_price_per_million_microusd=100000,output_price_per_million_microusd=100000,
+      web_search_price_microusd_per_call=0 WHERE id=1`;
+    const workerId="seo-budget-release";
+    const marker=randomUUID();
+    const [task]=await admin`INSERT INTO agent_tasks(assigned_role,title,objective,expected_output,created_by,
+      status,lease_owner,lease_until,budget_limit_microusd)
+      VALUES('seo','budget release','test','test','integration-test','claimed',${workerId},
+        now()+interval '5 minutes',5000) RETURNING id`;
+    taskId=task.id;
+    const [reservation]=await seo`SELECT * FROM agent_budget_reserve(
+      ${taskId},${workerId},'test_stub','test-model',10000,1024,1,0,${"release-reserve-"+marker})`;
+    await assert.rejects(seo`SELECT agent_budget_release(
+      ${reservation.reservation_id},'forged-worker','provider call not started',${"release-"+marker})`,
+      e=>e.code==="42501");
+    const [released]=await seo`SELECT agent_budget_release(
+      ${reservation.reservation_id},${workerId},'provider call not started',${"release-"+marker}) AS ok`;
+    assert.equal(released.ok,true);
+    const [repeat]=await seo`SELECT agent_budget_release(
+      ${reservation.reservation_id},${workerId},'provider call not started',${"release-"+marker}) AS ok`;
+    assert.equal(repeat.ok,true);
+    await assert.rejects(seo`SELECT agent_budget_release(
+      ${reservation.reservation_id},${workerId},'different reason',${"release-other-"+marker})`,
+      e=>e.code==="23505");
+    const [state]=await admin`SELECT state FROM agent_budget_reservations WHERE id=${reservation.reservation_id}`;
+    assert.equal(state.state,"released");
+    const [events]=await admin`SELECT count(*)::int AS n FROM agent_budget_ledger
+      WHERE reservation_id=${reservation.reservation_id} AND event_type='released'`;
+    assert.equal(events.n,1);
+  } finally {
+    if(taskId){
+      await admin`DELETE FROM agent_budget_ledger WHERE reservation_id IN (SELECT id FROM agent_budget_reservations WHERE task_id=${taskId})`;
+      await admin`DELETE FROM agent_budget_settlements WHERE reservation_id IN (SELECT id FROM agent_budget_reservations WHERE task_id=${taskId})`;
+      await admin`DELETE FROM agent_budget_reservations WHERE task_id=${taskId}`;
+      await admin`DELETE FROM agent_tasks WHERE id=${taskId}`;
+    }
+    if(oldBudget) await admin`UPDATE agent_budget_config SET enabled=${oldBudget.enabled},
+      daily_cap_microusd=${oldBudget.daily_cap_microusd},monthly_cap_microusd=${oldBudget.monthly_cap_microusd},
+      per_run_cap_microusd=${oldBudget.per_run_cap_microusd},
+      input_price_per_million_microusd=${oldBudget.input_price_per_million_microusd},
+      output_price_per_million_microusd=${oldBudget.output_price_per_million_microusd},
+      web_search_price_microusd_per_call=${oldBudget.web_search_price_microusd_per_call} WHERE id=1`;
+    await Promise.all([seo.end(),admin.end()]);
+  }
+});
+
 test("Agent HQ operator reconciles an unknown reservation exactly once after lease expiry", {
   skip: !adminUrl || !roleUrls.seo || !roleUrls.operator
 }, async () => {
