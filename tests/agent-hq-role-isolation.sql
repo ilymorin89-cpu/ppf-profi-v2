@@ -385,26 +385,29 @@ END
 $reserve$;
 
 CREATE OR REPLACE FUNCTION public.agent_budget_settle(
-  p_reservation_id BIGINT,p_worker_id TEXT,p_input_tokens INTEGER,p_output_tokens INTEGER,
+  p_reservation_id BIGINT,p_input_tokens INTEGER,p_output_tokens INTEGER,
   p_search_calls INTEGER,p_settlement_key TEXT,p_provider_reference TEXT DEFAULT NULL
 ) RETURNS BIGINT
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog, public
 AS $settle$
 DECLARE
-  v_role TEXT; v_res public.agent_budget_reservations%ROWTYPE;
+  v_role TEXT; v_res public.agent_budget_reservations%ROWTYPE; v_task public.agent_tasks%ROWTYPE;
   v_run_count INTEGER; v_cost BIGINT; v_existing public.agent_budget_settlements%ROWTYPE;
 BEGIN
   v_role:=public.agent_role_for_session();
-  IF v_role IS NULL OR p_worker_id IS NULL OR p_input_tokens NOT BETWEEN 0 AND 100000000
+  IF v_role IS NULL OR p_input_tokens NOT BETWEEN 0 AND 100000000
      OR p_output_tokens NOT BETWEEN 0 AND 100000000 OR p_search_calls NOT BETWEEN 0 AND 512
      OR p_settlement_key IS NULL OR length(p_settlement_key) NOT BETWEEN 8 AND 160 THEN
     RAISE EXCEPTION 'invalid settlement request' USING ERRCODE='22023';
   END IF;
   SELECT * INTO v_res FROM public.agent_budget_reservations
-    WHERE id=p_reservation_id AND role=v_role AND worker_id=p_worker_id
+    WHERE id=p_reservation_id AND role=v_role
     FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'reservation not owned by caller' USING ERRCODE='42501'; END IF;
+  SELECT * INTO v_task FROM public.agent_tasks WHERE id=v_res.task_id AND assigned_role=v_role
+    AND lease_owner=v_res.worker_id AND status IN ('claimed','running') FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'settlement requires the same active task lease' USING ERRCODE='42501'; END IF;
   IF v_res.state='settled' THEN
     SELECT * INTO v_existing FROM public.agent_budget_settlements WHERE reservation_id=v_res.id;
     IF v_existing.settlement_key=p_settlement_key AND v_existing.input_tokens=p_input_tokens
@@ -431,20 +434,23 @@ BEGIN
 END
 $settle$;
 
-CREATE OR REPLACE FUNCTION public.agent_budget_release(p_reservation_id BIGINT,p_worker_id TEXT,p_reason TEXT,p_release_key TEXT)
+CREATE OR REPLACE FUNCTION public.agent_budget_release(p_reservation_id BIGINT,p_reason TEXT,p_release_key TEXT)
 RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog, public
 AS $release$
 DECLARE v_res public.agent_budget_reservations%ROWTYPE; v_role TEXT;
 BEGIN
   v_role:=public.agent_role_for_session();
-  IF v_role IS NULL OR p_worker_id IS NULL OR p_reason IS NULL OR length(p_reason) NOT BETWEEN 1 AND 500
+  IF v_role IS NULL OR p_reason IS NULL OR length(p_reason) NOT BETWEEN 1 AND 500
     OR p_release_key IS NULL OR length(p_release_key) NOT BETWEEN 8 AND 160 THEN
     RAISE EXCEPTION 'invalid release request' USING ERRCODE='22023';
   END IF;
   SELECT * INTO v_res FROM public.agent_budget_reservations
-    WHERE id=p_reservation_id AND role=v_role AND worker_id=p_worker_id FOR UPDATE;
+    WHERE id=p_reservation_id AND role=v_role FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'reservation not owned by caller' USING ERRCODE='42501'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.agent_tasks t WHERE t.id=v_res.task_id AND t.assigned_role=v_role AND t.lease_owner=v_res.worker_id AND t.status IN ('claimed','running')) THEN
+    RAISE EXCEPTION 'release requires the same active task lease' USING ERRCODE='42501';
+  END IF;
   IF v_res.state='released' THEN RETURN TRUE; END IF;
   IF v_res.state<>'active' THEN RAISE EXCEPTION 'only active reservations may be released; unknown outcomes need reconciliation' USING ERRCODE='55000'; END IF;
   INSERT INTO public.agent_budget_ledger(reservation_id,event_key,event_type,amount_microusd,metadata)
@@ -455,19 +461,19 @@ BEGIN
 END
 $release$;
 
-CREATE OR REPLACE FUNCTION public.agent_budget_mark_unknown(p_reservation_id BIGINT,p_worker_id TEXT,p_reason TEXT,p_event_key TEXT)
+CREATE OR REPLACE FUNCTION public.agent_budget_mark_unknown(p_reservation_id BIGINT,p_reason TEXT,p_event_key TEXT)
 RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog, public
 AS $unknown$
 DECLARE v_res public.agent_budget_reservations%ROWTYPE; v_role TEXT;
 BEGIN
   v_role:=public.agent_role_for_session();
-  IF v_role IS NULL OR p_worker_id IS NULL OR p_reason IS NULL OR length(p_reason) NOT BETWEEN 1 AND 500
+  IF v_role IS NULL OR p_reason IS NULL OR length(p_reason) NOT BETWEEN 1 AND 500
     OR p_event_key IS NULL OR length(p_event_key) NOT BETWEEN 8 AND 160 THEN
     RAISE EXCEPTION 'invalid unknown reservation request' USING ERRCODE='22023';
   END IF;
   SELECT * INTO v_res FROM public.agent_budget_reservations
-    WHERE id=p_reservation_id AND role=v_role AND worker_id=p_worker_id FOR UPDATE;
+    WHERE id=p_reservation_id AND role=v_role FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'reservation not owned by caller' USING ERRCODE='42501'; END IF;
   IF v_res.state='unknown' THEN RETURN TRUE; END IF;
   IF v_res.state<>'active' THEN RAISE EXCEPTION 'reservation is not active' USING ERRCODE='55000'; END IF;
@@ -502,21 +508,21 @@ CREATE POLICY budget_fn_task_read ON agent_tasks FOR SELECT TO agent_hq_budget_o
 CREATE POLICY budget_fn_config_read ON agent_budget_config FOR SELECT TO agent_hq_budget_owner_ci USING(true);
 
 ALTER FUNCTION public.agent_budget_reserve(BIGINT,TEXT,TEXT,INTEGER,INTEGER,INTEGER,INTEGER,TEXT) OWNER TO agent_hq_budget_owner_ci;
-ALTER FUNCTION public.agent_budget_settle(BIGINT,TEXT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) OWNER TO agent_hq_budget_owner_ci;
-ALTER FUNCTION public.agent_budget_release(BIGINT,TEXT,TEXT,TEXT) OWNER TO agent_hq_budget_owner_ci;
-ALTER FUNCTION public.agent_budget_mark_unknown(BIGINT,TEXT,TEXT,TEXT) OWNER TO agent_hq_budget_owner_ci;
+ALTER FUNCTION public.agent_budget_settle(BIGINT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) OWNER TO agent_hq_budget_owner_ci;
+ALTER FUNCTION public.agent_budget_release(BIGINT,TEXT,TEXT) OWNER TO agent_hq_budget_owner_ci;
+ALTER FUNCTION public.agent_budget_mark_unknown(BIGINT,TEXT,TEXT) OWNER TO agent_hq_budget_owner_ci;
 REVOKE ALL ON FUNCTION public.agent_budget_reserve(BIGINT,TEXT,TEXT,INTEGER,INTEGER,INTEGER,INTEGER,TEXT) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.agent_budget_settle(BIGINT,TEXT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.agent_budget_release(BIGINT,TEXT,TEXT,TEXT) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.agent_budget_mark_unknown(BIGINT,TEXT,TEXT,TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.agent_budget_settle(BIGINT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.agent_budget_release(BIGINT,TEXT,TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.agent_budget_mark_unknown(BIGINT,TEXT,TEXT) FROM PUBLIC;
 DO $budget_exec$
 DECLARE role_name TEXT;
 BEGIN
   FOREACH role_name IN ARRAY ARRAY['agent_web_engineer','agent_geo','agent_growth','agent_analytics','agent_vk_strategist','agent_copywriter','agent_designer','agent_image_generator','agent_storyteller','agent_community_manager','agent_content_seo','agent_ads_manager','agent_trend_scout','agent_auto_news_editor','agent_auto_law_monitor','agent_fact_checker','agent_seo','agent_qa_security','agent_coordinator'] LOOP
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_budget_reserve(BIGINT,TEXT,TEXT,INTEGER,INTEGER,INTEGER,INTEGER,TEXT) TO %I',role_name);
-    EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_budget_settle(BIGINT,TEXT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) TO %I',role_name);
-    EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_budget_release(BIGINT,TEXT,TEXT,TEXT) TO %I',role_name);
-    EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_budget_mark_unknown(BIGINT,TEXT,TEXT,TEXT) TO %I',role_name);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_budget_settle(BIGINT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) TO %I',role_name);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_budget_release(BIGINT,TEXT,TEXT) TO %I',role_name);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_budget_mark_unknown(BIGINT,TEXT,TEXT) TO %I',role_name);
   END LOOP;
 END
 $budget_exec$;
