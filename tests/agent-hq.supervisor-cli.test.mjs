@@ -28,8 +28,9 @@ test("Agent HQ supervisor executes the real parent → QA → consolidation life
   const sql = postgres(databaseUrl, { max: 4, idle_timeout: 5 });
   const marker = randomUUID();
   let parentId;
+  let previousBudget;
   try {
-    const [previousBudget] = await sql`SELECT * FROM agent_budget_config WHERE id=1`;
+    [previousBudget] = await sql`SELECT * FROM agent_budget_config WHERE id=1`;
     await sql`UPDATE agent_budget_config SET enabled=true,
       daily_cap_microusd=100000000,monthly_cap_microusd=100000000,
       per_run_cap_microusd=10000000,input_price_per_million_microusd=1000,
