@@ -240,7 +240,7 @@ BEGIN
   INSERT INTO public.agent_budget_reservations(run_id,task_id,role,worker_id,idempotency_key,
     reserved_microusd,price_snapshot,day_key,month_key)
     VALUES(v_run,p_task_id,v_role,p_worker_id,p_idempotency_key,v_estimate,
-      jsonb_build_object('model',p_model,'provider',p_provider,
+      jsonb_build_object('pricing_version','agent-budget-v1','model',p_model,'provider',p_provider,
         'estimated_input_tokens',p_estimated_input_tokens,'input_price',v_budget.input_price_per_million_microusd,
         'output_price',v_budget.output_price_per_million_microusd,
         'search_price',v_budget.web_search_price_microusd_per_call,
@@ -280,7 +280,8 @@ BEGIN
   IF v_res.state='settled' THEN
     SELECT * INTO v_existing FROM public.agent_budget_settlements WHERE reservation_id=v_res.id;
     IF v_existing.idempotency_key=p_idempotency_key AND v_existing.input_tokens=p_input_tokens
-       AND v_existing.output_tokens=p_output_tokens AND v_existing.web_search_calls=p_search_calls THEN
+       AND v_existing.output_tokens=p_output_tokens AND v_existing.web_search_calls=p_search_calls
+       AND v_existing.provider_reference IS NOT DISTINCT FROM p_provider_reference THEN
       RETURN v_existing.actual_cost_microusd;
     END IF;
     RAISE EXCEPTION 'reservation already settled with different payload' USING ERRCODE='23505';
@@ -333,7 +334,10 @@ BEGIN
   END IF;
   SELECT * INTO v_res FROM public.agent_budget_reservations WHERE id=p_reservation_id AND role=v_role FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'reservation not owned by caller' USING ERRCODE='42501'; END IF;
-  IF v_res.state='released' THEN RETURN true; END IF;
+  IF v_res.state='released' THEN
+    IF EXISTS (SELECT 1 FROM public.agent_budget_ledger WHERE reservation_id=v_res.id AND event_key='release:'||p_idempotency_key) THEN RETURN true; END IF;
+    RAISE EXCEPTION 'reservation was released with a different idempotency key' USING ERRCODE='23505';
+  END IF;
   IF NOT EXISTS (SELECT 1 FROM public.agent_tasks t WHERE t.id=v_res.task_id
     AND t.assigned_role=v_role AND t.lease_owner=v_res.worker_id
     AND t.lease_until>clock_timestamp() AND t.status IN ('claimed','running')) THEN
@@ -363,7 +367,11 @@ BEGIN
   END IF;
   SELECT * INTO v_res FROM public.agent_budget_reservations WHERE id=p_reservation_id AND role=v_role FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'reservation not owned by caller' USING ERRCODE='42501'; END IF;
-  IF v_res.state IN ('unknown','settled','released') THEN RETURN true; END IF;
+  IF v_res.state='unknown' THEN
+    IF EXISTS (SELECT 1 FROM public.agent_budget_ledger WHERE reservation_id=v_res.id AND event_key='unknown:'||p_event_key) THEN RETURN true; END IF;
+    RAISE EXCEPTION 'reservation is already unknown under a different event key' USING ERRCODE='23505';
+  END IF;
+  IF v_res.state IN ('settled','released') THEN RETURN true; END IF;
   IF v_res.state<>'active' THEN RAISE EXCEPTION 'reservation is not active' USING ERRCODE='55000'; END IF;
   INSERT INTO public.agent_budget_ledger(reservation_id,event_key,event_type,amount_microusd,metadata)
     VALUES(v_res.id,'unknown:'||p_event_key,'unknown',v_res.reserved_microusd,jsonb_build_object('reason',p_reason));
