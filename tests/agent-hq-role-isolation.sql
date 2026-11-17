@@ -294,7 +294,9 @@ GRANT USAGE,SELECT ON SEQUENCE agent_budget_reservations_id_seq,agent_budget_led
 
 GRANT USAGE ON SCHEMA public TO agent_hq_budget_owner_ci;
 GRANT SELECT ON agent_tasks,agent_runs,agent_budget_config,agent_budget_reservations TO agent_hq_budget_owner_ci;
-GRANT INSERT,UPDATE ON agent_runs TO agent_hq_budget_owner_ci;
+GRANT SELECT ON agent_runs TO agent_hq_budget_owner_ci;
+GRANT INSERT (task_id,role,worker_id,provider,model,status,cost_microusd) ON agent_runs TO agent_hq_budget_owner_ci;
+GRANT UPDATE (status,input_tokens,output_tokens,cost_microusd,error,finished_at) ON agent_runs TO agent_hq_budget_owner_ci;
 GRANT INSERT,UPDATE ON agent_budget_reservations TO agent_hq_budget_owner_ci;
 GRANT INSERT ON agent_budget_ledger,agent_budget_settlements TO agent_hq_budget_owner_ci;
 GRANT SELECT ON agent_budget_ledger,agent_budget_settlements TO agent_hq_budget_owner_ci;
@@ -568,7 +570,7 @@ CREATE POLICY run_read_own_role ON agent_runs FOR SELECT USING (
 -- CI-only definer owner may read aggregate inputs, but no runtime LOGIN is a member of this role.
 CREATE POLICY run_budget_aggregate_fn_owner ON agent_runs FOR SELECT TO agent_hq_fn_owner_ci USING (true);
 CREATE POLICY run_insert_own_role ON agent_runs FOR INSERT WITH CHECK (
-  session_user='agent_hq_budget_owner_ci' OR (
+  role = COALESCE(public.agent_role_for_session(), '__denied__') AND (
     role = COALESCE(public.agent_role_for_session(), '__denied__')
     AND status='running'
     AND EXISTS (SELECT 1 FROM agent_tasks t WHERE t.id=agent_runs.task_id AND t.assigned_role=role)
