@@ -8,6 +8,7 @@ import path from "node:path";
 
 const databaseUrl = process.env.AGENT_HQ_TEST_DATABASE_URL;
 const supervisorUrl = process.env.AGENT_HQ_ROLE_TEST_URL_SUPERVISOR;
+const operatorUrl = process.env.AGENT_HQ_ROLE_TEST_URL_OPERATOR;
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const runNode = (script, args = [], overrides = {}) => spawnSync(process.execPath, [script, ...args], {
   cwd: root,
@@ -224,14 +225,15 @@ test("Agent HQ approval CLI lists, approves and rejects pending requests exactly
     assert.ok(listed.stdout.includes(String(approvalIds[0])));
     assert.ok(listed.stdout.includes(String(approvalIds[1])));
 
-    const approved = runNode("scripts/agent-hq-bus.mjs", ["approve", String(approvalIds[0]), "approved in disposable test"]);
+    assert.ok(operatorUrl, "Missing isolated agent_operator test login");
+    const approved = runNode("scripts/agent-hq-bus.mjs", ["approve", String(approvalIds[0]), "approved in disposable test"], { AGENT_HQ_OPERATOR_DATABASE_URL: operatorUrl });
     assert.equal(approved.status, 0, approved.stderr || approved.stdout);
     assert.match(approved.stdout, /"status": "approved"/);
-    const rejected = runNode("scripts/agent-hq-bus.mjs", ["reject", String(approvalIds[1]), "rejected in disposable test"]);
+    const rejected = runNode("scripts/agent-hq-bus.mjs", ["reject", String(approvalIds[1]), "rejected in disposable test"], { AGENT_HQ_OPERATOR_DATABASE_URL: operatorUrl });
     assert.equal(rejected.status, 0, rejected.stderr || rejected.stdout);
     assert.match(rejected.stdout, /"status": "rejected"/);
 
-    const secondDecision = runNode("scripts/agent-hq-bus.mjs", ["approve", String(approvalIds[0]), "must fail"]);
+    const secondDecision = runNode("scripts/agent-hq-bus.mjs", ["approve", String(approvalIds[0]), "must fail"], { AGENT_HQ_OPERATOR_DATABASE_URL: operatorUrl });
     assert.notEqual(secondDecision.status, 0, "A decided approval must not be decided again.");
     const rows = await sql`SELECT id,status,decided_by FROM agent_approvals WHERE id = ANY(${approvalIds}::bigint[]) ORDER BY id`;
     assert.equal(rows.find(row => String(row.id) === String(approvalIds[0])).status, "approved");
