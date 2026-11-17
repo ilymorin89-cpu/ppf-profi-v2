@@ -268,7 +268,10 @@ CREATE POLICY artifact_insert_own_task ON agent_artifacts FOR INSERT WITH CHECK 
 );
 
 CREATE POLICY approval_read_requester ON agent_approvals FOR SELECT USING (
-  session_user='agent_supervisor' OR requested_by = COALESCE(public.agent_role_for_session(), '__denied__')
+  CASE
+    WHEN session_user IN ('agent_supervisor','agent_operator') THEN TRUE
+    ELSE requested_by = COALESCE(public.agent_role_for_session(), '__denied__')
+  END
 );
 CREATE POLICY approval_operator_read ON agent_approvals FOR SELECT USING (session_user='agent_operator');
 CREATE POLICY approval_operator_decide ON agent_approvals FOR UPDATE
