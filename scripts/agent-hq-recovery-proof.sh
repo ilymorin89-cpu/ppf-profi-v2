@@ -64,7 +64,8 @@ for migration in \
   drizzle/0007_agent_task_access.sql \
   drizzle/0008_agent_budget_trusted_settlement.sql \
   drizzle/0009_agent_hq_runtime_rls.sql \
-  drizzle/0010_agent_hq_authenticated_worker_identity.sql; do
+  drizzle/0010_agent_hq_authenticated_worker_identity.sql \
+  drizzle/0011_agent_hq_readonly_monitor.sql; do
   psql "$SOURCE_URL" -v ON_ERROR_STOP=1 -f "$migration"
 done
 psql "$SOURCE_URL" -v ON_ERROR_STOP=1 -f tests/agent-hq-register-test-workers.sql

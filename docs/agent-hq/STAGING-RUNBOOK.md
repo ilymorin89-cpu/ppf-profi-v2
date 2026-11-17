@@ -43,7 +43,18 @@ psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0007_agent_task_acce
 psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0008_agent_budget_trusted_settlement.sql
 psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0009_agent_hq_runtime_rls.sql
 psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0010_agent_hq_authenticated_worker_identity.sql
+psql "$STAGING_MIGRATION_URL" -v ON_ERROR_STOP=1 -f drizzle/0011_agent_hq_readonly_monitor.sql
 ```
+
+Use a separate staging database URL for runtime. The staging database name is pinned to `agent_hq_staging`; do not point this procedure at the production database. Before creating worker services, register all 19 unique worker LOGINs and immutable worker IDs in `agent_worker_principals`, and create distinct `agent_supervisor` and `agent_operator` LOGINs. Keep the budget, runtime and monitor SECURITY DEFINER function-owner roles as NOLOGIN.
+
+Run the fail-closed preflight with a TLS-enabled, read-only-capable staging migration/verification account. It checks the exact database name, TLS, the disabled budget, all 19 enabled principals, unique LOGINs/worker IDs, least-privilege LOGIN attributes, separate supervisor/operator LOGINs and three NOLOGIN function owners (budget, runtime and monitor). It makes no changes and makes no provider calls:
+
+```sh
+STAGING_DATABASE_URL='postgresql://<staging-verifier>:<secret>@<staging-host>:5432/agent_hq_staging?sslmode=require' npm run agent-hq:staging-preflight
+```
+
+Do not paste the URL into chat, shell history or CI logs. Supply it through the host secret manager/environment injection. The command must print `result: PASS`; otherwise stop and fix the reported blocker.
 
 Use a separate staging database URL for runtime. Verify that the budget row exists and remains disabled:
 
@@ -123,7 +134,7 @@ For a full delegated lifecycle, start the specialist workers with their own role
 
 ## 7. Service management and rollback
 
-Use systemd (or an equivalent process supervisor) with one service instance per role and a separate supervisor process. Keep automatic restart enabled, but rate-limit restarts and alert on repeated failures. Do not expose worker ports publicly; workers do not need inbound HTTP access.
+Use systemd (or an equivalent process supervisor) with one service instance per role and a separate supervisor process. Keep automatic restart enabled, but rate-limit restarts and alert on repeated failures. Do not expose worker ports publicly; workers do not need inbound HTTP access. The supplied units send SIGTERM, use mixed process-group termination and allow 150 seconds for graceful shutdown. The supervisor finishes its current database cycle, wakes immediately from its polling sleep, and closes its database pool. Verify `systemctl stop` completes within the configured timeout and inspect service logs before restarting.
 
 Workers handle `SIGTERM` and `SIGINT` by stopping new claims and aborting an in-flight provider request. A failed heartbeat also aborts the active request and stops further tool execution. If a provider request may already have been accepted, the reservation is marked `unknown` and retained for operator reconciliation; it is never automatically released merely because shutdown or lease loss interrupted the response. Allow the service manager a bounded stop timeout longer than the provider request cancellation and database cleanup window, then verify the worker exited and inspect unknown reservations before restarting affected tasks.
 
@@ -155,6 +166,23 @@ sudo systemctl enable --now agent-hq-supervisor
 ```
 
 Do not enable all roles by default. Add specialists only when a test requires them. Review logs with `journalctl -u agent-hq-worker@coordinator -f` and `journalctl -u agent-hq-supervisor -f`. To stop staging, stop and disable each enabled worker instance and the supervisor before disabling the budget.
+
+## 9. Install read-only staging monitoring
+
+The monitor is pinned to `agent_hq_staging`, requires TLS and the authenticated `agent_supervisor` LOGIN, and performs read-only checks for the 19 worker principals, budget safety, expired leases and unknown/active reservations. It emits a JSON result to the system journal and exits non-zero on critical conditions. It does not send external notifications.
+
+Create `/etc/ppf-agent-hq/monitor.env` using the secret manager with a staging-only `DATABASE_URL` authenticated as `agent_supervisor`; do not reuse a production URL. Install and enable the timer:
+
+```sh
+sudo install -o root -g root -m 0644 deploy/systemd/agent-hq-monitor.service /etc/systemd/system/
+sudo install -o root -g root -m 0644 deploy/systemd/agent-hq-monitor.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now agent-hq-monitor.timer
+sudo systemctl start agent-hq-monitor.service
+sudo journalctl -u agent-hq-monitor.service --since "10 minutes ago"
+```
+
+A successful check prints `"status": "OK"`. A `CRITICAL` result or non-zero service result requires operator investigation. Configure the host's existing monitoring/alerting platform to alert on failed `agent-hq-monitor.service` runs and repeated worker/supervisor restarts. No webhook, email, Telegram or other external alert destination is configured by this repository.
 
 ## Database role isolation status
 
