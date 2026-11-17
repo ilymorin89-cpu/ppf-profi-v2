@@ -22,6 +22,8 @@ on:
       - "drizzle/0009_agent_hq_runtime_rls.sql"
       - "drizzle/0010_agent_hq_authenticated_worker_identity.sql"
       - "drizzle/0011_agent_hq_readonly_monitor.sql"
+      - "scripts/agent-hq-staging-register-workers.sql"
+      - "scripts/agent-hq-staging-register-workers.sql"
       - "tests/agent-hq-register-test-workers.sql"
       - "tests/agent-hq-provision-test-roles.sql"
       - "docs/agent-hq/**"
