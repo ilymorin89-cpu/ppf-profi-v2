@@ -287,7 +287,7 @@ BEGIN
   END IF;
   SELECT * INTO v_task FROM public.agent_tasks
     WHERE id=v_res.task_id AND assigned_role=v_role AND lease_owner=v_res.worker_id
-      AND status IN ('claimed','running')
+      AND lease_until>clock_timestamp() AND status IN ('claimed','running')
     FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'settlement requires the original active task lease' USING ERRCODE='42501'; END IF;
   IF v_res.state NOT IN ('active','unknown') THEN
@@ -334,6 +334,11 @@ BEGIN
   SELECT * INTO v_res FROM public.agent_budget_reservations WHERE id=p_reservation_id AND role=v_role FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'reservation not owned by caller' USING ERRCODE='42501'; END IF;
   IF v_res.state='released' THEN RETURN true; END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.agent_tasks t WHERE t.id=v_res.task_id
+    AND t.assigned_role=v_role AND t.lease_owner=v_res.worker_id
+    AND t.lease_until>clock_timestamp() AND t.status IN ('claimed','running')) THEN
+    RAISE EXCEPTION 'release requires the original active task lease' USING ERRCODE='42501';
+  END IF;
   IF v_res.state<>'active' THEN RAISE EXCEPTION 'only active reservations can be released' USING ERRCODE='55000'; END IF;
   INSERT INTO public.agent_budget_ledger(reservation_id,event_key,event_type,amount_microusd,metadata)
     VALUES(v_res.id,'release:'||p_idempotency_key,'released',v_res.reserved_microusd,jsonb_build_object('reason',p_reason));
