@@ -150,7 +150,10 @@ test("Agent HQ runs coordinator → SEO → QA → supervisor under separate Pos
     assert.match(artifact.content, new RegExp("Verified SEO evidence " + marker));
     assert.match(artifact.content, /VERDICT: PASS/);
   } finally {
-    if (parentId) await sql`DELETE FROM agent_tasks WHERE id=${parentId}`;
+    if (parentId) {
+      await sql`DELETE FROM agent_tasks WHERE parent_task_id=${parentId}`;
+      await sql`DELETE FROM agent_tasks WHERE id=${parentId}`;
+    }
     if (previousBudget) await sql`UPDATE agent_budget_config SET enabled=${previousBudget.enabled},
       daily_cap_microusd=${previousBudget.daily_cap_microusd},
       monthly_cap_microusd=${previousBudget.monthly_cap_microusd},
