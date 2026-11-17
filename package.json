@@ -16,7 +16,8 @@
     "agent-hq:test": "node --test tests/agent-hq*.test.mjs",
     "agent-hq:worker": "node scripts/agent-hq-worker.mjs",
     "agent-hq:supervisor": "node scripts/agent-hq-supervisor.mjs",
-    "agent-hq:launch": "node scripts/agent-hq-launch.mjs"
+    "agent-hq:launch": "node scripts/agent-hq-launch.mjs",
+    "agent-hq:simulate": "node scripts/agent-hq-simulate.mjs"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",
