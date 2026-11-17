@@ -71,7 +71,7 @@ GRANT USAGE,SELECT ON SEQUENCE public.agent_runs_id_seq,public.agent_budget_rese
 GRANT USAGE ON SCHEMA public TO agent_hq_budget_owner;
 REVOKE CREATE ON SCHEMA public FROM agent_hq_budget_owner;
 GRANT SELECT ON public.agent_tasks,public.agent_budget_config TO agent_hq_budget_owner;
-GRANT UPDATE (status,lease_owner,lease_until,updated_at,completed_at) ON public.agent_tasks TO agent_hq_budget_owner;
+GRANT UPDATE (status,attempts,lease_owner,lease_until,updated_at,completed_at) ON public.agent_tasks TO agent_hq_budget_owner;
 GRANT SELECT,INSERT,UPDATE ON public.agent_runs TO agent_hq_budget_owner;
 GRANT SELECT,INSERT,UPDATE ON public.agent_budget_reservations TO agent_hq_budget_owner;
 GRANT SELECT,INSERT ON public.agent_budget_ledger,public.agent_budget_settlements TO agent_hq_budget_owner;
@@ -156,6 +156,35 @@ CREATE POLICY budget_owner_settlement_read ON public.agent_budget_settlements
 DROP POLICY IF EXISTS budget_owner_settlement_insert ON public.agent_budget_settlements;
 CREATE POLICY budget_owner_settlement_insert ON public.agent_budget_settlements
   FOR INSERT TO agent_hq_budget_owner WITH CHECK (true);
+
+CREATE OR REPLACE FUNCTION public.agent_task_claim(p_worker_id TEXT)
+RETURNS TABLE(id BIGINT,parent_task_id BIGINT,title TEXT,objective TEXT,expected_output TEXT,
+  acceptance_criteria JSONB,attempts INTEGER,max_attempts INTEGER,budget_limit_microusd BIGINT)
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $claim$
+DECLARE
+  v_role TEXT;
+BEGIN
+  v_role:=public.agent_budget_role_for_session();
+  IF v_role IS NULL OR p_worker_id IS NULL OR length(p_worker_id) NOT BETWEEN 1 AND 120 THEN
+    RAISE EXCEPTION 'invalid worker task claim identity' USING ERRCODE='42501';
+  END IF;
+  RETURN QUERY
+    WITH candidate AS (
+      SELECT t.id FROM public.agent_tasks t
+      WHERE t.assigned_role=v_role AND t.status='queued' AND t.attempts<t.max_attempts
+      ORDER BY t.priority,t.created_at
+      FOR UPDATE SKIP LOCKED LIMIT 1
+    )
+    UPDATE public.agent_tasks t SET status='claimed',lease_owner=p_worker_id,
+      lease_until=clock_timestamp()+interval '3 minutes',attempts=t.attempts+1,updated_at=now()
+    FROM candidate
+    WHERE t.id=candidate.id
+    RETURNING t.id,t.parent_task_id,t.title,t.objective,t.expected_output,t.acceptance_criteria,
+      t.attempts,t.max_attempts,t.budget_limit_microusd;
+END
+$claim$;
 
 CREATE OR REPLACE FUNCTION public.agent_budget_reserve(
   p_task_id BIGINT,p_worker_id TEXT,p_provider TEXT,p_model TEXT,p_estimated_input_tokens INTEGER,
@@ -521,6 +550,7 @@ BEGIN
 END
 $recover$;
 
+ALTER FUNCTION public.agent_task_claim(TEXT) OWNER TO agent_hq_budget_owner;
 ALTER FUNCTION public.agent_budget_reserve(BIGINT,TEXT,TEXT,TEXT,INTEGER,INTEGER,INTEGER,INTEGER,TEXT) OWNER TO agent_hq_budget_owner;
 ALTER FUNCTION public.agent_budget_settle(BIGINT,TEXT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) OWNER TO agent_hq_budget_owner;
 ALTER FUNCTION public.agent_budget_release(BIGINT,TEXT,TEXT,TEXT) OWNER TO agent_hq_budget_owner;
@@ -530,6 +560,7 @@ ALTER FUNCTION public.agent_budget_reconcile_no_charge(BIGINT,TEXT,TEXT) OWNER T
 ALTER FUNCTION public.agent_budget_recover_expired_tasks() OWNER TO agent_hq_budget_owner;
 REVOKE CREATE ON SCHEMA public FROM agent_hq_budget_owner;
 
+REVOKE ALL ON FUNCTION public.agent_task_claim(TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.agent_budget_reserve(BIGINT,TEXT,TEXT,TEXT,INTEGER,INTEGER,INTEGER,INTEGER,TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.agent_budget_settle(BIGINT,TEXT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.agent_budget_release(BIGINT,TEXT,TEXT,TEXT) FROM PUBLIC;
@@ -551,6 +582,7 @@ BEGIN
     EXECUTE format('REVOKE INSERT,UPDATE ON public.agent_runs FROM %I',role_name);
     EXECUTE format('REVOKE INSERT (task_id,role,worker_id,provider,model,status,cost_microusd) ON public.agent_runs FROM %I',role_name);
     EXECUTE format('REVOKE UPDATE (status,input_tokens,output_tokens,cost_microusd,error,finished_at) ON public.agent_runs FROM %I',role_name);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_task_claim(TEXT) TO %I',role_name);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_budget_reserve(BIGINT,TEXT,TEXT,TEXT,INTEGER,INTEGER,INTEGER,INTEGER,TEXT) TO %I',role_name);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_budget_settle(BIGINT,TEXT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) TO %I',role_name);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_budget_release(BIGINT,TEXT,TEXT,TEXT) TO %I',role_name);
