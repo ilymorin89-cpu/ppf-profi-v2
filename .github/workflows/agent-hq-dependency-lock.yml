@@ -43,8 +43,12 @@ jobs:
           npm pkg set 'dependencies.next=16.4.6' 'dependencies.react=19.3.1' 'dependencies.react-dom=19.3.1' 'devDependencies.eslint-config-next=16.4.6'
           npm install --package-lock-only --ignore-scripts --no-audit --no-fund
           npm ci --ignore-scripts --no-audit --no-fund
-      - name: Audit dependency tree (fail on critical advisories)
-        run: npm audit --audit-level=critical
+      - name: Apply non-breaking dependency security fixes
+        run: |
+          npm audit fix --ignore-scripts --no-fund
+          npm ci --ignore-scripts --no-audit --no-fund
+      - name: Audit dependency tree (fail on high or critical advisories)
+        run: npm audit --audit-level=high
       - name: Apply Agent HQ migrations to disposable PostgreSQL
         run: |
           psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0003_agent_hq.sql
