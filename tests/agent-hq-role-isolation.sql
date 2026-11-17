@@ -57,7 +57,7 @@ LANGUAGE SQL
 STABLE
 SECURITY DEFINER
 SET search_path = pg_catalog, public
-AS $
+AS $agent_access$
   SELECT CASE session_user
     WHEN 'agent_qa_security' THEN EXISTS (
       SELECT 1 FROM public.agent_task_access a WHERE a.task_id=p_task_id AND a.principal='qa_security'
@@ -67,7 +67,7 @@ AS $
     )
     ELSE FALSE
   END
-$;
+$agent_access$;
 REVOKE ALL ON FUNCTION public.agent_has_task_access(BIGINT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.agent_has_task_access(BIGINT)
   TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
