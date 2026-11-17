@@ -384,7 +384,11 @@ test("Agent HQ blocks retry and retains reservation after ambiguous provider out
         AGENT_MODEL:"gpt-4.1-mini",AGENT_WEB_SEARCH_ENABLED:"false",
         AGENT_HQ_TEST_RESPONSES_JSON:JSON.stringify({
           __test_provider_outcome:"ambiguous",
-          output:[],usage:{input_tokens:0,output_tokens:0}
+          output:[{
+            type:"message",
+            content:[{type:"output_text",text:"Deterministic ambiguous-outcome fixture."}]
+          }],
+          usage:{input_tokens:0,output_tokens:0}
         })
       }
     });
