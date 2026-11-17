@@ -184,10 +184,9 @@ CREATE POLICY run_update_own_role ON agent_runs FOR UPDATE USING (
 );
 
 CREATE POLICY task_access_read_own ON agent_task_access FOR SELECT USING (
-  principal=CASE session_user
+  session_user='agent_supervisor' OR principal=CASE session_user
     WHEN 'agent_qa_security' THEN 'qa_security'
     WHEN 'agent_coordinator' THEN 'coordinator'
-    WHEN 'agent_supervisor' THEN 'supervisor'
     ELSE '__denied__' END
 );
 CREATE POLICY task_access_insert_supervisor ON agent_task_access FOR INSERT
