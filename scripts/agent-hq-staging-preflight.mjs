@@ -34,7 +34,7 @@ try {
     "community_manager","content_seo","ads_manager","trend_scout",
     "auto_news_editor","auto_law_monitor","fact_checker"
   ];
-  assert.deepEqual(snapshot.principals.roles, expectedRoles, "Registered worker role manifest does not match the 19 expected roles");
+  assert.deepEqual(snapshot.principals.roles, [...expectedRoles].sort(), "Registered worker role manifest does not match the 19 expected roles");
   assert.equal(Number(principals.total), 19, "Exactly 19 worker principals are required");
   assert.equal(Number(principals.enabled), 19, "All 19 worker principals must be enabled");
   assert.equal(Number(principals.distinct_logins), 19, "Each worker needs a distinct PostgreSQL LOGIN");
