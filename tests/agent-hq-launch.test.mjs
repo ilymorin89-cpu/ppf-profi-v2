@@ -44,107 +44,61 @@ const validPreflightEnv = {
   })
 };
 
-const allWorkerRoles = [
-  "coordinator","web_engineer","seo","geo","growth","analytics","qa_security","vk_strategist",
-  "copywriter","designer","image_generator","storyteller","community_manager","content_seo",
-  "ads_manager","trend_scout","auto_news_editor","auto_law_monitor","fact_checker"
-];
-const allRoleEnv = Object.fromEntries(allWorkerRoles.map(role => [
-  "AGENT_HQ_DATABASE_URL_" + role.toUpperCase(),
-  "postgres://agent_" + role + ":test@127.0.0.1:5432/agent_hq_test"
-]));
-allRoleEnv.AGENT_HQ_DATABASE_URL_SUPERVISOR = "postgres://agent_supervisor:test@127.0.0.1:5432/agent_hq_test";
-
-test("research launch group requires audited per-role credentials", () => {
-  const result = run(["check", "research"]);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /Missing required settings/);
-  assert.match(result.stderr, /AGENT_HQ_DATABASE_URL_WEB_ENGINEER/);
-  assert.match(result.stderr, /AGENT_HQ_DATABASE_URL_ANALYTICS/);
-  assert.doesNotMatch(result.stderr, /roles without audited database authorization/);
+test("launcher requires explicit test mode and workers opt-in", () => {
+  const noMode = run(["check", "core"]);
+  assert.notEqual(noMode.status, 0);
+  assert.match(noMode.stderr, /NODE_ENV must be test/);
+  const noWorkers = run(["check", "core"], { NODE_ENV: "test" });
+  assert.notEqual(noWorkers.status, 0);
+  assert.match(noWorkers.stderr, /AGENT_HQ_WORKERS_ENABLED=true/);
 });
 
-test("all launch group requires credentials for all 19 worker roles and supervisor", () => {
-  const result = run(["check", "all"]);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /Missing required settings/);
-  for (const role of ["COORDINATOR","GEO","GROWTH","VK_STRATEGIST","COPYWRITER","DESIGNER",
-    "IMAGE_GENERATOR","STORYTELLER","COMMUNITY_MANAGER","CONTENT_SEO","ADS_MANAGER",
-    "TREND_SCOUT","AUTO_NEWS_EDITOR","AUTO_LAW_MONITOR","FACT_CHECKER","SUPERVISOR"]) {
-    assert.match(result.stderr, new RegExp("AGENT_HQ_DATABASE_URL_" + role));
-  }
-  assert.doesNotMatch(result.stderr, /roles without audited database authorization/);
-});
-
-test("every role URL must use its exact dedicated PostgreSQL LOGIN", () => {
-  const env = {
-    ...allRoleEnv,
-    OPENAI_API_KEY: "test-no-provider-call",
-    AGENT_MODEL: "test-model",
-    AGENT_HQ_WORKERS_ENABLED: "true",
-    AGENT_HQ_DATABASE_URL_FACT_CHECKER: allRoleEnv.AGENT_HQ_DATABASE_URL_SEO
-  };
-  const result = run(["check", "all"], env);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /AGENT_HQ_DATABASE_URL_FACT_CHECKER must use the dedicated login agent_fact_checker/);
-});
-
-test("launcher refuses live provider mode before starting Docker services", () => {
-  const env = {
-    ...allRoleEnv,
-    OPENAI_API_KEY: "not-a-real-key",
-    AGENT_MODEL: "test-model",
-    AGENT_HQ_WORKERS_ENABLED: "true",
-    NODE_ENV: "production"
-  };
-  const result = run(["start", "all"], env);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /Worker start is restricted to no-spend test mode/);
-});
-
-const testModeEnv = {
-  ...allRoleEnv,
-  OPENAI_API_KEY: "test-no-provider-call",
-  AGENT_MODEL: "test-model",
-  AGENT_HQ_WORKERS_ENABLED: "true",
-  NODE_ENV: "test",
-  AGENT_HQ_TEST_RESPONSES_JSON: JSON.stringify({
-    id: "deterministic-fixture",
-    usage: { input_tokens: 1, output_tokens: 1 },
-    output: [{ type: "message", content: [{ type: "output_text", text: "test fixture" }] }]
-  })
-};
-
-test("launcher rejects remote PostgreSQL hosts even in test mode", () => {
-  const result = run(["check", "all"], {
-    ...testModeEnv,
-    AGENT_HQ_DATABASE_URL_GEO: "postgres://agent_geo:test@db.example.com:5432/agent_hq_test"
+test("launcher refuses live provider mode before Docker services can start", () => {
+  const result = run(["start", "all"], {
+    NODE_ENV: "production",
+    AGENT_HQ_WORKERS_ENABLED: "true"
   });
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /remote database hosts are forbidden/);
+  assert.match(result.stderr, /NODE_ENV must be test/);
 });
 
-test("launcher rejects any database other than the disposable agent_hq_test", () => {
+test("launcher validates isolated test groups without requiring external database URLs", () => {
   const result = run(["check", "all"], {
-    ...testModeEnv,
-    AGENT_HQ_DATABASE_URL_GEO: "postgres://agent_geo:test@127.0.0.1:5432/production"
+    NODE_ENV: "test",
+    AGENT_HQ_WORKERS_ENABLED: "true"
   });
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /disposable database named agent_hq_test/);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Isolated no-spend test configuration valid/);
+  assert.match(result.stdout, /No database connection or worker process was started/);
 });
 
-test("Docker Compose defines one isolated worker service for every role", () => {
-  const compose = readFileSync(path.join(root, "docker-compose.yml"), "utf8");
-  for (const role of [...allWorkerRoles,"supervisor"]) {
-    assert.match(compose, new RegExp("^  " + role + ":$", "m"), "Missing Compose service for " + role);
-    if (role !== "supervisor") {
-      assert.match(compose, new RegExp("AGENT_HQ_DATABASE_URL_" + role.toUpperCase()));
-    }
+test("launcher always targets the isolated test compose file", () => {
+  const source = readFileSync(launcher, "utf8");
+  assert.match(source, /docker-compose\.agent-hq-test\.yml/);
+  assert.doesNotMatch(source, /docker-compose\.yml/);
+});
+
+test("test Compose defines all 19 roles on an internal no-egress network", () => {
+  const compose = readFileSync(path.join(root, "docker-compose.agent-hq-test.yml"), "utf8");
+  const roles = [
+    "coordinator","web_engineer","seo","geo","growth","analytics","qa_security","vk_strategist",
+    "copywriter","designer","image_generator","storyteller","community_manager","content_seo",
+    "ads_manager","trend_scout","auto_news_editor","auto_law_monitor","fact_checker","supervisor"
+  ];
+  for (const role of roles) {
+    assert.match(compose, new RegExp("^  " + role + ":$", "m"), "Missing isolated Compose service " + role);
   }
+  assert.match(compose, /networks:\s+default:\s+internal:\s+true/);
+  assert.doesNotMatch(compose, /^\s+ports:/m);
+  assert.match(compose, /OPENAI_API_KEY: test-no-provider-call/);
+  assert.match(compose, /AGENT_WEB_SEARCH_ENABLED: "false"/);
 });
 
 test("unknown launch group is rejected", () => {
-  const result = run(["check", "unknown"]);
+  const result = run(["check", "unknown"], {
+    NODE_ENV: "test",
+    AGENT_HQ_WORKERS_ENABLED: "true"
+  });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /Unknown group "unknown"/);
 });
@@ -152,9 +106,8 @@ test("unknown launch group is rejected", () => {
 test("help remains available without credentials", () => {
   const result = run(["help"]);
   assert.equal(result.status, 0);
-  assert.match(result.stdout, /Agent HQ launcher/);
+  assert.match(result.stdout, /isolated no-spend test launcher/);
 });
-
 
 const simulator = path.join(root, "scripts", "agent-hq-simulate.mjs");
 function runSimulation(args, extraEnv = {}) {
