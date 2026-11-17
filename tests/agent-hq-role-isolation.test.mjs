@@ -482,8 +482,7 @@ test("Agent HQ trusted budget reservation is atomic, idempotent and settles once
       VALUES('seo','budget reservation','test','test','integration-test','running','seo-budget-test',
         now()+interval '5 minutes',400000) RETURNING id`;
     taskId=task.id;
-    await seo`SELECT set_config('agent.worker_id','seo-budget-test',false)`;
-    const key="reserve-"+marker;
+        const key="reserve-"+marker;
     const reserved=await seo`SELECT * FROM agent_budget_reserve(
       ${taskId},'seo-budget-test','test-model',10000,256,1,0,${key})`;
     assert.equal(reserved.length,1);
@@ -493,10 +492,10 @@ test("Agent HQ trusted budget reservation is atomic, idempotent and settles once
     assert.equal(String(duplicate[0].run_id),String(reserved[0].run_id));
     assert.equal(String(duplicate[0].reservation_id),String(reserved[0].reservation_id));
     const cost=await seo`SELECT agent_budget_settle(
-      ${reserved[0].reservation_id},'seo-budget-test',1000,500,0,${"settle-"+marker},'provider-test-ref') AS cost`;
+      ${reserved[0].reservation_id},1000,500,0,${"settle-"+marker},'provider-test-ref') AS cost`;
     assert.ok(Number(cost[0].cost)>0);
     const repeat=await seo`SELECT agent_budget_settle(
-      ${reserved[0].reservation_id},'seo-budget-test',1000,500,0,${"settle-"+marker},'provider-test-ref') AS cost`;
+      ${reserved[0].reservation_id},1000,500,0,${"settle-"+marker},'provider-test-ref') AS cost`;
     assert.equal(String(repeat[0].cost),String(cost[0].cost));
     const [ledger]=await admin`SELECT count(*)::int AS n FROM agent_budget_ledger WHERE reservation_id=${reserved[0].reservation_id} AND event_type='settled'`;
     assert.equal(ledger.n,1);
