@@ -43,8 +43,10 @@ The disposable PostgreSQL CI harness now provisions distinct LOGINs for all 19 w
 
 Runtime startup now independently verifies the actual PostgreSQL `session_user`: each worker requires `agent_<AGENT_ROLE>`, and the supervisor requires `agent_supervisor`. The check is performed after opening the database connection and before any task or lifecycle SQL. Disposable CI includes negative tests that deliberately pair a valid SEO login with the QA worker role and with the supervisor process.
 
+The CI harness was strengthened to transfer all SECURITY DEFINER helpers (role mapping, scoped task access, coordinator-parent validation, artifact ownership and test budget aggregation) to a dedicated NOLOGIN, non-BYPASSRLS function-owner role. That role receives only the SELECT rights and RLS read policies required by those helpers; runtime LOGINs are not members and the function owner does not own protected tables. Catalog assertions verify owner, SECURITY DEFINER, fixed search_path, role flags, memberships and table ownership.
+
 These tests do **not** prove production authorization:
-- helper functions in the test harness are owned by the disposable database owner;
+- the CI harness now models a dedicated `agent_hq_fn_owner_ci NOLOGIN NOBYPASSRLS` owner for SECURITY DEFINER helpers and checks its ownership/ACL boundary; production still needs a separately provisioned and reviewed function owner, privileges and policies;
 - there is no reviewed production non-login function owner and no production RLS migration;
 - the role-matrix test now covers a broader slice of row visibility and immutable columns, but still does not exercise every SQL template or every mutable column;
 - bus `send`, `inbox`, and `claim` verify the authenticated PostgreSQL LOGIN against the requested role; heartbeat/complete/fail resolve the task's visible role and enforce the matching LOGIN.
