@@ -1,3 +1,6 @@
+
+> **Historical design snapshot.** The trusted reservation/settlement implementation is now present in migration 0008 and the integrated worker uses it. Some pre-implementation findings below are superseded. Use [BILLING-RECONCILIATION-AUDIT.md](./BILLING-RECONCILIATION-AUDIT.md) and [CURRENT-STATUS.md](./CURRENT-STATUS.md) for current findings and remaining gates.
+
 # Agent HQ budget reservation and settlement security design
 
 Status: implementation gate and threat-model record. This document is not a production migration and grants no runtime permission.
