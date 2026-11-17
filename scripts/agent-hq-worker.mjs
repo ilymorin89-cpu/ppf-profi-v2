@@ -367,12 +367,15 @@ async function runTask(task) {
     console.log(JSON.stringify({ taskId: task.id, status: "done", inputTokens: usage.input_tokens || 0, outputTokens: usage.output_tokens || 0, webSearchCalls: totalWebSearchCalls, costMicrousd: actualCost }));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    let safeToRetry = false;
     if (run?.reservationId) {
       try {
         if (providerCallStarted) {
+          // Provider outcome may be billable: retain the reservation and require operator reconciliation.
           await sql`SELECT public.agent_budget_mark_unknown(${run.reservationId}, ${workerId}, ${message.slice(0,500)}, ${"agent-unknown-" + run.id})`;
         } else {
           await sql`SELECT public.agent_budget_release(${run.reservationId}, ${workerId}, ${message.slice(0,500)}, ${"agent-release-" + run.id})`;
+          safeToRetry = true;
         }
       } catch (budgetError) {
         console.error("Budget reservation remains held for reconciliation:", budgetError instanceof Error ? budgetError.message : budgetError);
@@ -380,7 +383,7 @@ async function runTask(task) {
     }
     await sql.begin(async tx => {
       await tx`UPDATE agent_tasks SET
-        status=CASE WHEN attempts < max_attempts THEN 'queued' ELSE 'dead_letter' END,
+        status=CASE WHEN attempts >= max_attempts THEN 'dead_letter' WHEN ${safeToRetry} THEN 'queued' ELSE 'blocked' END,
         lease_owner=NULL,lease_until=NULL,updated_at=now()
         WHERE id=${task.id} AND lease_owner=${workerId}`;
       await tx`INSERT INTO agent_messages
