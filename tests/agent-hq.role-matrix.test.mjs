@@ -15,6 +15,7 @@ test("every Agent HQ worker login sees only its own role and cannot forge messag
   const idByRole = new Map();
   const messageKeys = [];
   const artifactIds = [];
+  const runIds = [];
   try {
     for (const role of roles) {
       const [task] = await owner`INSERT INTO agent_tasks
@@ -38,7 +39,7 @@ test("every Agent HQ worker login sees only its own role and cannot forge messag
     const [geoRun] = await owner`INSERT INTO agent_runs
       (task_id,role,worker_id,provider,model,status,cost_microusd)
       VALUES (${idByRole.get("geo")},'geo','matrix-geo','ci','mock','running',200) RETURNING id`;
-    const runIds = [seoRun.id, geoRun.id];
+    runIds.push(seoRun.id, geoRun.id);
     await owner`INSERT INTO agent_task_access (task_id,principal,access_reason)
       VALUES (${idByRole.get("seo")},'qa_security','qa_review'),
              (${idByRole.get("geo")},'coordinator','coordinator_oversight')`;
@@ -133,7 +134,7 @@ test("every Agent HQ worker login sees only its own role and cannot forge messag
     }
   } finally {
     if (messageKeys.length) await owner`DELETE FROM agent_messages WHERE idempotency_key = ANY(${messageKeys}::varchar[])`;
-    if (runIds?.length) await owner`DELETE FROM agent_runs WHERE id = ANY(${runIds}::bigint[])`;
+    if (runIds.length) await owner`DELETE FROM agent_runs WHERE id = ANY(${runIds}::bigint[])`;
     if (artifactIds.length) await owner`DELETE FROM agent_artifacts WHERE id = ANY(${artifactIds}::bigint[])`;
     if (taskIds.length) await owner`DELETE FROM agent_tasks WHERE id = ANY(${taskIds}::bigint[])`;
     await owner.end({ timeout: 5 });
