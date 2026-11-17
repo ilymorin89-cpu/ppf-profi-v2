@@ -1,0 +1,83 @@
+-- Disposable CI-only role isolation harness. Never apply to a live database.
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='agent_seo') THEN CREATE ROLE agent_seo LOGIN PASSWORD 'ci_agent_seo' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS; END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='agent_qa_security') THEN CREATE ROLE agent_qa_security LOGIN PASSWORD 'ci_agent_qa' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS; END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='agent_coordinator') THEN CREATE ROLE agent_coordinator LOGIN PASSWORD 'ci_agent_coordinator' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS; END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='agent_supervisor') THEN CREATE ROLE agent_supervisor LOGIN PASSWORD 'ci_agent_supervisor' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS; END IF;
+END $$;
+GRANT CONNECT ON DATABASE agent_hq_test TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
+GRANT USAGE ON SCHEMA public TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
+GRANT SELECT,UPDATE ON agent_tasks TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
+GRANT INSERT ON agent_tasks TO agent_coordinator,agent_supervisor;
+GRANT SELECT,INSERT ON agent_messages TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
+GRANT SELECT,INSERT,UPDATE ON agent_runs TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
+GRANT SELECT,INSERT ON agent_artifacts TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
+GRANT SELECT,INSERT ON agent_approvals TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
+GRANT SELECT ON agent_budget_config TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
+GRANT USAGE,SELECT ON ALL SEQUENCES IN SCHEMA public TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
+
+ALTER TABLE agent_tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE agent_tasks FORCE ROW LEVEL SECURITY;
+ALTER TABLE agent_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE agent_messages FORCE ROW LEVEL SECURITY;
+ALTER TABLE agent_runs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE agent_runs FORCE ROW LEVEL SECURITY;
+ALTER TABLE agent_artifacts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE agent_artifacts FORCE ROW LEVEL SECURITY;
+ALTER TABLE agent_approvals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE agent_approvals FORCE ROW LEVEL SECURITY;
+ALTER TABLE agent_budget_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE agent_budget_config FORCE ROW LEVEL SECURITY;
+
+CREATE POLICY task_read_own_role ON agent_tasks FOR SELECT USING (
+  session_user='agent_supervisor' OR assigned_role = CASE session_user
+    WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
+    WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
+);
+CREATE POLICY task_update_own_role ON agent_tasks FOR UPDATE USING (
+  session_user='agent_supervisor' OR assigned_role = CASE session_user
+    WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
+    WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
+) WITH CHECK (
+  session_user='agent_supervisor' OR assigned_role = CASE session_user
+    WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
+    WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
+);
+CREATE POLICY task_insert_coordinator ON agent_tasks FOR INSERT WITH CHECK (session_user IN ('agent_coordinator','agent_supervisor') AND (session_user='agent_supervisor' OR created_by='coordinator'));
+
+CREATE POLICY message_read_recipient ON agent_messages FOR SELECT USING (session_user='agent_supervisor' OR to_role = CASE session_user
+  WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
+  WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END);
+CREATE POLICY message_insert_sender ON agent_messages FOR INSERT WITH CHECK (session_user='agent_supervisor' OR from_role = CASE session_user
+  WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
+  WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END);
+
+CREATE POLICY run_read_own_role ON agent_runs FOR SELECT USING (session_user='agent_supervisor' OR role = CASE session_user
+  WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
+  WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END);
+CREATE POLICY run_insert_own_role ON agent_runs FOR INSERT WITH CHECK (session_user='agent_supervisor' OR role = CASE session_user
+  WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
+  WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END);
+CREATE POLICY run_update_own_role ON agent_runs FOR UPDATE USING (session_user='agent_supervisor' OR role = CASE session_user
+  WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
+  WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END) WITH CHECK (session_user='agent_supervisor' OR role = CASE session_user
+  WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
+  WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END);
+
+CREATE POLICY artifact_read_own_task ON agent_artifacts FOR SELECT USING (
+  session_user='agent_supervisor' OR EXISTS (SELECT 1 FROM agent_tasks t WHERE t.id=task_id AND t.assigned_role = CASE session_user
+    WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
+    WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END)
+);
+CREATE POLICY artifact_insert_own_task ON agent_artifacts FOR INSERT WITH CHECK (
+  session_user='agent_supervisor' OR (created_by = CASE session_user WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security' WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END
+  AND EXISTS (SELECT 1 FROM agent_tasks t WHERE t.id=task_id AND t.assigned_role=created_by))
+);
+
+CREATE POLICY approval_read_requester ON agent_approvals FOR SELECT USING (session_user='agent_supervisor' OR requested_by = CASE session_user
+  WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
+  WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END);
+CREATE POLICY approval_insert_requester ON agent_approvals FOR INSERT WITH CHECK (session_user='agent_supervisor' OR requested_by = CASE session_user
+  WHEN 'agent_seo' THEN 'seo' WHEN 'agent_qa_security' THEN 'qa_security'
+  WHEN 'agent_coordinator' THEN 'coordinator' ELSE '__denied__' END);
+CREATE POLICY budget_read_only ON agent_budget_config FOR SELECT USING (true);
