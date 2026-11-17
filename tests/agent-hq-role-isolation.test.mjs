@@ -418,3 +418,100 @@ test("Agent HQ SECURITY DEFINER helpers use a dedicated NOLOGIN non-BYPASSRLS ow
     await admin.end();
   }
 });
+
+
+test("Agent HQ workers cannot forge authoritative run costs or usage", {
+  skip: !adminUrl || !roleUrls.seo
+}, async () => {
+  const admin=postgres(adminUrl,{max:1});
+  const seo=postgres(roleUrls.seo,{max:1});
+  let taskId;
+  try {
+    const [task]=await admin`INSERT INTO agent_tasks
+      (assigned_role,title,objective,expected_output,created_by)
+      VALUES ('seo','budget ACL test','test','test','integration-test') RETURNING id`;
+    taskId=task.id;
+    await assert.rejects(
+      seo`INSERT INTO agent_runs(task_id,role,worker_id,provider,model,status,cost_microusd)
+        VALUES (${taskId},'seo','seo-ci','test','test','running',999999)`,
+      error=>error.code==="42501",
+      "worker cannot insert a run with an authoritative cost"
+    );
+    const [row]=await admin`INSERT INTO agent_runs(task_id,role,worker_id,provider,model,status)
+      VALUES (${taskId},'seo','seo-ci','test','test','running') RETURNING id`;
+    await assert.rejects(seo`UPDATE agent_runs SET cost_microusd=1 WHERE id=${row.id}`,e=>e.code==="42501");
+    await assert.rejects(seo`UPDATE agent_runs SET input_tokens=1 WHERE id=${row.id}`,e=>e.code==="42501");
+    await assert.rejects(seo`UPDATE agent_runs SET output_tokens=1 WHERE id=${row.id}`,e=>e.code==="42501");
+    await assert.rejects(seo`INSERT INTO agent_budget_reservations
+      (run_id,task_id,role,worker_id,reserve_key,reserved_microusd,price_snapshot,day_key,month_key)
+      VALUES (${row.id},${taskId},'seo','seo-ci','forged-reserve-001',999,'{}',CURRENT_DATE,date_trunc('month',now())::date)`,
+      e=>e.code==="42501" || e.code==="42501" || e.code==="42501");
+    await assert.rejects(seo`SELECT * FROM agent_budget_ledger`,e=>e.code==="42501");
+    const [owner]=await admin`SELECT rolcanlogin,rolsuper,rolcreatedb,rolcreaterole,rolinherit,rolbypassrls
+      FROM pg_roles WHERE rolname='agent_hq_budget_owner_ci'`;
+    assert.ok(owner);
+    assert.equal(owner.rolcanlogin,false);
+    assert.equal(owner.rolsuper,false);
+    assert.equal(owner.rolcreatedb,false);
+    assert.equal(owner.rolcreaterole,false);
+    assert.equal(owner.rolinherit,false);
+    assert.equal(owner.rolbypassrls,false);
+  } finally {
+    if(taskId) await admin`DELETE FROM agent_tasks WHERE id=${taskId}`;
+    await Promise.all([seo.end(),admin.end()]);
+  }
+});
+
+test("Agent HQ trusted budget reservation is atomic, idempotent and settles once", {
+  skip: !adminUrl || !roleUrls.seo
+}, async () => {
+  const admin=postgres(adminUrl,{max:3});
+  const seo=postgres(roleUrls.seo,{max:1});
+  let taskId;
+  let oldBudget;
+  try {
+    [oldBudget]=await admin`SELECT * FROM agent_budget_config WHERE id=1`;
+    await admin`UPDATE agent_budget_config SET enabled=true,daily_cap_microusd=1000000,
+      monthly_cap_microusd=5000000,per_run_cap_microusd=500000,
+      input_price_per_million_microusd=100000,output_price_per_million_microusd=100000,
+      web_search_price_microusd_per_call=0 WHERE id=1`;
+    const marker=randomUUID();
+    const [task]=await admin`INSERT INTO agent_tasks(assigned_role,title,objective,expected_output,created_by,
+      status,lease_owner,lease_until,budget_limit_microusd)
+      VALUES('seo','budget reservation','test','test','integration-test','running','seo-budget-test',
+        now()+interval '5 minutes',400000) RETURNING id`;
+    taskId=task.id;
+    await seo`SELECT set_config('agent.worker_id','seo-budget-test',false)`;
+    const key="reserve-"+marker;
+    const reserved=await seo`SELECT * FROM agent_budget_reserve(
+      ${taskId},'seo-budget-test','test-model',10000,256,1,0,${key})`;
+    assert.equal(reserved.length,1);
+    const duplicate=await seo`SELECT * FROM agent_budget_reserve(
+      ${taskId},'seo-budget-test','test-model',10000,256,1,0,${key})`;
+    assert.equal(duplicate.length,1);
+    assert.equal(String(duplicate[0].run_id),String(reserved[0].run_id));
+    assert.equal(String(duplicate[0].reservation_id),String(reserved[0].reservation_id));
+    const cost=await seo`SELECT agent_budget_settle(
+      ${reserved[0].reservation_id},'seo-budget-test',1000,500,0,${"settle-"+marker},'provider-test-ref') AS cost`;
+    assert.ok(Number(cost[0].cost)>0);
+    const repeat=await seo`SELECT agent_budget_settle(
+      ${reserved[0].reservation_id},'seo-budget-test',1000,500,0,${"settle-"+marker},'provider-test-ref') AS cost`;
+    assert.equal(String(repeat[0].cost),String(cost[0].cost));
+    const [ledger]=await admin`SELECT count(*)::int AS n FROM agent_budget_ledger WHERE reservation_id=${reserved[0].reservation_id} AND event_type='settled'`;
+    assert.equal(ledger.n,1);
+    const [run]=await admin`SELECT status,input_tokens,output_tokens,cost_microusd FROM agent_runs WHERE id=${reserved[0].run_id}`;
+    assert.equal(run.status,"succeeded");
+    assert.equal(run.input_tokens,1000);
+    assert.equal(run.output_tokens,500);
+    assert.equal(String(run.cost_microusd),String(cost[0].cost));
+  } finally {
+    if(taskId) await admin`DELETE FROM agent_tasks WHERE id=${taskId}`;
+    if(oldBudget) await admin`UPDATE agent_budget_config SET enabled=${oldBudget.enabled},
+      daily_cap_microusd=${oldBudget.daily_cap_microusd},monthly_cap_microusd=${oldBudget.monthly_cap_microusd},
+      per_run_cap_microusd=${oldBudget.per_run_cap_microusd},
+      input_price_per_million_microusd=${oldBudget.input_price_per_million_microusd},
+      output_price_per_million_microusd=${oldBudget.output_price_per_million_microusd},
+      web_search_price_microusd_per_call=${oldBudget.web_search_price_microusd_per_call} WHERE id=1`;
+    await Promise.all([seo.end(),admin.end()]);
+  }
+});
