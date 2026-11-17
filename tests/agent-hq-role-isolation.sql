@@ -23,7 +23,7 @@ REVOKE ALL ON agent_tasks,agent_messages,agent_runs,agent_artifacts,agent_approv
 REVOKE ALL ON agent_tasks,agent_messages,agent_runs,agent_artifacts,agent_approvals,agent_budget_config,agent_task_access FROM agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
 
 GRANT SELECT ON agent_tasks,agent_messages,agent_runs,agent_artifacts,agent_approvals,agent_budget_config TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
-GRANT SELECT ON agent_task_access TO agent_qa_security,agent_coordinator,agent_supervisor;
+GRANT SELECT ON agent_task_access TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
 
 -- Task state/lease fields only. Identity, routing, parent and budget fields are immutable to workers.
 GRANT UPDATE (status,attempts,lease_owner,lease_until,updated_at,completed_at)
