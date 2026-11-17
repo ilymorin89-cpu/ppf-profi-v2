@@ -49,7 +49,7 @@ A procedure-only design remains an alternative if safe row policies cannot expre
 | auto_law_monitor | agent_auto_law_monitor |
 | fact_checker | agent_fact_checker |
 
-The role matrix currently proves each LOGIN maps from authenticated `session_user` to its logical role, sees only its own test task, and cannot insert a message under another role's sender identity. This is a deliberately bounded acceptance slice, not yet a full per-operation/per-column grant audit.
+The role matrix currently proves each LOGIN maps from authenticated `session_user` to its logical role; sees only its own task plus exact QA/coordinator task grants; sees only its own artifacts plus the exact QA/coordinator artifact grants; cannot change task routing identity or budget ownership; reads only messages addressed to itself; and cannot insert a message under another role's sender identity. The operator approval CLI is separately exercised through its own LOGIN. This is a deliberately bounded acceptance slice, not yet a full per-operation/per-column grant audit.
 
 ## Data permission matrix
 
@@ -160,11 +160,14 @@ The disposable CI harness now implements and exercises:
 
 The E2E test now executes actual coordinator, SEO, QA and supervisor processes using their separate CI PostgreSQL logins. Responses API output is deterministic and mocked in the test process; no HTTP request, API key, model spend or web search occurs. The test validates delegation, specialist completion, supervisor-issued QA access, QA PASS, and final consolidation.
 
-The lifecycle test suite was extended in PR #94 and merged into this branch. It now additionally verifies:
+The supervisor CLI acceptance suite now verifies:
 - repeated supervisor passes do not create duplicate QA tasks;
 - a completed QA task with no explicit PASS/REVISE verdict blocks the parent;
-- expired worker leases are recovered and lease ownership is cleared.
+- expired worker leases are recovered and lease ownership is cleared;
+- two concurrent supervisor processes create exactly one QA task and one scoped QA grant;
+- QA REVISE blocks the parent and notifies the coordinator;
+- exhausted specialist work in dead_letter blocks the parent and notifies the coordinator.
 
-The PR #94 CI run (#326) passed both the Agent HQ integration/syntax job and the website build, including disposable PostgreSQL migrations, integration tests, Docker Compose validation and runtime container build.
+These tests run the actual supervisor CLI against disposable PostgreSQL using the distinct supervisor LOGIN. They do not yet cover every crash/restart boundary or all possible lease races.
 
 **Important limits:** this is still a CI-only authorization harness, not a deployable runtime migration. The test helper functions are owned by the disposable CI database owner; production must use a dedicated non-login, narrowly privileged function owner with fixed search_path and reviewed grants. All 19 worker identities now have disposable CI LOGINs and are tested for own-task visibility and message-sender anti-spoofing; the separate operator approval CLI path is also exercised. These tests do not yet cover every worker/bus SQL command, every mutable column, DDL/sequence/unknown-login misuse, or all supervisor concurrency/restart/QA-revise paths. Production-grade function ownership and production RLS migration remain open. Do not copy this harness to a live database.
