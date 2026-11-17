@@ -192,11 +192,17 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
 
     const coordinatorOwn = await coordinator`SELECT id FROM agent_tasks WHERE id=${parentTask.id}`;
     assert.equal(coordinatorOwn.length, 1);
-    const [delegated] = await coordinator`INSERT INTO agent_tasks
+    await coordinator`INSERT INTO agent_tasks
       (parent_task_id,assigned_role,title,objective,expected_output,created_by)
-      VALUES (${parentTask.id},'seo','Delegated child','Do bounded work','Evidence','coordinator')
-      RETURNING id`;
-    assert.ok(delegated, "Coordinator can create a child under its own parent");
+      VALUES (${parentTask.id},'seo','Delegated child','Do bounded work','Evidence','coordinator')`;
+    const [delegated] = await coordinator`SELECT currval('agent_tasks_id_seq') AS id`;
+    assert.ok(delegated.id, "Coordinator can create a child under its own parent without SELECT-before-grant");
+    const beforeGrant = await coordinator`SELECT id FROM agent_tasks WHERE id=${delegated.id}`;
+    assert.equal(beforeGrant.length, 0, "Coordinator cannot read child before supervisor grant");
+    await supervisor`INSERT INTO agent_task_access (task_id,principal,access_reason)
+      VALUES (${delegated.id},'coordinator','coordinator_oversight')`;
+    const afterGrant = await coordinator`SELECT id FROM agent_tasks WHERE id=${delegated.id}`;
+    assert.equal(afterGrant.length, 1, "Coordinator can read child after supervisor grants scoped access");
     await assert.rejects(
       coordinator`INSERT INTO agent_tasks
         (assigned_role,title,objective,expected_output,created_by)
@@ -269,7 +275,7 @@ test("real SEO worker completes a task using its restricted PostgreSQL login and
     });
     assert.equal(child.status, 0, child.stderr || child.stdout);
     const [completed] = await admin`SELECT status,attempts FROM agent_tasks WHERE id=${taskId}`;
-    assert.equal(completed.status, "done");
+    assert.equal(completed.status, "done", child.stderr || child.stdout);
     assert.equal(completed.attempts, 1);
     const artifacts = await admin`SELECT content FROM agent_artifacts
       WHERE task_id=${taskId} AND created_by='seo'`;
