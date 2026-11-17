@@ -1,0 +1,51 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: agent_test
+      POSTGRES_PASSWORD: agent_test
+      POSTGRES_DB: agent_hq_test
+      PGDATA: /var/lib/postgresql/data/pgdata
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agent_test -d agent_hq_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: "no"
+
+  db-init:
+    image: postgres:16
+    environment:
+      AGENT_HQ_TEST_DATABASE_URL: postgres://agent_test:agent_test@postgres:5432/agent_hq_test
+    volumes:
+      - .:/workspace:ro
+    entrypoint: ["sh", "/workspace/scripts/agent-hq-test-bootstrap.sh"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  orchestrated-core:
+    image: ppf-agent-hq:four-agent-test
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-hq
+    command: ["node", "scripts/agent-hq-four-agent-e2e.mjs"]
+    init: true
+    environment:
+      NODE_ENV: test
+      AGENT_HQ_TEST_DATABASE_URL: postgres://agent_test:agent_test@postgres:5432/agent_hq_test
+      AGENT_HQ_ROLE_TEST_URL_COORDINATOR: postgres://agent_coordinator:ci_agent_coordinator@postgres:5432/agent_hq_test
+      AGENT_HQ_ROLE_TEST_URL_SEO: postgres://agent_seo:ci_agent_seo@postgres:5432/agent_hq_test
+      AGENT_HQ_ROLE_TEST_URL_QA_SECURITY: postgres://agent_qa_security:ci_agent_qa@postgres:5432/agent_hq_test
+      AGENT_HQ_ROLE_TEST_URL_SUPERVISOR: postgres://agent_supervisor:ci_agent_supervisor@postgres:5432/agent_hq_test
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    restart: "no"
+
+networks:
+  default:
+    internal: true
