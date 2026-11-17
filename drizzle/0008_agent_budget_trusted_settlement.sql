@@ -71,7 +71,7 @@ GRANT USAGE,SELECT ON SEQUENCE public.agent_runs_id_seq,public.agent_budget_rese
 GRANT USAGE ON SCHEMA public TO agent_hq_budget_owner;
 REVOKE CREATE ON SCHEMA public FROM agent_hq_budget_owner;
 GRANT SELECT ON public.agent_tasks,public.agent_budget_config TO agent_hq_budget_owner;
-GRANT UPDATE (status,lease_owner,lease_until,updated_at) ON public.agent_tasks TO agent_hq_budget_owner;
+GRANT UPDATE (status,lease_owner,lease_until,updated_at,completed_at) ON public.agent_tasks TO agent_hq_budget_owner;
 GRANT SELECT,INSERT,UPDATE ON public.agent_runs TO agent_hq_budget_owner;
 GRANT SELECT,INSERT,UPDATE ON public.agent_budget_reservations TO agent_hq_budget_owner;
 GRANT SELECT,INSERT ON public.agent_budget_ledger,public.agent_budget_settlements TO agent_hq_budget_owner;
@@ -568,3 +568,105 @@ $run_revoke$;
 GRANT EXECUTE ON FUNCTION public.agent_budget_reconcile_usage(BIGINT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) TO agent_operator;
 GRANT EXECUTE ON FUNCTION public.agent_budget_reconcile_no_charge(BIGINT,TEXT,TEXT) TO agent_operator;
 GRANT EXECUTE ON FUNCTION public.agent_budget_recover_expired_tasks() TO agent_supervisor;
+
+-- Runtime workers must not directly change task lifecycle state. The trusted
+-- functions below bind transitions to session_user, role assignment and lease.
+CREATE OR REPLACE FUNCTION public.agent_task_heartbeat(
+  p_task_id BIGINT,p_worker_id TEXT
+) RETURNS BOOLEAN
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $heartbeat$
+DECLARE v_role TEXT;
+BEGIN
+  v_role:=public.agent_budget_role_for_session();
+  IF v_role IS NULL OR p_worker_id IS NULL OR p_worker_id='' THEN
+    RAISE EXCEPTION 'invalid task heartbeat identity' USING ERRCODE='42501';
+  END IF;
+  UPDATE public.agent_tasks SET status='running',
+    lease_until=clock_timestamp()+interval '3 minutes',updated_at=now()
+  WHERE id=p_task_id AND assigned_role=v_role AND lease_owner=p_worker_id
+    AND status IN ('claimed','running') AND lease_until>clock_timestamp();
+  RETURN FOUND;
+END
+$heartbeat$;
+
+CREATE OR REPLACE FUNCTION public.agent_task_transition(
+  p_task_id BIGINT,p_worker_id TEXT,p_transition TEXT
+) RETURNS TEXT
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $transition$
+DECLARE
+  v_role TEXT;
+  v_task public.agent_tasks%ROWTYPE;
+  v_target TEXT;
+BEGIN
+  v_role:=public.agent_budget_role_for_session();
+  IF v_role IS NULL OR p_worker_id IS NULL OR p_worker_id=''
+     OR p_transition NOT IN ('complete','blocked','retry','dead_letter') THEN
+    RAISE EXCEPTION 'invalid task transition request' USING ERRCODE='22023';
+  END IF;
+  SELECT * INTO v_task FROM public.agent_tasks
+    WHERE id=p_task_id AND assigned_role=v_role AND lease_owner=p_worker_id
+      AND status IN ('claimed','running') AND lease_until>clock_timestamp()
+    FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'task transition requires the original active lease' USING ERRCODE='42501';
+  END IF;
+
+  IF p_transition='complete' THEN
+    IF NOT EXISTS (SELECT 1 FROM public.agent_budget_reservations
+      WHERE task_id=p_task_id AND role=v_role AND worker_id=p_worker_id AND state='settled') THEN
+      RAISE EXCEPTION 'task completion requires a settled budget reservation' USING ERRCODE='55000';
+    END IF;
+    v_target:=CASE WHEN v_role='coordinator' THEN 'review' ELSE 'done' END;
+  ELSIF p_transition='blocked' THEN
+    v_target:='blocked';
+  ELSIF p_transition='retry' THEN
+    IF EXISTS (SELECT 1 FROM public.agent_budget_reservations
+      WHERE task_id=p_task_id AND state IN ('active','unknown')) THEN
+      RAISE EXCEPTION 'task with an open provider reservation cannot be retried' USING ERRCODE='55000';
+    END IF;
+    v_target:='queued';
+  ELSE
+    IF v_task.attempts<v_task.max_attempts THEN
+      RAISE EXCEPTION 'task has remaining attempts and cannot be dead-lettered' USING ERRCODE='55000';
+    END IF;
+    IF EXISTS (SELECT 1 FROM public.agent_budget_reservations
+      WHERE task_id=p_task_id AND state IN ('active','unknown')) THEN
+      RAISE EXCEPTION 'task with an open provider reservation cannot be dead-lettered' USING ERRCODE='55000';
+    END IF;
+    v_target:='dead_letter';
+  END IF;
+
+  UPDATE public.agent_tasks SET status=v_target,
+    completed_at=CASE WHEN v_target='done' THEN now() ELSE NULL END,
+    lease_owner=NULL,lease_until=NULL,updated_at=now()
+  WHERE id=p_task_id;
+  RETURN v_target;
+END
+$transition$;
+
+ALTER FUNCTION public.agent_task_heartbeat(BIGINT,TEXT) OWNER TO agent_hq_budget_owner;
+ALTER FUNCTION public.agent_task_transition(BIGINT,TEXT,TEXT) OWNER TO agent_hq_budget_owner;
+REVOKE ALL ON FUNCTION public.agent_task_heartbeat(BIGINT,TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.agent_task_transition(BIGINT,TEXT,TEXT) FROM PUBLIC;
+
+DO $task_acl$
+DECLARE role_name TEXT;
+BEGIN
+  FOREACH role_name IN ARRAY ARRAY[
+    'agent_web_engineer','agent_geo','agent_growth','agent_analytics','agent_vk_strategist',
+    'agent_copywriter','agent_designer','agent_image_generator','agent_storyteller',
+    'agent_community_manager','agent_content_seo','agent_ads_manager','agent_trend_scout',
+    'agent_auto_news_editor','agent_auto_law_monitor','agent_fact_checker','agent_seo',
+    'agent_qa_security','agent_coordinator'
+  ] LOOP
+    EXECUTE format('REVOKE UPDATE ON public.agent_tasks FROM %I',role_name);
+    EXECUTE format('REVOKE UPDATE (status,attempts,lease_owner,lease_until,updated_at,completed_at) ON public.agent_tasks FROM %I',role_name);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_task_heartbeat(BIGINT,TEXT) TO %I',role_name);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_task_transition(BIGINT,TEXT,TEXT) TO %I',role_name);
+  END LOOP;
+END
+$task_acl$;
