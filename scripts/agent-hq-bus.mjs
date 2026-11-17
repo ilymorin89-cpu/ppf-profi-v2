@@ -180,8 +180,8 @@ async function main() {
     return;
   }
   if (command === "approvals") {
-    const rows = await operatorSql`SELECT id,task_id,action,requested_by,payload,created_at
-      FROM agent_approvals WHERE status='pending' ORDER BY created_at ASC LIMIT 100`;
+    const rows = await operatorSql`SELECT id,task_id,action,status,decided_by,decision_note,decided_at
+      FROM agent_approvals WHERE status='pending' ORDER BY id ASC LIMIT 100`;
     console.log(JSON.stringify(rows, null, 2));
     return;
   }
