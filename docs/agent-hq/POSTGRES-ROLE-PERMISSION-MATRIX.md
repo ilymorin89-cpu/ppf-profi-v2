@@ -24,6 +24,33 @@ A procedure-only design remains an alternative if safe row policies cannot expre
 | agent_supervisor | lifecycle service | documented lifecycle operations and scoped grants |
 | agent_operator | human approval CLI | guarded approval decisions only |
 
+
+### Full worker LOGIN roster now covered by the disposable CI identity map
+
+| Logical worker role | PostgreSQL LOGIN |
+|---|---|
+| coordinator | agent_coordinator |
+| web_engineer | agent_web_engineer |
+| seo | agent_seo |
+| geo | agent_geo |
+| growth | agent_growth |
+| analytics | agent_analytics |
+| qa_security | agent_qa_security |
+| vk_strategist | agent_vk_strategist |
+| copywriter | agent_copywriter |
+| designer | agent_designer |
+| image_generator | agent_image_generator |
+| storyteller | agent_storyteller |
+| community_manager | agent_community_manager |
+| content_seo | agent_content_seo |
+| ads_manager | agent_ads_manager |
+| trend_scout | agent_trend_scout |
+| auto_news_editor | agent_auto_news_editor |
+| auto_law_monitor | agent_auto_law_monitor |
+| fact_checker | agent_fact_checker |
+
+The role matrix currently proves each LOGIN maps from authenticated `session_user` to its logical role, sees only its own test task, and cannot insert a message under another role's sender identity. This is a deliberately bounded acceptance slice, not yet a full per-operation/per-column grant audit.
+
 ## Data permission matrix
 
 | Table | Specialist | Coordinator | QA | Supervisor | Operator |
@@ -109,7 +136,7 @@ Supervisor must not be superuser, table owner, BYPASSRLS, CREATEROLE or CREATEDB
 
 A disposable PostgreSQL 16 E2E test must run actual worker and supervisor paths using role-specific URLs and deterministic mocked Responses API. No network call or model spend. Assert coordinator -> specialists -> QA -> supervisor consolidation, failure/blocked paths, duplicate supervisor runs, expired leases, concurrent claims, and every denial above.
 
-The SQL harness alone is insufficient. Use at least two specialist logins to prove cross-role isolation. Create each test database empty and discard it after the run.
+The SQL harness alone is insufficient. The current disposable CI matrix provisions all 19 worker LOGINs and verifies per-role task visibility plus message-sender anti-spoofing. The integration suite also exercises the operator approval path through a separate LOGIN. Create each test database empty and discard it after the run.
 
 ## Rollout gates
 
@@ -140,4 +167,4 @@ The lifecycle test suite was extended in PR #94 and merged into this branch. It 
 
 The PR #94 CI run (#326) passed both the Agent HQ integration/syntax job and the website build, including disposable PostgreSQL migrations, integration tests, Docker Compose validation and runtime container build.
 
-**Important limits:** this is still a CI-only authorization harness, not a deployable runtime migration. The test helper functions are owned by the disposable CI database owner; production must use a dedicated non-login, narrowly privileged function owner with fixed search_path and reviewed grants. Only the four core identities above are currently exercised; the full specialist roster, operator approval identity, all worker/bus commands, column-by-column lifecycle transitions, DDL/sequence/unknown-login tests and production-grade function ownership remain open. Do not copy this harness to a live database.
+**Important limits:** this is still a CI-only authorization harness, not a deployable runtime migration. The test helper functions are owned by the disposable CI database owner; production must use a dedicated non-login, narrowly privileged function owner with fixed search_path and reviewed grants. All 19 worker identities now have disposable CI LOGINs and are tested for own-task visibility and message-sender anti-spoofing; the separate operator approval CLI path is also exercised. These tests do not yet cover every worker/bus SQL command, every mutable column, DDL/sequence/unknown-login misuse, or all supervisor concurrency/restart/QA-revise paths. Production-grade function ownership and production RLS migration remain open. Do not copy this harness to a live database.
