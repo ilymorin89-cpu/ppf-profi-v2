@@ -52,6 +52,10 @@ async function main() {
     const [from, to, rawTaskId, kind, ...bodyParts] = args;
     const body = bodyParts.join(" ");
     requireAgentRole(required(from, "fromRole"), "fromRole"); requireAgentRole(required(to, "toRole"), "toRole"); required(kind, "kind"); required(body, "message");
+    const [identity] = await sql`SELECT session_user AS login`;
+    if (identity?.login !== `agent_${from}`) {
+      throw new Error("Message sender must match the authenticated PostgreSQL LOGIN.");
+    }
     const allowed = ["request","result","question","objection","handoff","approval_request","status"];
     if (!allowed.includes(kind)) throw new Error("Unsupported message kind");
     const id = rawTaskId === "-" ? null : taskId(rawTaskId);
