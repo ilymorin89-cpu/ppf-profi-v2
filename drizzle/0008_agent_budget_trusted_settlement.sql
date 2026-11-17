@@ -28,6 +28,8 @@ CREATE INDEX IF NOT EXISTS agent_budget_reservations_day_state_idx
   ON public.agent_budget_reservations(day_key,state);
 CREATE INDEX IF NOT EXISTS agent_budget_reservations_month_state_idx
   ON public.agent_budget_reservations(month_key,state);
+CREATE UNIQUE INDEX IF NOT EXISTS agent_budget_one_open_reservation_per_task_idx
+  ON public.agent_budget_reservations(task_id) WHERE state IN ('active','unknown');
 
 CREATE TABLE IF NOT EXISTS public.agent_budget_ledger (
   id BIGSERIAL PRIMARY KEY,
@@ -115,7 +117,7 @@ CREATE POLICY budget_owner_settlement_insert ON public.agent_budget_settlements
   FOR INSERT TO agent_hq_budget_owner WITH CHECK (true);
 
 CREATE OR REPLACE FUNCTION public.agent_budget_reserve(
-  p_task_id BIGINT,p_worker_id TEXT,p_model TEXT,p_estimated_input_tokens INTEGER,
+  p_task_id BIGINT,p_worker_id TEXT,p_provider TEXT,p_model TEXT,p_estimated_input_tokens INTEGER,
   p_max_output_tokens INTEGER,p_max_turns INTEGER,p_max_search_calls INTEGER,p_idempotency_key TEXT
 ) RETURNS TABLE(run_id BIGINT,reservation_id BIGINT,reserved_microusd BIGINT)
 LANGUAGE plpgsql SECURITY DEFINER
@@ -135,7 +137,7 @@ DECLARE
   v_reservation BIGINT;
 BEGIN
   v_role := public.agent_role_for_session();
-  IF v_role IS NULL OR p_worker_id IS NULL OR p_worker_id='' OR p_model IS NULL OR p_model=''
+  IF v_role IS NULL OR p_worker_id IS NULL OR p_worker_id='' OR p_provider NOT IN ('openai','test_stub') OR p_model IS NULL OR p_model=''
      OR p_idempotency_key IS NULL OR length(p_idempotency_key) NOT BETWEEN 8 AND 160
      OR p_estimated_input_tokens NOT BETWEEN 1 AND 10000000
      OR p_max_output_tokens NOT BETWEEN 64 AND 8192 OR p_max_turns NOT BETWEEN 1 AND 8
@@ -162,6 +164,16 @@ BEGIN
 
   -- One locked budget row serializes every reservation transaction.
   SELECT * INTO v_budget FROM public.agent_budget_config WHERE id=1 FOR UPDATE;
+  -- Recheck idempotency after the serialized budget lock to handle concurrent retries.
+  SELECT * INTO v_existing FROM public.agent_budget_reservations WHERE idempotency_key=p_idempotency_key;
+  IF FOUND THEN
+    IF v_existing.task_id<>p_task_id OR v_existing.role<>v_role OR v_existing.worker_id<>p_worker_id
+       OR v_existing.price_snapshot->>'model'<>p_model THEN
+      RAISE EXCEPTION 'idempotency key reused with different parameters' USING ERRCODE='23505';
+    END IF;
+    RETURN QUERY SELECT v_existing.run_id,v_existing.id,v_existing.reserved_microusd;
+    RETURN;
+  END IF;
   IF NOT FOUND OR NOT v_budget.enabled OR v_budget.daily_cap_microusd<=0
      OR v_budget.monthly_cap_microusd<=0 OR v_budget.per_run_cap_microusd<=0
      OR v_budget.input_price_per_million_microusd<=0
@@ -175,7 +187,7 @@ BEGIN
     + p_max_output_tokens::NUMERIC*p_max_turns*v_budget.output_price_per_million_microusd
   )/1000000)::BIGINT + p_max_search_calls::BIGINT*v_budget.web_search_price_microusd_per_call;
   IF v_estimate<=0 OR v_estimate>v_budget.per_run_cap_microusd
-     OR (v_task.budget_limit_microusd>0 AND v_estimate>v_task.budget_limit_microusd) THEN
+     OR (v_task.budget_limit_microusd>0 AND v_estimate + COALESCE((SELECT SUM(r.reserved_microusd) FROM public.agent_budget_reservations r WHERE r.task_id=p_task_id AND r.state IN ('active','unknown')),0) > v_task.budget_limit_microusd) THEN
     RAISE EXCEPTION 'per-run or task budget cap exceeded' USING ERRCODE='P0001';
   END IF;
 
@@ -197,7 +209,7 @@ BEGIN
   END IF;
 
   INSERT INTO public.agent_runs(task_id,role,worker_id,provider,model,status,cost_microusd)
-    VALUES(p_task_id,v_role,p_worker_id,'openai',p_model,'running',0) RETURNING id INTO v_run;
+    VALUES(p_task_id,v_role,p_worker_id,p_provider,p_model,'running',0) RETURNING id INTO v_run;
   INSERT INTO public.agent_budget_reservations(run_id,task_id,role,worker_id,idempotency_key,
     reserved_microusd,price_snapshot,day_key,month_key)
     VALUES(v_run,p_task_id,v_role,p_worker_id,p_idempotency_key,v_estimate,
@@ -349,13 +361,13 @@ BEGIN
 END
 $reconcile$;
 
-ALTER FUNCTION public.agent_budget_reserve(BIGINT,TEXT,TEXT,INTEGER,INTEGER,INTEGER,INTEGER,TEXT) OWNER TO agent_hq_budget_owner;
+ALTER FUNCTION public.agent_budget_reserve(BIGINT,TEXT,TEXT,TEXT,INTEGER,INTEGER,INTEGER,INTEGER,TEXT) OWNER TO agent_hq_budget_owner;
 ALTER FUNCTION public.agent_budget_settle(BIGINT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) OWNER TO agent_hq_budget_owner;
 ALTER FUNCTION public.agent_budget_release(BIGINT,TEXT,TEXT) OWNER TO agent_hq_budget_owner;
 ALTER FUNCTION public.agent_budget_mark_unknown(BIGINT,TEXT,TEXT) OWNER TO agent_hq_budget_owner;
 ALTER FUNCTION public.agent_budget_reconcile_no_charge(BIGINT,TEXT,TEXT) OWNER TO agent_hq_budget_owner;
 
-REVOKE ALL ON FUNCTION public.agent_budget_reserve(BIGINT,TEXT,TEXT,INTEGER,INTEGER,INTEGER,INTEGER,TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.agent_budget_reserve(BIGINT,TEXT,TEXT,TEXT,INTEGER,INTEGER,INTEGER,INTEGER,TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.agent_budget_settle(BIGINT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.agent_budget_release(BIGINT,TEXT,TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.agent_budget_mark_unknown(BIGINT,TEXT,TEXT) FROM PUBLIC;
@@ -369,12 +381,12 @@ BEGIN
     'agent_copywriter','agent_designer','agent_image_generator','agent_storyteller',
     'agent_community_manager','agent_content_seo','agent_ads_manager','agent_trend_scout',
     'agent_auto_news_editor','agent_auto_law_monitor','agent_fact_checker','agent_seo',
-    'agent_qa_security','agent_coordinator'
+    'agent_qa_security','agent_coordinator','agent_supervisor','agent_operator'
   ] LOOP
     EXECUTE format('REVOKE INSERT,UPDATE ON public.agent_runs FROM %I',role_name);
     EXECUTE format('REVOKE INSERT (task_id,role,worker_id,provider,model,status,cost_microusd) ON public.agent_runs FROM %I',role_name);
     EXECUTE format('REVOKE UPDATE (status,input_tokens,output_tokens,cost_microusd,error,finished_at) ON public.agent_runs FROM %I',role_name);
-    EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_budget_reserve(BIGINT,TEXT,TEXT,INTEGER,INTEGER,INTEGER,INTEGER,TEXT) TO %I',role_name);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_budget_reserve(BIGINT,TEXT,TEXT,TEXT,INTEGER,INTEGER,INTEGER,INTEGER,TEXT) TO %I',role_name);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_budget_settle(BIGINT,INTEGER,INTEGER,INTEGER,TEXT,TEXT) TO %I',role_name);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_budget_release(BIGINT,TEXT,TEXT) TO %I',role_name);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_budget_mark_unknown(BIGINT,TEXT,TEXT) TO %I',role_name);
