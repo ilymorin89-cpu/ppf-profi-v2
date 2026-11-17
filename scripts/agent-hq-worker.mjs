@@ -341,9 +341,10 @@ async function runTask(task) {
     if (!result) throw new Error("Model returned no text output");
     const settlementKey = "agent-settle-" + createHash("sha256")
       .update(JSON.stringify([run.id, totalInputTokens, totalOutputTokens, totalWebSearchCalls])).digest("hex");
+    const providerReference = typeof data?.id === "string" ? data.id : null;
     const [settlement] = await sql`SELECT public.agent_budget_settle(
       ${run.reservationId}, ${workerId}, ${totalInputTokens}, ${totalOutputTokens},
-      ${totalWebSearchCalls}, ${settlementKey}, NULL
+      ${totalWebSearchCalls}, ${settlementKey}, ${providerReference}
     ) AS cost`;
     if (!settlement) throw new Error("Trusted budget settlement returned no result");
     const actualCost = settlement.cost;
