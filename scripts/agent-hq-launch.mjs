@@ -68,19 +68,21 @@ function validate(group) {
   return services;
 }
 
-async function checkBudget() {
+async function checkBudget(requireEnabled = true) {
   const url = process.env.AGENT_HQ_DATABASE_URL_COORDINATOR;
   const sql = postgres(url, { max: 1, connect_timeout: 5 });
   try {
     const [budget] = await sql`SELECT enabled,daily_cap_microusd,monthly_cap_microusd,per_run_cap_microusd
       FROM agent_budget_config WHERE id=1`;
-    if (!budget || !budget.enabled ||
-      Number(budget.daily_cap_microusd) <= 0 ||
-      Number(budget.monthly_cap_microusd) <= 0 ||
-      Number(budget.per_run_cap_microusd) <= 0) {
+    const enabled = Boolean(budget?.enabled) &&
+      Number(budget?.daily_cap_microusd) > 0 &&
+      Number(budget?.monthly_cap_microusd) > 0 &&
+      Number(budget?.per_run_cap_microusd) > 0;
+    console.log("Database reachable.");
+    console.log(enabled ? "Budget is enabled with non-zero caps." : "Budget is disabled or has zero caps; workers cannot start.");
+    if (requireEnabled && !enabled) {
       throw new Error("Agent budget is disabled or has zero caps. No workers were started.");
     }
-    console.log("Database reachable; budget enabled with non-zero caps.");
   } finally {
     await sql.end({ timeout: 3 });
   }
@@ -102,8 +104,10 @@ if (command === "stop") {
 } else {
   validate(requestedGroup);
   console.log(`Configuration valid for group "${requestedGroup}": ${services.join(", ")}`);
-  if (command === "start") {
-    await checkBudget();
+  if (command === "check") {
+    await checkBudget(false);
+  } else if (command === "start") {
+    await checkBudget(true);
     compose(["up", "-d", ...services]);
     console.log("Selected Agent HQ services started.");
   }
