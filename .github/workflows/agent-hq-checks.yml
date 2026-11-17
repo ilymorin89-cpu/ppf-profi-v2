@@ -6,6 +6,7 @@ on:
     paths:
       - "scripts/agent-hq-*.mjs"
       - "tests/agent-hq*.mjs"
+      - "tests/agent-hq*.sql"
       - "drizzle/0003_agent_hq.sql"
       - "drizzle/0004_agent_budget.sql"
       - "drizzle/0005_agent_approval_idempotency.sql"
