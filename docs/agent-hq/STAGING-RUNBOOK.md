@@ -2,6 +2,41 @@
 
 This runbook prepares an isolated staging deployment. It does not authorize production deployment, external messages, advertising, or spend.
 
+## Timeweb App Platform: diagnose PostgreSQL reachability before workers
+
+The existing Timeweb App Platform deployment is not a reason to create another server. Keep the production website application and its database untouched. The current Agent HQ Timeweb app must be treated as staging only after its repository branch and database target have been verified.
+
+The Timeweb screenshots supplied for this project show:
+- App Platform framework: Docker Compose; compose path `/docker-compose.yml`.
+- Selected deployment branch: `feat/vk-content-army`.
+- App variables visible: `AGENT_HQ_DATABASE_URL` and `AGENT_HQ_WORKERS_ENABLED=false`.
+- PostgreSQL service: `ppfprofi`; database `agent_hq`; role `agent_hq_user`; port `5432`.
+- PostgreSQL public endpoint: `5.42.126.47:5432`; private endpoint: `192.168.0.4:5432`; private network CIDR: `192.168.0.0/24`.
+- PostgreSQL users shown in the UI: `agent_hq_user`, `agent_worker`, `gen_user`.
+- Existing application logs repeatedly report `EHOSTUNREACH` and `CONNECT_TIMEOUT`.
+
+These observations do not prove that the App Platform container is attached to the PostgreSQL private network. Do not assume that `192.168.0.4` is reachable from App Platform merely because the database owns that private address. Confirm the App Platform network attachment / supported routing in Timeweb first. If the platform cannot join that private network, use only a provider-supported public connection with TLS and a firewall rule restricted to the actual App Platform egress source. Do not open PostgreSQL to `0.0.0.0/0`.
+
+Run the secret-safe, read-only diagnostic from inside the Agent HQ application container, if the App Platform console supports an exec shell:
+
+```sh
+npm run agent-hq:db-check
+```
+
+It reads `AGENT_HQ_DATABASE_URL` (or `DATABASE_URL`), refuses any database other than `agent_hq` or port other than 5432, tests DNS/TCP/PostgreSQL authentication, requires TLS by default, and prints no password or connection URL. For a controlled non-TLS diagnostic only, set `AGENT_HQ_DB_REQUIRE_TLS=false`; do not use that mode for live staging. The command is read-only and makes no migrations or provider calls.
+
+Interpret results:
+- `stage=dns`: hostname resolution / DNS configuration issue.
+- `stage=tcp`, `EHOSTUNREACH`: no route to the selected address; inspect App Platform network attachment and firewall routing before credentials.
+- `stage=tcp`, `CONNECT_TIMEOUT`: packets are being dropped or no route responds; inspect network/firewall.
+- `ECONNREFUSED`: route reached the host but PostgreSQL is not accepting connections on that address/port.
+- `stage=postgres-authentication-or-tls`: TCP is reachable; inspect TLS setting, database, role and password using Timeweb secret UI, never chat.
+- `status=PASS`: the diagnostic authenticated to `agent_hq` with TLS and reported the actual PostgreSQL session identity.
+
+Do not change the existing Timeweb deployment branch, environment variables, firewall, network attachment, or database credentials as part of diagnosis. Capture the JSON diagnostic output with secrets absent, plus the Timeweb network/firewall view, before proposing a change.
+
+The current screenshots show only one Agent HQ database URL and `AGENT_HQ_WORKERS_ENABLED=false`. The current reviewed Compose file expects distinct role-specific database URLs (`AGENT_HQ_DATABASE_URL_<ROLE>`) for each worker and a separate supervisor URL. Do not copy the same `agent_hq_user` URL into all 19 roles. Role-specific PostgreSQL identities and grants must be provisioned and verified before any worker is enabled.
+
 ## Preconditions
 
 - A dedicated Linux host or VM for long-running Node.js processes (not a serverless web-function runtime).
