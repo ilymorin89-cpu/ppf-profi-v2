@@ -61,6 +61,7 @@ GRANT USAGE,SELECT ON SEQUENCE public.agent_runs_id_seq,public.agent_budget_rese
 
 GRANT USAGE ON SCHEMA public TO agent_hq_budget_owner;
 GRANT SELECT ON public.agent_tasks,public.agent_budget_config TO agent_hq_budget_owner;
+GRANT UPDATE (status,lease_owner,lease_until) ON public.agent_tasks TO agent_hq_budget_owner;
 GRANT SELECT,INSERT,UPDATE ON public.agent_runs TO agent_hq_budget_owner;
 GRANT SELECT,INSERT,UPDATE ON public.agent_budget_reservations TO agent_hq_budget_owner;
 GRANT SELECT,INSERT ON public.agent_budget_ledger,public.agent_budget_settlements TO agent_hq_budget_owner;
@@ -109,6 +110,9 @@ ALTER TABLE public.agent_budget_settlements FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS budget_owner_task_read ON public.agent_tasks;
 CREATE POLICY budget_owner_task_read ON public.agent_tasks
   FOR SELECT TO agent_hq_budget_owner USING (true);
+DROP POLICY IF EXISTS budget_owner_task_lock ON public.agent_tasks;
+CREATE POLICY budget_owner_task_lock ON public.agent_tasks
+  FOR UPDATE TO agent_hq_budget_owner USING (true) WITH CHECK (true);
 DROP POLICY IF EXISTS budget_owner_run_read ON public.agent_runs;
 CREATE POLICY budget_owner_run_read ON public.agent_runs
   FOR SELECT TO agent_hq_budget_owner USING (true);
@@ -174,7 +178,8 @@ BEGIN
 
   SELECT * INTO v_task FROM public.agent_tasks
     WHERE id=p_task_id AND assigned_role=v_role AND status IN ('claimed','running')
-      AND lease_owner=p_worker_id AND lease_until>clock_timestamp();
+      AND lease_owner=p_worker_id AND lease_until>clock_timestamp()
+    FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'task lease not owned by caller' USING ERRCODE='42501'; END IF;
 
   PERFORM pg_advisory_xact_lock(781234,1);
@@ -282,7 +287,8 @@ BEGIN
   END IF;
   SELECT * INTO v_task FROM public.agent_tasks
     WHERE id=v_res.task_id AND assigned_role=v_role AND lease_owner=v_res.worker_id
-      AND status IN ('claimed','running');
+      AND status IN ('claimed','running')
+    FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'settlement requires the original active task lease' USING ERRCODE='42501'; END IF;
   IF v_res.state NOT IN ('active','unknown') THEN
     RAISE EXCEPTION 'reservation is not settleable' USING ERRCODE='55000';
