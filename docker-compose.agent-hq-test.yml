@@ -1,4 +1,5 @@
 x-agent-hq-test-worker: &agent-hq-test-worker
+  image: ppf-agent-hq:test
   build:
     context: .
     dockerfile: Dockerfile.agent-hq
@@ -49,6 +50,7 @@ services:
     restart: "no"
 
   test-assert:
+    image: ppf-agent-hq:test
     build:
       context: .
       dockerfile: Dockerfile.agent-hq
@@ -404,6 +406,7 @@ services:
       AGENT_MAX_OUTPUT_TOKENS: "256"
       AGENT_POLL_MS: "250"
   supervisor:
+    image: ppf-agent-hq:test
     build:
       context: .
       dockerfile: Dockerfile.agent-hq
