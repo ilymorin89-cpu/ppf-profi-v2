@@ -137,6 +137,7 @@ jobs:
           node --check scripts/agent-hq-worker-lifecycle.mjs
           node --check scripts/agent-hq-staging-preflight.mjs
           node --check scripts/agent-hq-monitor.mjs
+          node --check scripts/agent-hq-db-connectivity-check.mjs
           node --check scripts/agent-hq-launch.mjs
           node --check scripts/agent-hq-simulate.mjs
           node --check scripts/agent-hq-test-assert.mjs
