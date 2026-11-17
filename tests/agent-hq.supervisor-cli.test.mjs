@@ -557,3 +557,12 @@ test("Agent HQ bus send derives sender from authenticated PostgreSQL LOGIN", asy
     await sql.end({ timeout: 5 });
   }
 });
+
+
+test("Agent HQ supervisor rejects a non-supervisor PostgreSQL LOGIN", {
+  skip: !seoUrl
+}, () => {
+  const result = runNode("scripts/agent-hq-supervisor.mjs", ["--once"], { DATABASE_URL: seoUrl });
+  assert.notEqual(result.status, 0, "Supervisor must reject a worker login before lifecycle SQL.");
+  assert.match(result.stderr, /must authenticate as PostgreSQL LOGIN "agent_supervisor"/i);
+});
