@@ -5,6 +5,15 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='agent_hq_budget_owner') THEN
     CREATE ROLE agent_hq_budget_owner NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
   END IF;
+  ALTER ROLE agent_hq_budget_owner NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
+  IF EXISTS (
+    SELECT 1 FROM pg_auth_members m
+    JOIN pg_roles r ON r.oid=m.roleid
+    JOIN pg_roles member ON member.oid=m.member
+    WHERE r.rolname='agent_hq_budget_owner' OR member.rolname='agent_hq_budget_owner'
+  ) THEN
+    RAISE EXCEPTION 'agent_hq_budget_owner must not have or receive role memberships';
+  END IF;
 END
 $role$;
 
