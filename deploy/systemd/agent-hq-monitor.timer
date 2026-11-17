@@ -1,0 +1,11 @@
+[Unit]
+Description=Run PPF PROFI Agent HQ staging health and safety check every minute
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+AccuracySec=10s
+Unit=agent-hq-monitor.service
+
+[Install]
+WantedBy=timers.target

@@ -76,7 +76,7 @@ const workerEnv = {
   OPENAI_API_KEY: "test-no-provider-call",
   AGENT_MODEL: "test-model",
   AGENT_ROLE: role,
-  AGENT_WORKER_ID: "simulation-" + role + "-" + process.pid,
+  AGENT_WORKER_ID: role === "supervisor" ? "" : "test-" + role,
   AGENT_MAX_OUTPUT_TOKENS: "128",
   AGENT_POLL_MS: "1",
   AGENT_WEB_SEARCH_ENABLED: "false",

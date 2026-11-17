@@ -26,6 +26,39 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
   const marker = randomUUID();
   let seoTask, qaTask, parentTask, unrelatedParent, unrelatedTask, delegatedTaskId, seoArtifact, unrelatedArtifact;
   try {
+    const [principal] = await seo`SELECT session_user AS login,
+      public.agent_role_for_session() AS role,
+      public.agent_worker_id_for_session() AS worker_id`;
+    assert.equal(principal.login, "agent_seo");
+    assert.equal(principal.role, "seo");
+    assert.equal(principal.worker_id, "test-seo");
+    await assert.rejects(
+      seo`SELECT * FROM public.agent_worker_principals`,
+      error => error.code === "42501",
+      "Worker cannot read or enumerate the principal registry"
+    );
+    await assert.rejects(
+      seo`SELECT * FROM public.agent_task_claim('forged-worker-id')`,
+      error => error.code === "42501",
+      "Worker cannot claim tasks under an environment-supplied or forged worker ID"
+    );
+    await assert.rejects(
+      seo`SELECT * FROM public.agent_task_claim('test-coordinator')`,
+      error => error.code === "42501",
+      "Worker cannot impersonate another valid registered worker principal"
+    );
+    await assert.rejects(
+      seo`INSERT INTO public.agent_worker_principals(login_role,role,worker_id)
+        VALUES ('agent_fake','seo','fake-worker')`,
+      error => error.code === "42501",
+      "Worker cannot self-register a database identity"
+    );
+    await assert.rejects(
+      seo`UPDATE public.agent_worker_principals SET worker_id='spoofed' WHERE login_role='agent_seo'`,
+      error => error.code === "42501",
+      "Worker cannot rewrite its authenticated identity"
+    );
+
     [seoTask] = await admin`INSERT INTO agent_tasks (assigned_role,title,objective,expected_output,created_by)
       VALUES ('seo',${"SEO " + marker},'SEO test','Evidence','integration-test') RETURNING id`;
     [qaTask] = await admin`INSERT INTO agent_tasks (assigned_role,title,objective,expected_output,created_by)
@@ -266,7 +299,7 @@ test("real SEO worker completes a task using its restricted PostgreSQL login and
         NODE_ENV: "test",
         DATABASE_URL: roleUrls.seo,
         AGENT_ROLE: "seo",
-        AGENT_WORKER_ID: "seo-rls-e2e",
+        AGENT_WORKER_ID: "test-seo",
         OPENAI_API_KEY: "test-key-never-used",
         AGENT_MODEL: "gpt-4.1-mini",
         AGENT_WEB_SEARCH_ENABLED: "false",
@@ -347,7 +380,7 @@ test("Agent HQ blocks retry and retains reservation after ambiguous provider out
       encoding:"utf8",
       env:{
         ...process.env,NODE_ENV:"test",DATABASE_URL:roleUrls.seo,AGENT_ROLE:"seo",
-        AGENT_WORKER_ID:"seo-ambiguous-outcome",OPENAI_API_KEY:"test-key-never-used",
+        AGENT_WORKER_ID:"test-seo",OPENAI_API_KEY:"test-key-never-used",
         AGENT_MODEL:"gpt-4.1-mini",AGENT_WEB_SEARCH_ENABLED:"false",
         AGENT_HQ_TEST_RESPONSES_JSON:JSON.stringify({
           __test_provider_outcome:"ambiguous",
@@ -398,7 +431,7 @@ test("Agent HQ worker rejects a database LOGIN that does not match AGENT_ROLE", 
     }
   });
   assert.notEqual(result.status, 0, "Worker must reject mismatched database identity before claiming work.");
-  assert.match(result.stderr, /must authenticate as PostgreSQL LOGIN "agent_qa_security"/i);
+  assert.match(result.stderr, /no enabled authenticated Agent HQ principal for configured role "qa_security"/i);
 });
 
 
@@ -418,16 +451,16 @@ test("Agent HQ concurrent reservations cannot overspend the daily cap", {
       web_search_price_microusd_per_call=0 WHERE id=1`;
     const [a]=await admin`INSERT INTO agent_tasks(assigned_role,title,objective,expected_output,created_by,
       status,lease_owner,lease_until,budget_limit_microusd)
-      VALUES('seo','concurrent budget A','test','test','integration-test','claimed','seo-budget-a',
+      VALUES('seo','concurrent budget A','test','test','integration-test','claimed','test-seo',
         now()+interval '5 minutes',5000) RETURNING id`;
     const [b]=await admin`INSERT INTO agent_tasks(assigned_role,title,objective,expected_output,created_by,
       status,lease_owner,lease_until,budget_limit_microusd)
-      VALUES('seo','concurrent budget B','test','test','integration-test','claimed','seo-budget-b',
+      VALUES('seo','concurrent budget B','test','test','integration-test','claimed','test-seo',
         now()+interval '5 minutes',5000) RETURNING id`;
     taskIds.push(a.id,b.id);
     const calls=await Promise.allSettled([
-      workerA`SELECT * FROM agent_budget_reserve(${a.id},'seo-budget-a','test_stub','test-model',10000,256,1,0,${'parallel-a-'+randomUUID()})`,
-      workerB`SELECT * FROM agent_budget_reserve(${b.id},'seo-budget-b','test_stub','test-model',10000,256,1,0,${'parallel-b-'+randomUUID()})`
+      workerA`SELECT * FROM agent_budget_reserve(${a.id},'test-seo','test_stub','test-model',10000,256,1,0,${'parallel-a-'+randomUUID()})`,
+      workerB`SELECT * FROM agent_budget_reserve(${b.id},'test-seo','test_stub','test-model',10000,256,1,0,${'parallel-b-'+randomUUID()})`
     ]);
     assert.equal(calls.filter(x=>x.status==="fulfilled").length,1,
       "The serialized budget reservation lock must admit only one run at the exact daily cap");
@@ -464,7 +497,7 @@ test("Agent HQ reservation and settlement are idempotent and bound to the origin
       monthly_cap_microusd=500000,per_run_cap_microusd=5000,
       input_price_per_million_microusd=100000,output_price_per_million_microusd=100000,
       web_search_price_microusd_per_call=0 WHERE id=1`;
-    const workerId="seo-budget-idempotency";
+    const workerId="test-seo";
     const marker=randomUUID();
     const [task]=await admin`INSERT INTO agent_tasks(assigned_role,title,objective,expected_output,created_by,
       status,lease_owner,lease_until,budget_limit_microusd)
@@ -527,7 +560,7 @@ test("Agent HQ releases a reservation only for its original worker and idempoten
       monthly_cap_microusd=500000,per_run_cap_microusd=5000,
       input_price_per_million_microusd=100000,output_price_per_million_microusd=100000,
       web_search_price_microusd_per_call=0 WHERE id=1`;
-    const workerId="seo-budget-release";
+    const workerId="test-seo";
     const marker=randomUUID();
     const [task]=await admin`INSERT INTO agent_tasks(assigned_role,title,objective,expected_output,created_by,
       status,lease_owner,lease_until,budget_limit_microusd)
@@ -587,7 +620,7 @@ test("Agent HQ operator reconciles an unknown reservation exactly once after lea
       monthly_cap_microusd=500000,per_run_cap_microusd=5000,
       input_price_per_million_microusd=100000,output_price_per_million_microusd=100000,
       web_search_price_microusd_per_call=0 WHERE id=1`;
-    const workerId="seo-reconcile-worker";
+    const workerId="test-seo";
     const marker=randomUUID();
     const [task]=await admin`INSERT INTO agent_tasks(assigned_role,title,objective,expected_output,created_by,
       status,lease_owner,lease_until,budget_limit_microusd)
@@ -658,28 +691,28 @@ test("Agent HQ enforces monthly, task and per-run reservation caps", {
     };
     const reserve=async (taskId,workerId,key) => seo`SELECT * FROM agent_budget_reserve(
       ${taskId},${workerId},'test_stub','test-model',10000,1024,1,0,${key})`;
-    const firstTask=await createTask(5000,"seo-monthly-cap-a");
-    const [first]=await reserve(firstTask,"seo-monthly-cap-a","monthly-cap-a-"+randomUUID());
+    const firstTask=await createTask(5000,"test-seo");
+    const [first]=await reserve(firstTask,"test-seo","monthly-cap-a-"+randomUUID());
     assert.equal(Number(first.reserved_microusd),1103);
-    const secondTask=await createTask(5000,"seo-monthly-cap-b");
+    const secondTask=await createTask(5000,"test-seo");
     await assert.rejects(
-      reserve(secondTask,"seo-monthly-cap-b","monthly-cap-b-"+randomUUID()),
+      reserve(secondTask,"test-seo","monthly-cap-b-"+randomUUID()),
       e=>e.code==="P0001",
       "A second reservation must be rejected at the monthly cap"
     );
 
     await admin`UPDATE agent_budget_config SET monthly_cap_microusd=100000 WHERE id=1`;
-    const taskLimited=await createTask(1102,"seo-task-cap");
+    const taskLimited=await createTask(1102,"test-seo");
     await assert.rejects(
-      reserve(taskLimited,"seo-task-cap","task-cap-"+randomUUID()),
+      reserve(taskLimited,"test-seo","task-cap-"+randomUUID()),
       e=>e.code==="P0001",
       "A reservation must not exceed the task-level budget"
     );
 
     await admin`UPDATE agent_budget_config SET per_run_cap_microusd=1102 WHERE id=1`;
-    const runLimited=await createTask(5000,"seo-run-cap");
+    const runLimited=await createTask(5000,"test-seo");
     await assert.rejects(
-      reserve(runLimited,"seo-run-cap","run-cap-"+randomUUID()),
+      reserve(runLimited,"test-seo","run-cap-"+randomUUID()),
       e=>e.code==="P0001",
       "A reservation must not exceed the per-run budget"
     );
@@ -717,7 +750,7 @@ test("Agent HQ operator can reconcile a reservation with confirmed zero provider
       monthly_cap_microusd=500000,per_run_cap_microusd=5000,
       input_price_per_million_microusd=100000,output_price_per_million_microusd=100000,
       web_search_price_microusd_per_call=0 WHERE id=1`;
-    const workerId="seo-no-charge-worker";
+    const workerId="test-seo";
     const marker=randomUUID();
     const [task]=await admin`INSERT INTO agent_tasks
       (assigned_role,title,objective,expected_output,created_by,status,lease_owner,lease_until,budget_limit_microusd)
@@ -896,9 +929,10 @@ test("Agent HQ SECURITY DEFINER helpers use a dedicated NOLOGIN non-BYPASSRLS ow
           'agent_can_grant_task_access',
           'agent_is_valid_coordinator_parent',
           'agent_role_for_session',
-          'agent_can_insert_own_artifact'
+          'agent_can_insert_own_artifact',
+          'agent_worker_id_for_session'
         )`;
-    assert.equal(helpers.length, 5, "All reviewed runtime SECURITY DEFINER helpers must be present");
+    assert.equal(helpers.length, 6, "All reviewed runtime SECURITY DEFINER helpers must be present");
     for (const helper of helpers) {
       assert.equal(helper.owner, "agent_hq_runtime_fn_owner", helper.proname + " owner");
       assert.equal(helper.prosecdef, true, helper.proname + " must be SECURITY DEFINER");
@@ -937,7 +971,7 @@ test("Agent HQ SECURITY DEFINER helpers use a dedicated NOLOGIN non-BYPASSRLS ow
       WHERE n.nspname='public'
         AND p.proname IN ('agent_has_task_access','agent_can_grant_task_access',
           'agent_is_valid_coordinator_parent','agent_role_for_session',
-          'agent_can_insert_own_artifact')
+          'agent_can_insert_own_artifact','agent_worker_id_for_session')
         AND has_function_privilege('public', p.oid, 'EXECUTE')
     `;
     assert.equal(publicHelperExec.length, 0, "PUBLIC must not execute any SECURITY DEFINER helper");
@@ -1001,5 +1035,117 @@ test("Agent HQ budget function owner has only the column privileges required by 
     assert.equal(privileges.reservation_update_amount,false);
   } finally {
     await admin.end();
+  }
+});
+
+
+test("expired worker leases recover through the trusted supervisor function without unsafe retries", {
+  skip: !adminUrl || !roleUrls.seo || !roleUrls.supervisor
+}, async () => {
+  const admin = postgres(adminUrl, { max: 3 });
+  const seo = postgres(roleUrls.seo, { max: 1 });
+  const supervisor = postgres(roleUrls.supervisor, { max: 1 });
+  const marker = randomUUID();
+  let previousBudget;
+  const taskIds = [];
+  try {
+    [previousBudget] = await admin`SELECT * FROM agent_budget_config WHERE id=1`;
+    await admin`UPDATE agent_budget_config SET enabled=true,
+      daily_cap_microusd=10000000,monthly_cap_microusd=10000000,
+      per_run_cap_microusd=1000000,
+      input_price_per_million_microusd=1000000,
+      output_price_per_million_microusd=1000000,
+      web_search_price_microusd_per_call=0 WHERE id=1`;
+
+    await assert.rejects(
+      seo`SELECT * FROM public.agent_budget_recover_expired_tasks()`,
+      error => error.code === "42501",
+      "A worker must not invoke supervisor-only lease recovery"
+    );
+
+    const [reservedTask] = await admin`INSERT INTO agent_tasks
+      (assigned_role,title,objective,expected_output,created_by,status,attempts,max_attempts,lease_owner,lease_until)
+      VALUES ('seo',${"Expired active reservation " + marker},'Test lease recovery','Evidence',
+        'integration-test','claimed',1,3,'test-seo',now()+interval '5 minutes')
+      RETURNING id`;
+    taskIds.push(reservedTask.id);
+
+    const [reservation] = await seo`SELECT * FROM public.agent_budget_reserve(
+      ${reservedTask.id},'test-seo','test_stub','recovery-test-model',
+      1000,256,1,0,${"recovery-reserve-" + marker})`;
+    assert.ok(reservation.reservation_id);
+
+    await admin`UPDATE agent_tasks SET lease_until=now()-interval '1 second'
+      WHERE id=${reservedTask.id}`;
+    const [lateHeartbeat] = await seo`SELECT public.agent_task_heartbeat(
+      ${reservedTask.id},'test-seo') AS renewed`;
+    assert.equal(lateHeartbeat.renewed, false,
+      "An expired lease must not be resurrected by a late worker heartbeat");
+
+    const [retryableTask] = await admin`INSERT INTO agent_tasks
+      (assigned_role,title,objective,expected_output,created_by,status,attempts,max_attempts,lease_owner,lease_until)
+      VALUES ('seo',${"Expired retryable " + marker},'Test safe retry','Evidence',
+        'integration-test','running',1,3,'test-seo',now()-interval '1 second')
+      RETURNING id`;
+    taskIds.push(retryableTask.id);
+
+    const [exhaustedTask] = await admin`INSERT INTO agent_tasks
+      (assigned_role,title,objective,expected_output,created_by,status,attempts,max_attempts,lease_owner,lease_until)
+      VALUES ('seo',${"Expired exhausted " + marker},'Test dead letter','Evidence',
+        'integration-test','running',3,3,'test-seo',now()-interval '1 second')
+      RETURNING id`;
+    taskIds.push(exhaustedTask.id);
+
+    const recovered = await supervisor`SELECT * FROM public.agent_budget_recover_expired_tasks()`;
+    const byId = new Map(recovered.map(row => [String(row.task_id), row]));
+
+    const activeReservationRecovery = byId.get(String(reservedTask.id));
+    assert.equal(activeReservationRecovery?.recovery_status, "blocked");
+    assert.equal(activeReservationRecovery?.has_open_reservation, true);
+
+    const retryRecovery = byId.get(String(retryableTask.id));
+    assert.equal(retryRecovery?.recovery_status, "queued");
+    assert.equal(retryRecovery?.has_open_reservation, false);
+
+    const exhaustedRecovery = byId.get(String(exhaustedTask.id));
+    assert.equal(exhaustedRecovery?.recovery_status, "dead_letter");
+    assert.equal(exhaustedRecovery?.has_open_reservation, false);
+
+    const persisted = await admin`SELECT id,status,lease_owner,lease_until
+      FROM agent_tasks WHERE id = ANY(${taskIds}::bigint[]) ORDER BY id`;
+    const persistedById = new Map(persisted.map(row => [String(row.id), row]));
+    assert.equal(persistedById.get(String(reservedTask.id)).status, "blocked");
+    assert.equal(persistedById.get(String(reservedTask.id)).lease_owner, null);
+    assert.equal(persistedById.get(String(retryableTask.id)).status, "queued");
+    assert.equal(persistedById.get(String(retryableTask.id)).lease_until, null);
+    assert.equal(persistedById.get(String(exhaustedTask.id)).status, "dead_letter");
+
+    const [openReservation] = await admin`SELECT state FROM agent_budget_reservations
+      WHERE id=${reservation.reservation_id}`;
+    assert.equal(openReservation.state, "active",
+      "Recovery must retain the reservation for operator reconciliation, not silently release it");
+
+    const repeated = await supervisor`SELECT * FROM public.agent_budget_recover_expired_tasks()`;
+    assert.equal(repeated.length, 0, "A second recovery pass must not process already recovered tasks");
+  } finally {
+    if (taskIds.length) {
+      await admin`DELETE FROM agent_budget_ledger WHERE reservation_id IN
+        (SELECT id FROM agent_budget_reservations WHERE task_id = ANY(${taskIds}::bigint[]))`;
+      await admin`DELETE FROM agent_budget_settlements WHERE reservation_id IN
+        (SELECT id FROM agent_budget_reservations WHERE task_id = ANY(${taskIds}::bigint[]))`;
+      await admin`DELETE FROM agent_budget_reservations WHERE task_id = ANY(${taskIds}::bigint[])`;
+      await admin`DELETE FROM agent_runs WHERE task_id = ANY(${taskIds}::bigint[])`;
+      await admin`DELETE FROM agent_tasks WHERE id = ANY(${taskIds}::bigint[])`;
+    }
+    if (previousBudget) await admin`UPDATE agent_budget_config SET
+      enabled=${previousBudget.enabled},
+      daily_cap_microusd=${previousBudget.daily_cap_microusd},
+      monthly_cap_microusd=${previousBudget.monthly_cap_microusd},
+      per_run_cap_microusd=${previousBudget.per_run_cap_microusd},
+      input_price_per_million_microusd=${previousBudget.input_price_per_million_microusd},
+      output_price_per_million_microusd=${previousBudget.output_price_per_million_microusd},
+      web_search_price_microusd_per_call=${previousBudget.web_search_price_microusd_per_call}
+      WHERE id=1`;
+    await Promise.all([admin.end(),seo.end(),supervisor.end()]);
   }
 });

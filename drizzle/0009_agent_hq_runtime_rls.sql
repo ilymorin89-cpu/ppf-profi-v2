@@ -54,32 +54,14 @@ AS $parent_check$
   )
 $parent_check$;
 
+GRANT SELECT ON public.agent_worker_principals TO agent_hq_runtime_fn_owner;
 CREATE OR REPLACE FUNCTION public.agent_role_for_session()
 RETURNS TEXT LANGUAGE SQL STABLE SECURITY DEFINER
-SET search_path = pg_catalog
+SET search_path = pg_catalog, public
 AS $role_map$
-  SELECT CASE session_user
-    WHEN 'agent_web_engineer' THEN 'web_engineer'
-    WHEN 'agent_geo' THEN 'geo'
-    WHEN 'agent_growth' THEN 'growth'
-    WHEN 'agent_analytics' THEN 'analytics'
-    WHEN 'agent_vk_strategist' THEN 'vk_strategist'
-    WHEN 'agent_copywriter' THEN 'copywriter'
-    WHEN 'agent_designer' THEN 'designer'
-    WHEN 'agent_image_generator' THEN 'image_generator'
-    WHEN 'agent_storyteller' THEN 'storyteller'
-    WHEN 'agent_community_manager' THEN 'community_manager'
-    WHEN 'agent_content_seo' THEN 'content_seo'
-    WHEN 'agent_ads_manager' THEN 'ads_manager'
-    WHEN 'agent_trend_scout' THEN 'trend_scout'
-    WHEN 'agent_auto_news_editor' THEN 'auto_news_editor'
-    WHEN 'agent_auto_law_monitor' THEN 'auto_law_monitor'
-    WHEN 'agent_fact_checker' THEN 'fact_checker'
-    WHEN 'agent_seo' THEN 'seo'
-    WHEN 'agent_qa_security' THEN 'qa_security'
-    WHEN 'agent_coordinator' THEN 'coordinator'
-    ELSE NULL
-  END
+  SELECT principal.role
+  FROM public.agent_worker_principals principal
+  WHERE principal.login_role=session_user::TEXT AND principal.enabled
 $role_map$;
 
 CREATE OR REPLACE FUNCTION public.agent_can_insert_own_artifact(p_task_id BIGINT,p_created_by TEXT)
