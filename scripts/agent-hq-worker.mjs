@@ -132,6 +132,10 @@ async function runTask(task) {
   const estimatedInputTokens = MAX_REQUEST_INPUT_BYTES;
   let run;
   let providerCallStarted = false;
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+  let totalWebSearchCalls = 0;
+  const providerReferences = [];
   try {
     const reserveKey = "agent-reserve-" + createHash("sha256")
       .update(JSON.stringify([task.id, role, workerId, model, task.attempts])).digest("hex");
@@ -241,11 +245,7 @@ async function runTask(task) {
     const modelInstructions = buildModelInstructions(role, instructions);
     let responseInput = prompt;
     let data;
-    let totalInputTokens = 0;
-    let totalOutputTokens = 0;
-    let totalWebSearchCalls = 0;
     const citations = [];
-    const providerReferences = [];
     for (let turn = 0; turn < maxModelTurns; turn++) {
       // Include the complete current input, instructions and tool schemas in the cap.
       // This also catches oversized search/tool output before the next provider call.
@@ -273,9 +273,6 @@ async function runTask(task) {
         providerCallStarted = true;
         throw new Error("Deterministic test provider simulated an ambiguous accepted request");
       }
-      const usage = readProviderUsage(data, MAX_REQUEST_INPUT_BYTES, maxOutputTokens);
-      totalInputTokens += usage.inputTokens;
-      totalOutputTokens += usage.outputTokens;
       if (!testStubMode && (typeof data.id !== "string" || !data.id.trim())) {
         throw new Error("Provider response omitted its response ID; reservation requires reconciliation.");
       }
@@ -285,6 +282,9 @@ async function runTask(task) {
       if (providerReferences.join(",").length > 200) {
         throw new Error("Provider response references exceed the auditable settlement field; reservation requires reconciliation.");
       }
+      const usage = readProviderUsage(data, MAX_REQUEST_INPUT_BYTES, maxOutputTokens);
+      totalInputTokens += usage.inputTokens;
+      totalOutputTokens += usage.outputTokens;
       totalWebSearchCalls += (data.output || []).filter(item => item.type === "web_search_call").length;
       if (totalWebSearchCalls > maxModelTurns * maxBuiltInToolCallsPerTurn) {
         throw new Error("Hosted web-search call count exceeded the configured per-run reservation");
@@ -417,7 +417,14 @@ async function runTask(task) {
       try {
         if (providerCallStarted) {
           // Provider outcome may be billable: retain the reservation and require operator reconciliation.
-          await sql`SELECT public.agent_budget_mark_unknown(${run.reservationId}, ${workerId}, ${message.slice(0,500)}, ${"agent-unknown-" + run.id})`;
+          const reconciliationReason = [
+            message.slice(0,140),
+            "input_tokens=" + totalInputTokens,
+            "output_tokens=" + totalOutputTokens,
+            "web_search_calls=" + totalWebSearchCalls,
+            "provider_refs=" + providerReferences.join(",")
+          ].join("; ").slice(0,500);
+          await sql`SELECT public.agent_budget_mark_unknown(${run.reservationId}, ${workerId}, ${reconciliationReason}, ${"agent-unknown-" + run.id})`;
         } else {
           await sql`SELECT public.agent_budget_release(${run.reservationId}, ${workerId}, ${message.slice(0,500)}, ${"agent-release-" + run.id})`;
           safeToRetry = true;
