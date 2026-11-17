@@ -14,10 +14,17 @@ const once = process.argv.includes("--once");
 let stopping = false;
 
 async function supervise() {
-  await sql`UPDATE agent_tasks SET
-    status=CASE WHEN attempts < max_attempts THEN 'queued' ELSE 'dead_letter' END,
-    lease_owner=NULL,lease_until=NULL,updated_at=now()
-    WHERE status IN ('claimed','running') AND lease_until < now()`;
+  const recovered = await sql`SELECT * FROM public.agent_budget_recover_expired_tasks()`;
+  for (const item of recovered) {
+    if (item.recovery_status === "blocked" && item.has_open_reservation) {
+      await sql`INSERT INTO agent_messages
+        (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
+        VALUES (${item.task_id},gen_random_uuid(),'supervisor','coordinator','status',
+          'Expired worker lease has an active or unknown budget reservation. Automatic retry is blocked pending operator reconciliation.',
+          ${"budget-recovery-" + item.task_id})
+        ON CONFLICT (idempotency_key) DO NOTHING`;
+    }
+  }
   const parents = await sql`SELECT id,title,objective,acceptance_criteria FROM agent_tasks WHERE assigned_role='coordinator' AND status='review'
     ORDER BY created_at LIMIT 25`;
   for (const parent of parents) {
