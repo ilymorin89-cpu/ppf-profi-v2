@@ -686,6 +686,13 @@ test("Agent HQ trusted budget tables and run accounting are inaccessible to work
     const [publicExec]=await admin`SELECT has_function_privilege('public',
       'public.agent_budget_reserve(bigint,text,text,text,integer,integer,integer,integer,text)','EXECUTE') AS allowed`;
     assert.equal(publicExec.allowed,false);
+    const [recoveryAcl]=await admin`SELECT
+      has_function_privilege('agent_supervisor','public.agent_budget_recover_expired_tasks()','EXECUTE') AS supervisor_allowed,
+      has_function_privilege('agent_seo','public.agent_budget_recover_expired_tasks()','EXECUTE') AS worker_allowed,
+      has_function_privilege('public','public.agent_budget_recover_expired_tasks()','EXECUTE') AS public_allowed`;
+    assert.equal(recoveryAcl.supervisor_allowed,true);
+    assert.equal(recoveryAcl.worker_allowed,false);
+    assert.equal(recoveryAcl.public_allowed,false);
   } finally {
     if(taskId) await admin`DELETE FROM agent_tasks WHERE id=${taskId}`;
     await Promise.all([seo.end(),admin.end()]);
