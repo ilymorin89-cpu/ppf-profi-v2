@@ -1,125 +1,84 @@
--- Register the 19 staging worker LOGINs after migrations 0003-0011.
--- LOGIN roles and their secret passwords must be provisioned BEFORE migrations
--- 0008 and 0009. This file contains no passwords and never creates credentials.
--- Run as the trusted staging provisioning administrator, never as a worker LOGIN.
---
--- This registry does not start services. Keep agent_budget_config.enabled=false
--- and do not launch worker processes until staging acceptance tests are approved.
+-- Shared worker identity manifest for staging and disposable CI.
+-- Runtime LOGIN roles must exist before migrations 0008 and 0009.
+-- This file contains no passwords and does not start any workers.
+-- Override worker_id_prefix with psql -v worker_id_prefix=<prefix>.
+\if :{?worker_id_prefix}
+\else
+\set worker_id_prefix staging-
+\endif
 
 BEGIN;
 
-INSERT INTO public.agent_worker_principals (login_role, role, worker_id, enabled) VALUES
-  ('agent_coordinator', 'coordinator', 'staging-coordinator-01', true),
-  ('agent_web_engineer', 'web_engineer', 'staging-web-engineer-01', true),
-  ('agent_seo', 'seo', 'staging-seo-01', true),
-  ('agent_geo', 'geo', 'staging-geo-01', true),
-  ('agent_growth', 'growth', 'staging-growth-01', true),
-  ('agent_analytics', 'analytics', 'staging-analytics-01', true),
-  ('agent_qa_security', 'qa_security', 'staging-qa-security-01', true),
-  ('agent_vk_strategist', 'vk_strategist', 'staging-vk-strategist-01', true),
-  ('agent_copywriter', 'copywriter', 'staging-copywriter-01', true),
-  ('agent_designer', 'designer', 'staging-designer-01', true),
-  ('agent_image_generator', 'image_generator', 'staging-image-generator-01', true),
-  ('agent_storyteller', 'storyteller', 'staging-storyteller-01', true),
-  ('agent_community_manager', 'community_manager', 'staging-community-manager-01', true),
-  ('agent_content_seo', 'content_seo', 'staging-content-seo-01', true),
-  ('agent_ads_manager', 'ads_manager', 'staging-ads-manager-01', true),
-  ('agent_trend_scout', 'trend_scout', 'staging-trend-scout-01', true),
-  ('agent_auto_news_editor', 'auto_news_editor', 'staging-auto-news-editor-01', true),
-  ('agent_auto_law_monitor', 'auto_law_monitor', 'staging-auto-law-monitor-01', true),
-  ('agent_fact_checker', 'fact_checker', 'staging-fact-checker-01', true)
+CREATE TEMP TABLE expected_agent_hq_principals (
+  login_role TEXT PRIMARY KEY,
+  role TEXT NOT NULL,
+  worker_id TEXT NOT NULL UNIQUE,
+  enabled BOOLEAN NOT NULL
+) ON COMMIT DROP;
+
+INSERT INTO expected_agent_hq_principals (login_role, role, worker_id, enabled) VALUES
+  ('agent_coordinator', 'coordinator', :'worker_id_prefix' || 'coordinator', true),
+  ('agent_web_engineer', 'web_engineer', :'worker_id_prefix' || 'web_engineer', true),
+  ('agent_seo', 'seo', :'worker_id_prefix' || 'seo', true),
+  ('agent_geo', 'geo', :'worker_id_prefix' || 'geo', true),
+  ('agent_growth', 'growth', :'worker_id_prefix' || 'growth', true),
+  ('agent_analytics', 'analytics', :'worker_id_prefix' || 'analytics', true),
+  ('agent_qa_security', 'qa_security', :'worker_id_prefix' || 'qa_security', true),
+  ('agent_vk_strategist', 'vk_strategist', :'worker_id_prefix' || 'vk_strategist', true),
+  ('agent_copywriter', 'copywriter', :'worker_id_prefix' || 'copywriter', true),
+  ('agent_designer', 'designer', :'worker_id_prefix' || 'designer', true),
+  ('agent_image_generator', 'image_generator', :'worker_id_prefix' || 'image_generator', true),
+  ('agent_storyteller', 'storyteller', :'worker_id_prefix' || 'storyteller', true),
+  ('agent_community_manager', 'community_manager', :'worker_id_prefix' || 'community_manager', true),
+  ('agent_content_seo', 'content_seo', :'worker_id_prefix' || 'content_seo', true),
+  ('agent_ads_manager', 'ads_manager', :'worker_id_prefix' || 'ads_manager', true),
+  ('agent_trend_scout', 'trend_scout', :'worker_id_prefix' || 'trend_scout', true),
+  ('agent_auto_news_editor', 'auto_news_editor', :'worker_id_prefix' || 'auto_news_editor', true),
+  ('agent_auto_law_monitor', 'auto_law_monitor', :'worker_id_prefix' || 'auto_law_monitor', true),
+  ('agent_fact_checker', 'fact_checker', :'worker_id_prefix' || 'fact_checker', true);
+
+INSERT INTO public.agent_worker_principals (login_role, role, worker_id, enabled)
+SELECT login_role, role, worker_id, enabled
+FROM expected_agent_hq_principals
+ORDER BY login_role
 ON CONFLICT (login_role) DO NOTHING;
 
 DO $assert_staging_workers$
-DECLARE
-  expected_count INTEGER;
-  registered_count INTEGER;
 BEGIN
-  SELECT count(*) INTO expected_count
-  FROM (VALUES
-    ('agent_coordinator', 'coordinator', 'staging-coordinator-01'),
-    ('agent_web_engineer', 'web_engineer', 'staging-web-engineer-01'),
-    ('agent_seo', 'seo', 'staging-seo-01'),
-    ('agent_geo', 'geo', 'staging-geo-01'),
-    ('agent_growth', 'growth', 'staging-growth-01'),
-    ('agent_analytics', 'analytics', 'staging-analytics-01'),
-    ('agent_qa_security', 'qa_security', 'staging-qa-security-01'),
-    ('agent_vk_strategist', 'vk_strategist', 'staging-vk-strategist-01'),
-    ('agent_copywriter', 'copywriter', 'staging-copywriter-01'),
-    ('agent_designer', 'designer', 'staging-designer-01'),
-    ('agent_image_generator', 'image_generator', 'staging-image-generator-01'),
-    ('agent_storyteller', 'storyteller', 'staging-storyteller-01'),
-    ('agent_community_manager', 'community_manager', 'staging-community-manager-01'),
-    ('agent_content_seo', 'content_seo', 'staging-content-seo-01'),
-    ('agent_ads_manager', 'ads_manager', 'staging-ads-manager-01'),
-    ('agent_trend_scout', 'trend_scout', 'staging-trend-scout-01'),
-    ('agent_auto_news_editor', 'auto_news_editor', 'staging-auto-news-editor-01'),
-    ('agent_auto_law_monitor', 'auto_law_monitor', 'staging-auto-law-monitor-01'),
-    ('agent_fact_checker', 'fact_checker', 'staging-fact-checker-01')
-  ) AS expected(login_role, role, worker_id);
-
-  SELECT count(*) INTO registered_count
-  FROM public.agent_worker_principals;
-
-  IF registered_count <> expected_count THEN
-    RAISE EXCEPTION 'Expected exactly % staging worker principals; found %', expected_count, registered_count;
+  IF (SELECT count(*) FROM public.agent_worker_principals) <> 19 THEN
+    RAISE EXCEPTION 'Expected exactly 19 worker principals; found %',
+      (SELECT count(*) FROM public.agent_worker_principals);
   END IF;
 
   IF EXISTS (
     SELECT 1
-    FROM (VALUES
-      ('agent_coordinator', 'coordinator', 'staging-coordinator-01'),
-      ('agent_web_engineer', 'web_engineer', 'staging-web-engineer-01'),
-      ('agent_seo', 'seo', 'staging-seo-01'),
-      ('agent_geo', 'geo', 'staging-geo-01'),
-      ('agent_growth', 'growth', 'staging-growth-01'),
-      ('agent_analytics', 'analytics', 'staging-analytics-01'),
-      ('agent_qa_security', 'qa_security', 'staging-qa-security-01'),
-      ('agent_vk_strategist', 'vk_strategist', 'staging-vk-strategist-01'),
-      ('agent_copywriter', 'copywriter', 'staging-copywriter-01'),
-      ('agent_designer', 'designer', 'staging-designer-01'),
-      ('agent_image_generator', 'image_generator', 'staging-image-generator-01'),
-      ('agent_storyteller', 'storyteller', 'staging-storyteller-01'),
-      ('agent_community_manager', 'community_manager', 'staging-community-manager-01'),
-      ('agent_content_seo', 'content_seo', 'staging-content-seo-01'),
-      ('agent_ads_manager', 'ads_manager', 'staging-ads-manager-01'),
-      ('agent_trend_scout', 'trend_scout', 'staging-trend-scout-01'),
-      ('agent_auto_news_editor', 'auto_news_editor', 'staging-auto-news-editor-01'),
-      ('agent_auto_law_monitor', 'auto_law_monitor', 'staging-auto-law-monitor-01'),
-      ('agent_fact_checker', 'fact_checker', 'staging-fact-checker-01')
-    ) AS expected(login_role, role, worker_id)
+    FROM expected_agent_hq_principals expected
     LEFT JOIN public.agent_worker_principals actual USING (login_role)
     WHERE actual.login_role IS NULL
        OR actual.role <> expected.role
        OR actual.worker_id <> expected.worker_id
-       OR actual.enabled IS DISTINCT FROM true
+       OR actual.enabled IS DISTINCT FROM expected.enabled
   ) THEN
-    RAISE EXCEPTION 'A staging worker principal is missing or differs from the approved role/worker_id manifest';
+    RAISE EXCEPTION 'A worker principal is missing or differs from the approved role/worker_id manifest';
   END IF;
 
   IF EXISTS (
     SELECT 1
-    FROM public.agent_worker_principals p
-    LEFT JOIN pg_roles r ON r.rolname=p.login_role
+    FROM expected_agent_hq_principals expected
+    LEFT JOIN pg_roles r ON r.rolname=expected.login_role
     WHERE r.rolname IS NULL OR NOT r.rolcanlogin OR r.rolsuper
        OR r.rolcreatedb OR r.rolcreaterole OR r.rolinherit OR r.rolbypassrls
   ) THEN
-    RAISE EXCEPTION 'Every staging worker principal must map to a safe NOINHERIT, non-superuser LOGIN';
+    RAISE EXCEPTION 'Every worker principal must map to a safe NOINHERIT, non-superuser LOGIN';
   END IF;
 
   IF EXISTS (
     SELECT 1
     FROM pg_auth_members m
     JOIN pg_roles member_role ON member_role.oid=m.member
-    WHERE member_role.rolname IN (
-      'agent_coordinator','agent_web_engineer','agent_seo','agent_geo','agent_growth',
-      'agent_analytics','agent_qa_security','agent_vk_strategist','agent_copywriter',
-      'agent_designer','agent_image_generator','agent_storyteller','agent_community_manager',
-      'agent_content_seo','agent_ads_manager','agent_trend_scout','agent_auto_news_editor',
-      'agent_auto_law_monitor','agent_fact_checker'
-    )
+    JOIN expected_agent_hq_principals expected ON expected.login_role=member_role.rolname
   ) THEN
-    RAISE EXCEPTION 'Staging worker LOGINs must not belong to any PostgreSQL role';
+    RAISE EXCEPTION 'Worker LOGINs must not belong to any PostgreSQL role';
   END IF;
 END
 $assert_staging_workers$;
