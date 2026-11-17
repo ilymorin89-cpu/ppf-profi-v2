@@ -6,6 +6,8 @@ This runbook prepares an isolated staging deployment. It does not authorize prod
 
 The existing Timeweb App Platform deployment is not a reason to create another server. Keep the production website application and its database untouched. The current Agent HQ Timeweb app must be treated as staging only after its repository branch and database target have been verified.
 
+The GitHub branch selected in the supplied App Platform screenshot is `feat/vk-content-army`, at commit `d032f9d0fc272e5a0b31872021efad71f6ad23bf`. The exact `docker-compose.yml` at that commit contains only three worker services (`coordinator`, `community_manager`, `qa_security`), plus `gateway` and `supervisor`; all four runtime services reuse the single `AGENT_HQ_DATABASE_URL`. This is not the 19-worker, role-specific-LOGIN configuration in the newer reviewed Agent HQ branch. Do not turn workers on in this currently selected branch. The newer 19-worker Compose remains in Draft PRs and must pass review/CI before it is selected for staging.
+
 The Timeweb screenshots supplied for this project show:
 - App Platform framework: Docker Compose; compose path `/docker-compose.yml`.
 - Selected deployment branch: `feat/vk-content-army`.
