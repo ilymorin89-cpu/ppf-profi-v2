@@ -471,7 +471,7 @@ test("Agent HQ supervisor blocks QA REVISE and exhausted specialist work", async
       VALUES ('coordinator',${"Dead letter " + marker},'Handle exhausted specialist','Blocked','integration-test','review')
       RETURNING id`;
     parentIds.push(deadParent.id);
-    const [deadChild] = await sql`INSERT INTO agent_tasks
+    await sql`INSERT INTO agent_tasks
       (parent_task_id,assigned_role,title,objective,expected_output,created_by,status,attempts,max_attempts)
       VALUES (${deadParent.id},'web_engineer','Exhausted task','Complete work','Evidence','integration-test','dead_letter',3,3)
       RETURNING id`;
@@ -493,7 +493,6 @@ test("Agent HQ supervisor blocks QA REVISE and exhausted specialist work", async
       WHERE task_id=${deadParent.id} AND to_role='coordinator' AND kind='status'
       ORDER BY created_at DESC LIMIT 1`;
     assert.ok(deadNotice, "Dead-letter outcome must notify the coordinator.");
-    assert.equal(String(deadChild.id), String(deadChild.id));
   } finally {
     for (const id of parentIds) {
       await sql`DELETE FROM agent_tasks WHERE parent_task_id=${id}`;
