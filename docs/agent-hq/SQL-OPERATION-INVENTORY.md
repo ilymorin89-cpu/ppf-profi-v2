@@ -39,14 +39,14 @@ These counts are a review index, not proof of exhaustive runtime coverage. Condi
 
 ## Current test coverage and limits
 
-The disposable PostgreSQL CI harness now provisions distinct LOGINs for all 19 worker roles, maps `session_user` to the matching role, applies narrow baseline grants, and tests that each worker sees only its own task and cannot forge another role's message sender. The operator approval path is separately exercised through an operator LOGIN. Supervisor acceptance additionally covers repeated passes without duplicate QA tasks, missing explicit QA verdict blocking, and expired lease recovery.
+The disposable PostgreSQL CI harness now provisions distinct LOGINs for all 19 worker roles, maps `session_user` to the matching role, applies narrow baseline grants, and tests own-task plus exact QA/coordinator task visibility; own-artifact plus exact QA/coordinator artifact visibility; forbidden task routing/budget column updates; recipient-only inbox reads; and message-sender anti-spoofing. The operator approval path is separately exercised through its own LOGIN. Supervisor CLI acceptance covers repeated passes without duplicate QA tasks, missing explicit QA verdict blocking, expired lease recovery, two concurrent supervisor processes, QA REVISE blocking, and dead-letter blocking.
 
 These tests do **not** prove production authorization:
 - helper functions in the test harness are owned by the disposable database owner;
 - there is no reviewed production non-login function owner and no production RLS migration;
-- the role-matrix test currently exercises task visibility and message sender anti-spoofing, not every SQL template or every mutable column;
+- the role-matrix test now covers a broader slice of row visibility and immutable columns, but still does not exercise every SQL template or every mutable column;
 - bus `send` still accepts a caller-provided sender role at the CLI layer;
-- the supervisor lifecycle suite does not yet cover concurrent supervisors, QA REVISE, dead-letter exhaustion, restart mid-flow, all parent-specific artifact access boundaries, or all lease races;
+- the supervisor lifecycle suite still does not cover restart mid-flow, every parent-specific artifact access boundary, or all lease races;
 - provider billing reconciliation is not proven by local estimates or mocked tests.
 
 ## Required production design before any migration
