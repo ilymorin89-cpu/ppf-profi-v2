@@ -26,6 +26,23 @@ test("Agent HQ database roles are isolated by authenticated PostgreSQL identity"
   const marker = randomUUID();
   let seoTask, qaTask, parentTask, unrelatedParent, unrelatedTask, delegatedTaskId, seoArtifact, unrelatedArtifact;
   try {
+    const [principal] = await seo`SELECT session_user AS login,
+      public.agent_role_for_session() AS role,
+      public.agent_worker_id_for_session() AS worker_id`;
+    assert.equal(principal.login, "agent_seo");
+    assert.equal(principal.role, "seo");
+    assert.equal(principal.worker_id, "test-seo");
+    await assert.rejects(
+      seo`SELECT * FROM public.agent_worker_principals`,
+      error => error.code === "42501",
+      "Worker cannot read or enumerate the principal registry"
+    );
+    await assert.rejects(
+      seo`SELECT * FROM public.agent_task_claim('forged-worker-id')`,
+      error => error.code === "42501",
+      "Worker cannot claim tasks under an environment-supplied or forged worker ID"
+    );
+
     [seoTask] = await admin`INSERT INTO agent_tasks (assigned_role,title,objective,expected_output,created_by)
       VALUES ('seo',${"SEO " + marker},'SEO test','Evidence','integration-test') RETURNING id`;
     [qaTask] = await admin`INSERT INTO agent_tasks (assigned_role,title,objective,expected_output,created_by)
@@ -266,7 +283,7 @@ test("real SEO worker completes a task using its restricted PostgreSQL login and
         NODE_ENV: "test",
         DATABASE_URL: roleUrls.seo,
         AGENT_ROLE: "seo",
-        AGENT_WORKER_ID: "seo-rls-e2e",
+        AGENT_WORKER_ID: "test-seo",
         OPENAI_API_KEY: "test-key-never-used",
         AGENT_MODEL: "gpt-4.1-mini",
         AGENT_WEB_SEARCH_ENABLED: "false",
@@ -347,7 +364,7 @@ test("Agent HQ blocks retry and retains reservation after ambiguous provider out
       encoding:"utf8",
       env:{
         ...process.env,NODE_ENV:"test",DATABASE_URL:roleUrls.seo,AGENT_ROLE:"seo",
-        AGENT_WORKER_ID:"seo-ambiguous-outcome",OPENAI_API_KEY:"test-key-never-used",
+        AGENT_WORKER_ID:"test-seo",OPENAI_API_KEY:"test-key-never-used",
         AGENT_MODEL:"gpt-4.1-mini",AGENT_WEB_SEARCH_ENABLED:"false",
         AGENT_HQ_TEST_RESPONSES_JSON:JSON.stringify({
           __test_provider_outcome:"ambiguous",
@@ -464,7 +481,7 @@ test("Agent HQ reservation and settlement are idempotent and bound to the origin
       monthly_cap_microusd=500000,per_run_cap_microusd=5000,
       input_price_per_million_microusd=100000,output_price_per_million_microusd=100000,
       web_search_price_microusd_per_call=0 WHERE id=1`;
-    const workerId="seo-budget-idempotency";
+    const workerId="test-seo";
     const marker=randomUUID();
     const [task]=await admin`INSERT INTO agent_tasks(assigned_role,title,objective,expected_output,created_by,
       status,lease_owner,lease_until,budget_limit_microusd)
@@ -527,7 +544,7 @@ test("Agent HQ releases a reservation only for its original worker and idempoten
       monthly_cap_microusd=500000,per_run_cap_microusd=5000,
       input_price_per_million_microusd=100000,output_price_per_million_microusd=100000,
       web_search_price_microusd_per_call=0 WHERE id=1`;
-    const workerId="seo-budget-release";
+    const workerId="test-seo";
     const marker=randomUUID();
     const [task]=await admin`INSERT INTO agent_tasks(assigned_role,title,objective,expected_output,created_by,
       status,lease_owner,lease_until,budget_limit_microusd)
@@ -587,7 +604,7 @@ test("Agent HQ operator reconciles an unknown reservation exactly once after lea
       monthly_cap_microusd=500000,per_run_cap_microusd=5000,
       input_price_per_million_microusd=100000,output_price_per_million_microusd=100000,
       web_search_price_microusd_per_call=0 WHERE id=1`;
-    const workerId="seo-reconcile-worker";
+    const workerId="test-seo";
     const marker=randomUUID();
     const [task]=await admin`INSERT INTO agent_tasks(assigned_role,title,objective,expected_output,created_by,
       status,lease_owner,lease_until,budget_limit_microusd)
@@ -717,7 +734,7 @@ test("Agent HQ operator can reconcile a reservation with confirmed zero provider
       monthly_cap_microusd=500000,per_run_cap_microusd=5000,
       input_price_per_million_microusd=100000,output_price_per_million_microusd=100000,
       web_search_price_microusd_per_call=0 WHERE id=1`;
-    const workerId="seo-no-charge-worker";
+    const workerId="test-seo";
     const marker=randomUUID();
     const [task]=await admin`INSERT INTO agent_tasks
       (assigned_role,title,objective,expected_output,created_by,status,lease_owner,lease_until,budget_limit_microusd)
@@ -896,9 +913,10 @@ test("Agent HQ SECURITY DEFINER helpers use a dedicated NOLOGIN non-BYPASSRLS ow
           'agent_can_grant_task_access',
           'agent_is_valid_coordinator_parent',
           'agent_role_for_session',
-          'agent_can_insert_own_artifact'
+          'agent_can_insert_own_artifact',
+          'agent_worker_id_for_session'
         )`;
-    assert.equal(helpers.length, 5, "All reviewed runtime SECURITY DEFINER helpers must be present");
+    assert.equal(helpers.length, 6, "All reviewed runtime SECURITY DEFINER helpers must be present");
     for (const helper of helpers) {
       assert.equal(helper.owner, "agent_hq_runtime_fn_owner", helper.proname + " owner");
       assert.equal(helper.prosecdef, true, helper.proname + " must be SECURITY DEFINER");
