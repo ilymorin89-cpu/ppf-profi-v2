@@ -120,6 +120,10 @@ jobs:
             psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -c "UPDATE agent_budget_config SET enabled=false,daily_cap_microusd=0,monthly_cap_microusd=0,per_run_cap_microusd=0,input_price_per_million_microusd=0,output_price_per_million_microusd=0,updated_at=now() WHERE id=1;" || true
           }
           trap cleanup EXIT
+          # The integration suite intentionally leaves negative-test fixtures behind.
+          # Clear only queued fixtures in this disposable CI database so workers cannot
+          # accidentally claim an older task instead of the simulation's own task.
+          psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -c "UPDATE agent_tasks SET status='cancelled',updated_at=now() WHERE assigned_role IN ('coordinator','seo','qa_security') AND status='queued';"
           psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -c "UPDATE agent_budget_config SET enabled=true,daily_cap_microusd=1000000,monthly_cap_microusd=5000000,per_run_cap_microusd=100000,input_price_per_million_microusd=1,output_price_per_million_microusd=1,web_search_price_microusd_per_call=0,updated_at=now() WHERE id=1;"
           COORDINATOR_TASK_ID="$(psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -Atqc "INSERT INTO agent_tasks (title,objective,expected_output,assigned_role,created_by) VALUES ('CI no-spend coordinator ${GITHUB_RUN_ID}','Complete one deterministic coordinator pass','Persist one artifact and enter review','coordinator','owner') RETURNING id;")"
           TASK_IDS+=("$COORDINATOR_TASK_ID")
@@ -129,6 +133,9 @@ jobs:
           TASK_IDS+=("$QA_TASK_ID")
           npm run agent-hq:simulate -- check coordinator
           npm run agent-hq:simulate -- run coordinator
+          # The deterministic coordinator fixture returns text rather than delegating.
+          # Move its completed task into review to exercise the supervisor's review pass.
+          psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -c "UPDATE agent_tasks SET status='review',completed_at=NULL,updated_at=now() WHERE id=$COORDINATOR_TASK_ID;"
           npm run agent-hq:simulate -- check seo
           npm run agent-hq:simulate -- run seo
           npm run agent-hq:simulate -- check qa_security
