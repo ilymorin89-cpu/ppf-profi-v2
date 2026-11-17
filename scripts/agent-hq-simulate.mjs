@@ -78,14 +78,15 @@ const workerEnv = {
   TEMP: process.env.TEMP || "",
   NODE_ENV: "test",
   DATABASE_URL: roleUrl,
-  OPENAI_API_KEY: "test-stub-no-provider",
-  AGENT_MODEL: "agent-hq-deterministic-stub",
+  OPENAI_API_KEY: "test-no-provider-call",
+  AGENT_MODEL: "test-model",
   AGENT_ROLE: role,
   AGENT_WORKER_ID: "simulation-" + role + "-" + process.pid,
   AGENT_MAX_OUTPUT_TOKENS: "128",
   AGENT_POLL_MS: "1",
   AGENT_WEB_SEARCH_ENABLED: "false",
   AGENT_HQ_WORKERS_ENABLED: "false",
+  AGENT_HQ_TEST_ONCE: "true",
   AGENT_HQ_TEST_RESPONSES_JSON: JSON.stringify({
     output: [{
       type: "message",
@@ -101,6 +102,18 @@ const workerEnv = {
 const args = config.script.endsWith("supervisor.mjs")
   ? [config.script, "--once"]
   : [config.script, "--once"];
+// Run the same fail-closed preflight used by the test harness before
+// starting the one-shot worker. This mode explicitly keeps long-running
+// workers disabled while permitting exactly one deterministic test process.
+const preflight = spawnSync(process.execPath, ["scripts/agent-hq-test-preflight.mjs"], {
+  cwd: root,
+  env: workerEnv,
+  stdio: "inherit",
+  shell: false
+});
+if (preflight.error) throw preflight.error;
+if (preflight.status !== 0) process.exit(preflight.status || 1);
+
 const result = spawnSync(process.execPath, args, {
   cwd: root,
   env: workerEnv,
