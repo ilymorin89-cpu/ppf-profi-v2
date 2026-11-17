@@ -394,6 +394,66 @@ test("Agent HQ concurrent reservations cannot overspend the daily cap", {
   }
 });
 
+test("Agent HQ reservation and settlement are idempotent and bound to the original worker", {
+  skip: !adminUrl || !roleUrls.seo
+}, async () => {
+  const admin=postgres(adminUrl,{max:2});
+  const seo=postgres(roleUrls.seo,{max:1});
+  let oldBudget;
+  let taskId;
+  try {
+    [oldBudget]=await admin`SELECT * FROM agent_budget_config WHERE id=1`;
+    await admin`UPDATE agent_budget_config SET enabled=true,daily_cap_microusd=100000,
+      monthly_cap_microusd=500000,per_run_cap_microusd=5000,
+      input_price_per_million_microusd=100000,output_price_per_million_microusd=100000,
+      web_search_price_microusd_per_call=0 WHERE id=1`;
+    const workerId="seo-budget-idempotency";
+    const marker=randomUUID();
+    const [task]=await admin`INSERT INTO agent_tasks(assigned_role,title,objective,expected_output,created_by,
+      status,lease_owner,lease_until,budget_limit_microusd)
+      VALUES('seo','budget idempotency','test','test','integration-test','claimed',${workerId},
+        now()+interval '5 minutes',5000) RETURNING id`;
+    taskId=task.id;
+    const reserveKey="reserve-"+marker;
+    const [first]=await seo`SELECT * FROM agent_budget_reserve(
+      ${taskId},${workerId},'test_stub','test-model',10000,256,1,0,${reserveKey})`;
+    const [again]=await seo`SELECT * FROM agent_budget_reserve(
+      ${taskId},${workerId},'test_stub','test-model',10000,256,1,0,${reserveKey})`;
+    assert.equal(String(again.run_id),String(first.run_id));
+    assert.equal(String(again.reservation_id),String(first.reservation_id));
+    await assert.rejects(seo`SELECT agent_budget_settle(
+      ${first.reservation_id},'forged-worker',1000,500,0,${"wrong-"+marker},'provider-test-ref')`,
+      e=>e.code==="42501");
+    const [settled]=await seo`SELECT agent_budget_settle(
+      ${first.reservation_id},${workerId},1000,500,0,${"settle-"+marker},'provider-test-ref') AS cost`;
+    const [repeat]=await seo`SELECT agent_budget_settle(
+      ${first.reservation_id},${workerId},1000,500,0,${"settle-"+marker},'provider-test-ref') AS cost`;
+    assert.equal(String(repeat.cost),String(settled.cost));
+    await assert.rejects(seo`SELECT agent_budget_settle(
+      ${first.reservation_id},${workerId},1001,500,0,${"settle-other-"+marker},'provider-test-ref')`,
+      e=>e.code==="23505");
+    const [counts]=await admin`SELECT
+      (SELECT count(*) FROM agent_budget_settlements WHERE reservation_id=${first.reservation_id})::int AS settlements,
+      (SELECT count(*) FROM agent_budget_ledger WHERE reservation_id=${first.reservation_id} AND event_type='settled')::int AS ledger_events`;
+    assert.equal(counts.settlements,1);
+    assert.equal(counts.ledger_events,1);
+  } finally {
+    if(taskId){
+      await admin`DELETE FROM agent_budget_ledger WHERE reservation_id IN (SELECT id FROM agent_budget_reservations WHERE task_id=${taskId})`;
+      await admin`DELETE FROM agent_budget_settlements WHERE reservation_id IN (SELECT id FROM agent_budget_reservations WHERE task_id=${taskId})`;
+      await admin`DELETE FROM agent_budget_reservations WHERE task_id=${taskId}`;
+      await admin`DELETE FROM agent_tasks WHERE id=${taskId}`;
+    }
+    if(oldBudget) await admin`UPDATE agent_budget_config SET enabled=${oldBudget.enabled},
+      daily_cap_microusd=${oldBudget.daily_cap_microusd},monthly_cap_microusd=${oldBudget.monthly_cap_microusd},
+      per_run_cap_microusd=${oldBudget.per_run_cap_microusd},
+      input_price_per_million_microusd=${oldBudget.input_price_per_million_microusd},
+      output_price_per_million_microusd=${oldBudget.output_price_per_million_microusd},
+      web_search_price_microusd_per_call=${oldBudget.web_search_price_microusd_per_call} WHERE id=1`;
+    await Promise.all([seo.end(),admin.end()]);
+  }
+});
+
 test("Agent HQ trusted budget tables and run accounting are inaccessible to workers", {
   skip: !adminUrl || !roleUrls.seo
 }, async () => {
