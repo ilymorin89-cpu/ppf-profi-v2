@@ -64,11 +64,6 @@ if (!["check", "run"].includes(command)) {
 }
 
 const { config, roleUrl } = validate(role);
-if (command === "check") {
-  console.log("Simulation target validated for " + role + ". No database connection, task claim or worker process was started.");
-  process.exit(0);
-}
-
 const workerEnv = {
   PATH: process.env.PATH || "",
   SystemRoot: process.env.SystemRoot || "",
@@ -113,6 +108,11 @@ const preflight = spawnSync(process.execPath, ["scripts/agent-hq-test-preflight.
 });
 if (preflight.error) throw preflight.error;
 if (preflight.status !== 0) process.exit(preflight.status || 1);
+
+if (command === "check") {
+  console.log("Simulation target and fail-closed preflight validated for " + role + ". No database connection, task claim or worker process was started.");
+  process.exit(0);
+}
 
 const result = spawnSync(process.execPath, args, {
   cwd: root,
