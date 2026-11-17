@@ -2,7 +2,7 @@ import postgres from "postgres";
 import { createHash, randomUUID } from "node:crypto";
 import { mayExecuteToolCalls, parseApprovalPayload, uniqueCitations } from "./agent-hq-helpers.mjs";
 import { createWorkerLifecycle } from "./agent-hq-worker-lifecycle.mjs";
-import { MAX_REQUEST_INPUT_BYTES, assertRequestInputWithinLimit, buildModelInstructions } from "./agent-hq-budget-envelope.mjs";
+import { MAX_REQUEST_INPUT_BYTES, assertRequestInputWithinLimit, buildModelInstructions, readProviderUsage } from "./agent-hq-budget-envelope.mjs";
 
 const role = process.env.AGENT_ROLE;
 const apiKey = process.env.OPENAI_API_KEY;
@@ -245,6 +245,7 @@ async function runTask(task) {
     let totalOutputTokens = 0;
     let totalWebSearchCalls = 0;
     const citations = [];
+    const providerReferences = [];
     for (let turn = 0; turn < maxModelTurns; turn++) {
       // Include the complete current input, instructions and tool schemas in the cap.
       // This also catches oversized search/tool output before the next provider call.
@@ -253,7 +254,7 @@ async function runTask(task) {
       if (!testStubMode) providerCallStarted = true;
       const response = await requestModel({
         model,
-        instructions: modelInstructions
+        instructions: modelInstructions,
         input: responseInput,
         tools,
         max_output_tokens: maxOutputTokens,
@@ -272,8 +273,18 @@ async function runTask(task) {
         providerCallStarted = true;
         throw new Error("Deterministic test provider simulated an ambiguous accepted request");
       }
-      totalInputTokens += Number(data.usage?.input_tokens || 0);
-      totalOutputTokens += Number(data.usage?.output_tokens || 0);
+      const usage = readProviderUsage(data);
+      totalInputTokens += usage.inputTokens;
+      totalOutputTokens += usage.outputTokens;
+      if (!testStubMode && (typeof data.id !== "string" || !data.id.trim())) {
+        throw new Error("Provider response omitted its response ID; reservation requires reconciliation.");
+      }
+      if (typeof data.id === "string" && data.id.trim() && !providerReferences.includes(data.id)) {
+        providerReferences.push(data.id);
+      }
+      if (providerReferences.join(",").length > 200) {
+        throw new Error("Provider response references exceed the auditable settlement field; reservation requires reconciliation.");
+      }
       totalWebSearchCalls += (data.output || []).filter(item => item.type === "web_search_call").length;
       if (totalWebSearchCalls > maxModelTurns * maxBuiltInToolCallsPerTurn) {
         throw new Error("Hosted web-search call count exceeded the configured per-run reservation");
@@ -380,7 +391,7 @@ async function runTask(task) {
     }
     if (!result) throw new Error("Model returned no text output");
     if (lifecycle.stopping) throw new Error("Worker stopping or task lease lost; result will not be committed");
-    const providerReference = typeof data?.id === "string" ? data.id : null;
+    const providerReference = providerReferences.length ? providerReferences.join(",") : null;
     const settlementKey = "agent-settle-" + createHash("sha256")
       .update(JSON.stringify([run.id, totalInputTokens, totalOutputTokens, totalWebSearchCalls, providerReference])).digest("hex");
     const [settlement] = await sql`SELECT public.agent_budget_settle(
