@@ -73,11 +73,11 @@ function validate(group) {
     if (username !== auditedLogins[service]) {
       throw new Error(`${key} must use the dedicated login ${auditedLogins[service]}; shared or elevated database identities are forbidden.`);
     }
-    const host = parsed.hostname.replace(/^\\[|\\]$/g, "");
+    const host = parsed.hostname.replace(/^\[|\]$/g, "");
     if (![ "localhost", "127.0.0.1", "::1", "host.docker.internal", "postgres" ].includes(host)) {
       throw new Error(`${key} must target a local disposable PostgreSQL host; remote database hosts are forbidden.`);
     }
-    const databaseName = decodeURIComponent(parsed.pathname.replace(/^\\/+/, ""));
+    const databaseName = decodeURIComponent(parsed.pathname.replace(/^\/+/, ""));
     if (databaseName !== "agent_hq_test") {
       throw new Error(`${key} must target the disposable database named agent_hq_test.`);
     }
