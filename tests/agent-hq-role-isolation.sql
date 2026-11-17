@@ -72,6 +72,18 @@ REVOKE ALL ON FUNCTION public.agent_has_task_access(BIGINT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.agent_has_task_access(BIGINT)
   TO agent_seo,agent_qa_security,agent_coordinator,agent_supervisor;
 
+CREATE OR REPLACE FUNCTION public.agent_can_grant_task_access(p_principal TEXT)
+RETURNS BOOLEAN
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $grant_check$
+  SELECT session_user='agent_supervisor' AND p_principal IN ('qa_security','coordinator')
+$grant_check$;
+REVOKE ALL ON FUNCTION public.agent_can_grant_task_access(TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.agent_can_grant_task_access(TEXT) TO agent_supervisor;
+
 ALTER TABLE agent_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_tasks FORCE ROW LEVEL SECURITY;
 ALTER TABLE agent_messages ENABLE ROW LEVEL SECURITY;
@@ -165,7 +177,7 @@ CREATE POLICY task_access_read_own ON agent_task_access FOR SELECT USING (
     ELSE '__denied__' END
 );
 CREATE POLICY task_access_insert_supervisor ON agent_task_access FOR INSERT
-  WITH CHECK (session_user='agent_supervisor' AND principal IN ('qa_security','coordinator'));
+  WITH CHECK (public.agent_can_grant_task_access(principal));
 
 CREATE POLICY artifact_read_explicit_access ON agent_artifacts FOR SELECT USING (
   public.agent_has_task_access(agent_artifacts.task_id)
