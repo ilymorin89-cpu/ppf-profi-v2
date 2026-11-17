@@ -40,5 +40,9 @@ export function readProviderUsage(response, maxInputTokens, maxOutputTokens) {
       !Number.isSafeInteger(outputTokens) || outputTokens < 0) {
     throw new Error("Provider response omitted valid token usage; reservation requires reconciliation.");
   }
-  if (!Number.isSafeInteger(maxInputTokens) || maxInputTokens < 1 || inputTokens > maxInputTokens ||\n      !Number.isSafeInteger(maxOutputTokens) || maxOutputTokens < 1 || outputTokens > maxOutputTokens) {\n    throw new Error("Provider usage exceeded the per-turn reserved token envelope; reservation requires reconciliation.");\n  }\n  return { inputTokens, outputTokens };
+  if (!Number.isSafeInteger(maxInputTokens) || maxInputTokens < 1 || inputTokens > maxInputTokens ||
+      !Number.isSafeInteger(maxOutputTokens) || maxOutputTokens < 1 || outputTokens > maxOutputTokens) {
+    throw new Error("Provider usage exceeded the per-turn reserved token envelope; reservation requires reconciliation.");
+  }
+  return { inputTokens, outputTokens };
 }
