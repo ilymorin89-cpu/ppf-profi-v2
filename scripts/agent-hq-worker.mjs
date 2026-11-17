@@ -3,7 +3,6 @@ import { createHash, randomUUID } from "node:crypto";
 import { mayExecuteToolCalls, parseApprovalPayload, uniqueCitations } from "./agent-hq-helpers.mjs";
 
 const role = process.env.AGENT_ROLE;
-const workerId = process.env.AGENT_WORKER_ID || `${role || "worker"}-${process.pid}`;
 const apiKey = process.env.OPENAI_API_KEY;
 const model = process.env.AGENT_MODEL;
 const databaseUrl = process.env.DATABASE_URL;
@@ -23,10 +22,20 @@ if (!Number.isInteger(maxOutputTokens) || maxOutputTokens < 64 || maxOutputToken
   throw new Error("AGENT_MAX_OUTPUT_TOKENS must be an integer between 64 and 8192");
 }
 const sql = postgres(databaseUrl, { max: 2, idle_timeout: 20 });
-const [databaseIdentity] = await sql`SELECT session_user AS login`;
-if (databaseIdentity?.login !== `agent_${role}`) {
+const [databaseIdentity] = await sql`
+  SELECT session_user AS login,
+    public.agent_role_for_session() AS role,
+    public.agent_worker_id_for_session() AS worker_id
+`;
+if (!databaseIdentity?.login || databaseIdentity.role !== role ||
+    typeof databaseIdentity.worker_id !== "string" || !databaseIdentity.worker_id) {
   await sql.end({ timeout: 5 });
-  throw new Error(`Worker role "${role}" must authenticate as PostgreSQL LOGIN "agent_${role}"; received "${databaseIdentity?.login || "unknown"}".`);
+  throw new Error(`Worker LOGIN "${databaseIdentity?.login || "unknown"}" has no enabled authenticated Agent HQ principal for configured role "${role}".`);
+}
+const workerId = databaseIdentity.worker_id;
+if (process.env.AGENT_WORKER_ID && process.env.AGENT_WORKER_ID !== workerId) {
+  await sql.end({ timeout: 5 });
+  throw new Error("AGENT_WORKER_ID does not match the authenticated PostgreSQL worker principal; environment identity is not trusted.");
 }
 let stopping = false;
 const roleInstructions = {
