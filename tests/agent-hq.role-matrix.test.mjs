@@ -25,8 +25,8 @@ test("every Agent HQ worker login sees only its own role and cannot forge messag
   try {
     for (const role of roles) {
       const [task] = await owner`INSERT INTO agent_tasks
-        (assigned_role,title,objective,expected_output,created_by,status)
-        VALUES (${role},${"Role matrix " + role + " " + marker},'Role isolation test','One visible row','role-matrix-test','queued')
+        (assigned_role,title,objective,expected_output,created_by,status,priority)
+        VALUES (${role},${"Role matrix " + role + " " + marker},'Role isolation test','One visible row','role-matrix-test','queued',-2147483648)
         RETURNING id`;
       taskIds.push(task.id);
       idByRole.set(role, task.id);
