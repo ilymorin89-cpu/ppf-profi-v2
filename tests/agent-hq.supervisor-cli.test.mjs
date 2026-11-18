@@ -62,9 +62,9 @@ test("Agent HQ runs coordinator → SEO → QA → supervisor under separate Pos
       per_run_cap_microusd=10000000,input_price_per_million_microusd=1000,
       output_price_per_million_microusd=1000,web_search_price_microusd_per_call=0 WHERE id=1`;
     const [parent] = await sql`INSERT INTO agent_tasks
-      (assigned_role,title,objective,expected_output,acceptance_criteria,created_by,status)
+      (assigned_role,title,objective,expected_output,acceptance_criteria,created_by,status,priority)
       VALUES ('coordinator',${"Full lifecycle " + marker},'Delegate, execute, independently verify and consolidate',
-        'Consolidated result','["SEO evidence exists","QA returns PASS"]'::jsonb,'integration-test','queued')
+        'Consolidated result','["SEO evidence exists","QA returns PASS"]'::jsonb,'integration-test','queued',-2147483648)
       RETURNING id`;
     parentId = parent.id;
 
@@ -79,7 +79,7 @@ test("Agent HQ runs coordinator → SEO → QA → supervisor under separate Pos
             title: "SEO specialist evidence",
             objective: "Produce verifiable SEO findings for the test parent",
             acceptance_criteria: ["Return evidence and next action"],
-            priority: 10
+            priority: -2147483648
           })
         }],
         usage: { input_tokens: 0, output_tokens: 0 }
@@ -134,6 +134,7 @@ test("Agent HQ runs coordinator → SEO → QA → supervisor under separate Pos
     const [qa] = await sql`SELECT id,status FROM agent_tasks
       WHERE parent_task_id=${parentId} AND assigned_role='qa_security'`;
     assert.ok(qa, "Supervisor must create an independent QA task after specialist completion.");
+    await sql`UPDATE agent_tasks SET priority=-2147483648 WHERE id=${qa.id}`;
     assert.equal(qa.status, "queued");
     const grants = await sql`SELECT task_id,principal,access_reason FROM agent_task_access
       WHERE task_id=${specialist.id}`;

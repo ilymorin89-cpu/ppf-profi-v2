@@ -69,7 +69,7 @@ const fixtures = {
         "Return the exact evidence marker SEO_E2E_EVIDENCE",
         "Include one actionable recommendation"
       ],
-      priority: 1
+      priority: -2147483648
     }),
     response("Coordinator delegated the SEO analysis to the authenticated SEO worker. Supervisor must arrange independent QA before consolidation.")
   ],
@@ -166,7 +166,7 @@ try {
       'Coordinator delegates to SEO; Supervisor assigns independent QA; QA sends a verdict; Supervisor consolidates.',
       'Consolidated artifact containing SEO evidence and QA PASS verdict',
       '["Coordinator delegates SEO task","SEO persists its artifact","Supervisor creates QA task and grants scoped access","QA sends independent verdict to Coordinator","Supervisor consolidates only after PASS"]'::jsonb,
-      'coordinator',${marker},1
+      'coordinator',${marker},-2147483648
     ) RETURNING id`;
   parentId = parent.id;
 
@@ -197,6 +197,7 @@ try {
     WHERE parent_task_id=${parentId} AND assigned_role='qa_security'
     ORDER BY id DESC LIMIT 1`;
   assert.ok(qaTask, "Supervisor must create an independent QA task.");
+  await sql`UPDATE public.agent_tasks SET priority=-2147483648 WHERE id=${qaTask.id}`;
   assert.equal(qaTask.status, "queued");
   const [qaAccess] = await sql`SELECT access_reason FROM public.agent_task_access
     WHERE task_id=${delegated.id} AND principal='qa_security'`;
