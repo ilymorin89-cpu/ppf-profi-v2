@@ -13,7 +13,7 @@
     "db:studio": "drizzle-kit studio",
     "indexnow": "node scripts/indexnow.mjs",
     "agent-hq": "node scripts/agent-hq-bus.mjs",
-    "agent-hq:test": "node --test tests/agent-hq*.test.mjs",
+    "agent-hq:test": "node --test --test-concurrency=1 tests/agent-hq*.test.mjs",
     "agent-hq:worker": "node scripts/agent-hq-worker.mjs",
     "agent-hq:supervisor": "node scripts/agent-hq-supervisor.mjs",
     "agent-hq:launch": "node scripts/agent-hq-launch.mjs",
