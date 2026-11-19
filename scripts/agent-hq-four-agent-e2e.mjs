@@ -208,6 +208,37 @@ try {
   // The real QA worker repeats this query when building its sibling-artifact context.
   const qaDb = postgres(roleUrls.qa_security, { max: 1, connect_timeout: 10 });
   try {
+    const [messagePolicyDiag] = await qaDb`SELECT
+      session_user::text AS session_login,
+      current_user::text AS current_role,
+      public.agent_role_for_session() AS mapped_role,
+      EXISTS (
+        SELECT 1 FROM public.agent_worker_principals p
+        WHERE p.login_role=session_user::text AND p.enabled AND p.role='qa_security'
+      ) AS principal_matches,
+      (SELECT assigned_role FROM public.agent_tasks WHERE id=${qaTask.id}) AS task_assigned_role,
+      public.agent_can_insert_own_message(${qaTask.id},'qa_security') AS helper_allows,
+      has_table_privilege(session_user,'public.agent_messages','INSERT') AS has_insert_privilege,
+      (SELECT pg_get_userbyid(proowner) FROM pg_proc
+        WHERE oid='public.agent_can_insert_own_message(bigint,text)'::regprocedure) AS helper_owner,
+      (SELECT prosecdef FROM pg_proc
+        WHERE oid='public.agent_can_insert_own_message(bigint,text)'::regprocedure) AS helper_security_definer
+    `;
+    console.log("QA message RLS diagnostic:", JSON.stringify(messagePolicyDiag));
+    assert.equal(messagePolicyDiag.session_login, "agent_qa_security",
+      "QA diagnostic must use the dedicated authenticated LOGIN.");
+    assert.equal(messagePolicyDiag.mapped_role, "qa_security",
+      "QA LOGIN must map to qa_security before message insertion.");
+    assert.equal(messagePolicyDiag.principal_matches, true,
+      "QA LOGIN must have an enabled matching worker principal.");
+    assert.equal(messagePolicyDiag.task_assigned_role, "qa_security",
+      "QA message must target its own assigned task.");
+    assert.equal(messagePolicyDiag.helper_allows, true,
+      "The SECURITY DEFINER message ownership helper must allow QA's own task.");
+    assert.equal(messagePolicyDiag.has_insert_privilege, true,
+      "QA LOGIN must retain its INSERT-only message privilege.");
+    assert.equal(messagePolicyDiag.helper_security_definer, true,
+      "Message ownership helper must remain SECURITY DEFINER.");
     const visibleArtifacts = await qaDb`SELECT a.id,a.content
       FROM public.agent_artifacts a
       JOIN public.agent_tasks child ON child.id=a.task_id
