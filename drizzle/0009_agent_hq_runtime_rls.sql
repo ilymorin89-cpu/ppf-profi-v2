@@ -77,9 +77,15 @@ CREATE OR REPLACE FUNCTION public.agent_can_insert_own_message(p_task_id BIGINT,
 RETURNS BOOLEAN LANGUAGE SQL STABLE SECURITY DEFINER
 SET search_path = pg_catalog, public
 AS $message_check$
-  SELECT p_from_role=COALESCE(public.agent_role_for_session(),'__denied__')
-    AND EXISTS (SELECT 1 FROM public.agent_tasks t
-      WHERE t.id=p_task_id AND t.assigned_role=p_from_role)
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.agent_worker_principals principal
+    JOIN public.agent_tasks task ON task.id=p_task_id
+    WHERE principal.login_role=session_user::TEXT
+      AND principal.enabled
+      AND principal.role=p_from_role
+      AND task.assigned_role=p_from_role
+  )
 $message_check$;
 
 GRANT USAGE,CREATE ON SCHEMA public TO agent_hq_runtime_fn_owner;
