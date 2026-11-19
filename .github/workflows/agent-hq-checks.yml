@@ -129,10 +129,12 @@ jobs:
           psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0006_agent_web_search_budget.sql
           psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0007_agent_task_access.sql
           psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0008_agent_budget_trusted_settlement.sql
+          # Migration 0009 grants table/sequence privileges by iterating the registered worker principals.
+          # Register all 19 disposable LOGINs after the principal table exists (0007), before 0009.
+          psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/agent-hq-register-test-workers.sql
           psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0009_agent_hq_runtime_rls.sql
           psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0010_agent_hq_authenticated_worker_identity.sql
           psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0011_agent_hq_readonly_monitor.sql
-          psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/agent-hq-register-test-workers.sql
       - name: Assert migration-only RLS and least-privilege boundary
         run: psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/agent-hq-role-isolation.sql
       - name: Apply disposable CI-only aggregate helper after migration assertions
