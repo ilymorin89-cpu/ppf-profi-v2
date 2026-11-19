@@ -331,9 +331,11 @@ async function runTask(task) {
           const [message] = await sql`INSERT INTO agent_messages
             (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
             VALUES (${task.id},${randomUUID()},${role},${args.to_role},${args.kind},${body},${idempotencyKey})
-            ON CONFLICT (idempotency_key) DO UPDATE SET idempotency_key=EXCLUDED.idempotency_key
+            ON CONFLICT (idempotency_key) DO NOTHING
             RETURNING id,to_role,kind`;
-          result = message;
+          // Idempotent retries must not require UPDATE privilege on agent_messages.
+          // Worker LOGINs are intentionally INSERT-only; a duplicate is already persisted.
+          result = message || { to_role: args.to_role, kind: args.kind, duplicate: true };
         } else if (call.name === "request_approval") {
           const actions = ["publish_site","deploy_production","send_external_message","launch_ad","spend_money","database_migration","delete_data","other"];
           if (!actions.includes(args.action) || typeof args.reason !== "string" || !args.reason.trim() || typeof args.payload !== "string") {
