@@ -212,10 +212,7 @@ try {
       session_user::text AS session_login,
       current_user::text AS current_role,
       public.agent_role_for_session() AS mapped_role,
-      EXISTS (
-        SELECT 1 FROM public.agent_worker_principals p
-        WHERE p.login_role=session_user::text AND p.enabled AND p.role='qa_security'
-      ) AS principal_matches,
+      (public.agent_role_for_session()='qa_security') AS principal_matches,
       (SELECT assigned_role FROM public.agent_tasks WHERE id=${qaTask.id}) AS task_assigned_role,
       public.agent_can_insert_own_message(${qaTask.id},'qa_security') AS helper_allows,
       has_table_privilege(session_user,'public.agent_messages','INSERT') AS has_insert_privilege,
