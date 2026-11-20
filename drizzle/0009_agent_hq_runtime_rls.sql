@@ -266,7 +266,6 @@ BEGIN
     EXECUTE format('GRANT CONNECT ON DATABASE %I TO %I',current_database(),role_name);
     EXECUTE format('GRANT USAGE ON SCHEMA public TO %I',role_name);
     EXECUTE format('GRANT SELECT ON public.agent_tasks,public.agent_messages,public.agent_runs,public.agent_artifacts,public.agent_approvals,public.agent_task_access,public.agent_budget_config TO %I',role_name);
-    EXECUTE format('GRANT INSERT (task_id,conversation_id,from_role,to_role,kind,body,evidence,in_reply_to,idempotency_key) ON public.agent_messages TO %I',role_name);
     EXECUTE format('GRANT INSERT (task_id,created_by,artifact_type,title,content,evidence) ON public.agent_artifacts TO %I',role_name);
     EXECUTE format('GRANT INSERT (task_id,action,requested_by,payload,status) ON public.agent_approvals TO %I',role_name);
     EXECUTE format('GRANT USAGE,SELECT ON SEQUENCE public.agent_messages_id_seq,public.agent_artifacts_id_seq,public.agent_approvals_id_seq TO %I',role_name);
