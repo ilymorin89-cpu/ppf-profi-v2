@@ -47,6 +47,22 @@ BEGIN
       RAISE EXCEPTION 'worker role % has forbidden direct UPDATE privileges',role_name;
     END IF;
 
+    IF has_column_privilege(role_name,'public.agent_messages','task_id','INSERT')
+       OR has_column_privilege(role_name,'public.agent_messages','conversation_id','INSERT')
+       OR has_column_privilege(role_name,'public.agent_messages','from_role','INSERT')
+       OR has_column_privilege(role_name,'public.agent_messages','to_role','INSERT')
+       OR has_column_privilege(role_name,'public.agent_messages','kind','INSERT')
+       OR has_column_privilege(role_name,'public.agent_messages','body','INSERT')
+       OR has_column_privilege(role_name,'public.agent_messages','idempotency_key','INSERT')
+       OR has_column_privilege(role_name,'public.agent_messages','evidence','INSERT')
+       OR has_column_privilege(role_name,'public.agent_messages','in_reply_to','INSERT') THEN
+      RAISE EXCEPTION 'worker role % retains direct message INSERT privileges',role_name;
+    END IF;
+    IF NOT has_function_privilege(role_name,
+      'public.agent_insert_own_message(bigint,uuid,text,text,text,text,text)','EXECUTE') THEN
+      RAISE EXCEPTION 'worker role % lacks authenticated message capability',role_name;
+    END IF;
+
     IF EXISTS (SELECT 1 FROM pg_auth_members m
       JOIN pg_roles member_role ON member_role.oid=m.member
       WHERE member_role.rolname=role_name) THEN
@@ -80,6 +96,16 @@ BEGIN
   END LOOP;
 
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public'
+    AND tablename='agent_messages' AND policyname='message_insert_runtime_function'
+    AND 'agent_hq_runtime_fn_owner'=ANY(roles)) THEN
+    RAISE EXCEPTION 'narrow runtime-function message INSERT policy is missing';
+  END IF;
+  IF NOT has_column_privilege('agent_hq_runtime_fn_owner','public.agent_messages','task_id','INSERT')
+     OR NOT has_sequence_privilege('agent_hq_runtime_fn_owner','public.agent_messages_id_seq','USAGE') THEN
+    RAISE EXCEPTION 'runtime function owner lacks only the required message insert capability';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public'
     AND tablename='agent_tasks' AND policyname='task_read_own_role')
     OR NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public'
     AND tablename='agent_artifacts' AND policyname='artifact_insert_own_task')
@@ -94,7 +120,7 @@ BEGIN
     WHERE n.nspname='public'
       AND p.proname IN ('agent_has_task_access','agent_can_grant_task_access',
         'agent_is_valid_coordinator_parent','agent_role_for_session','agent_can_insert_own_artifact',
-        'agent_can_insert_own_message',
+        'agent_can_insert_own_message','agent_insert_own_message',
         'agent_worker_id_for_session')
       AND (r.rolname<>'agent_hq_runtime_fn_owner' OR NOT p.prosecdef)
   ) THEN
