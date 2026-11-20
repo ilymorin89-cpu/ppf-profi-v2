@@ -699,10 +699,16 @@ test("Agent HQ bus send derives sender from authenticated PostgreSQL LOGIN", asy
         EXISTS (SELECT 1 FROM public.agent_tasks WHERE id=${taskId} AND assigned_role='seo') AS owns_task`;
       assert.equal(policyProbe.mapped_role, "seo");
       assert.equal(policyProbe.owns_task, true);
-      await seo`INSERT INTO agent_messages
-        (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
-        VALUES (${taskId},${randomUUID()},'seo','coordinator','status',${probeBody},${randomUUID()})`;
-      await seo`DELETE FROM agent_messages WHERE body=${probeBody}`.catch(() => {});
+      await seo`SELECT * FROM public.agent_insert_own_message(
+        ${taskId},${randomUUID()},'seo','coordinator','status',${probeBody},${randomUUID()}
+      )`;
+      await assert.rejects(
+        () => seo`INSERT INTO agent_messages
+          (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
+          VALUES (${taskId},${randomUUID()},'seo','coordinator','status',${probeBody},${randomUUID()})`,
+        error => error.code === "42501",
+        "Worker LOGIN must not have direct INSERT privilege; it must use the authenticated capability."
+      );
     } finally {
       await seo.end({ timeout: 5 });
     }
