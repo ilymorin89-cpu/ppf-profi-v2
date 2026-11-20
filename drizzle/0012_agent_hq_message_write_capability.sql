@@ -5,6 +5,7 @@
 
 GRANT INSERT (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
   ON public.agent_messages TO agent_hq_runtime_fn_owner;
+GRANT SELECT (id,idempotency_key) ON public.agent_messages TO agent_hq_runtime_fn_owner;
 GRANT USAGE,SELECT ON SEQUENCE public.agent_messages_id_seq TO agent_hq_runtime_fn_owner;
 
 DROP POLICY IF EXISTS message_insert_runtime_function ON public.agent_messages;
@@ -87,6 +88,7 @@ BEGIN
     'agent_auto_news_editor','agent_auto_law_monitor','agent_fact_checker',
     'agent_seo','agent_qa_security','agent_coordinator'
   ] LOOP
+    EXECUTE format('REVOKE INSERT ON public.agent_messages FROM %I',role_name);
     EXECUTE format(
       'REVOKE INSERT (task_id,conversation_id,from_role,to_role,kind,body,evidence,in_reply_to,idempotency_key) ON public.agent_messages FROM %I',
       role_name
