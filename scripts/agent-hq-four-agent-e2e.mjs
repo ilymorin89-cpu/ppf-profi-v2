@@ -231,6 +231,26 @@ try {
         WHERE oid='public.agent_can_insert_own_message(bigint,text)'::regprocedure) AS helper_security_definer
     `;
     console.log("QA message RLS diagnostic:", JSON.stringify(messagePolicyDiag));
+    const messagePolicies = await qaDb`
+      SELECT policyname, permissive, roles, cmd, qual, with_check
+      FROM pg_policies
+      WHERE schemaname='public' AND tablename='agent_messages'
+      ORDER BY policyname
+    `;
+    const messageRlsState = await qaDb`
+      SELECT c.relrowsecurity, c.relforcerowsecurity,
+        r.rolbypassrls, r.rolsuper,
+        has_table_privilege(session_user,'public.agent_messages','INSERT') AS has_table_insert,
+        ('qa_security'=COALESCE(public.agent_role_for_session(),'__denied__')
+          AND (${qaTask.id}::bigint IS NULL OR public.agent_can_insert_own_message(${qaTask.id},'qa_security'))
+        ) AS expected_insert_policy_expression
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid=c.relnamespace
+      JOIN pg_roles r ON r.rolname=session_user
+      WHERE n.nspname='public' AND c.relname='agent_messages'
+    `;
+    console.log("QA agent_messages policies:", JSON.stringify(messagePolicies));
+    console.log("QA agent_messages RLS state:", JSON.stringify(messageRlsState));
     assert.equal(messagePolicyDiag.session_login, "agent_qa_security",
       "QA diagnostic must use the dedicated authenticated LOGIN.");
     assert.equal(messagePolicyDiag.mapped_role, "qa_security",
