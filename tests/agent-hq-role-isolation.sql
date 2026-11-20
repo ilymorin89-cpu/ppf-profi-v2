@@ -47,7 +47,8 @@ BEGIN
       RAISE EXCEPTION 'worker role % has forbidden direct UPDATE privileges',role_name;
     END IF;
 
-    IF has_column_privilege(role_name,'public.agent_messages','task_id','INSERT')
+    IF has_table_privilege(role_name,'public.agent_messages','INSERT')
+       OR has_column_privilege(role_name,'public.agent_messages','task_id','INSERT')
        OR has_column_privilege(role_name,'public.agent_messages','conversation_id','INSERT')
        OR has_column_privilege(role_name,'public.agent_messages','from_role','INSERT')
        OR has_column_privilege(role_name,'public.agent_messages','to_role','INSERT')
@@ -101,6 +102,8 @@ BEGIN
     RAISE EXCEPTION 'narrow runtime-function message INSERT policy is missing';
   END IF;
   IF NOT has_column_privilege('agent_hq_runtime_fn_owner','public.agent_messages','task_id','INSERT')
+     OR NOT has_column_privilege('agent_hq_runtime_fn_owner','public.agent_messages','id','SELECT')
+     OR NOT has_column_privilege('agent_hq_runtime_fn_owner','public.agent_messages','idempotency_key','SELECT')
      OR NOT has_sequence_privilege('agent_hq_runtime_fn_owner','public.agent_messages_id_seq','USAGE') THEN
     RAISE EXCEPTION 'runtime function owner lacks only the required message insert capability';
   END IF;
