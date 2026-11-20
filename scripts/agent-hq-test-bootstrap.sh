@@ -22,6 +22,7 @@ echo "Applying authenticated runtime RLS and identity migrations..."
 psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f /workspace/drizzle/0009_agent_hq_runtime_rls.sql
 psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f /workspace/drizzle/0010_agent_hq_authenticated_worker_identity.sql
 psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f /workspace/drizzle/0011_agent_hq_readonly_monitor.sql
+psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f /workspace/drizzle/0012_agent_hq_message_write_capability.sql
 
 echo "Asserting that the migration chain installed the runtime RLS boundary..."
 psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f /workspace/tests/agent-hq-role-isolation.sql
