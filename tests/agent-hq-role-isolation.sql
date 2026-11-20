@@ -94,6 +94,7 @@ BEGIN
     WHERE n.nspname='public'
       AND p.proname IN ('agent_has_task_access','agent_can_grant_task_access',
         'agent_is_valid_coordinator_parent','agent_role_for_session','agent_can_insert_own_artifact',
+        'agent_can_insert_own_message',
         'agent_worker_id_for_session')
       AND (r.rolname<>'agent_hq_runtime_fn_owner' OR NOT p.prosecdef)
   ) THEN

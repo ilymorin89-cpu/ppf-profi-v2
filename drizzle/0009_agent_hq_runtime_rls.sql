@@ -73,6 +73,21 @@ AS $artifact_check$
       WHERE t.id=p_task_id AND t.assigned_role=p_created_by)
 $artifact_check$;
 
+CREATE OR REPLACE FUNCTION public.agent_can_insert_own_message(p_task_id BIGINT,p_from_role TEXT)
+RETURNS BOOLEAN LANGUAGE SQL STABLE SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $message_check$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.agent_worker_principals principal
+    JOIN public.agent_tasks task ON task.id=p_task_id
+    WHERE principal.login_role=session_user::TEXT
+      AND principal.enabled
+      AND principal.role=p_from_role
+      AND task.assigned_role=p_from_role
+  )
+$message_check$;
+
 GRANT USAGE,CREATE ON SCHEMA public TO agent_hq_runtime_fn_owner;
 GRANT SELECT ON public.agent_tasks,public.agent_task_access TO agent_hq_runtime_fn_owner;
 ALTER FUNCTION public.agent_has_task_access(BIGINT) OWNER TO agent_hq_runtime_fn_owner;
@@ -80,6 +95,7 @@ ALTER FUNCTION public.agent_can_grant_task_access(TEXT) OWNER TO agent_hq_runtim
 ALTER FUNCTION public.agent_is_valid_coordinator_parent(BIGINT) OWNER TO agent_hq_runtime_fn_owner;
 ALTER FUNCTION public.agent_role_for_session() OWNER TO agent_hq_runtime_fn_owner;
 ALTER FUNCTION public.agent_can_insert_own_artifact(BIGINT,TEXT) OWNER TO agent_hq_runtime_fn_owner;
+ALTER FUNCTION public.agent_can_insert_own_message(BIGINT,TEXT) OWNER TO agent_hq_runtime_fn_owner;
 REVOKE CREATE ON SCHEMA public FROM agent_hq_runtime_fn_owner;
 
 REVOKE ALL ON FUNCTION public.agent_has_task_access(BIGINT) FROM PUBLIC;
@@ -87,6 +103,7 @@ REVOKE ALL ON FUNCTION public.agent_can_grant_task_access(TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.agent_is_valid_coordinator_parent(BIGINT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.agent_role_for_session() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.agent_can_insert_own_artifact(BIGINT,TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.agent_can_insert_own_message(BIGINT,TEXT) FROM PUBLIC;
 
 DO $grant_helpers$
 DECLARE role_name TEXT;
@@ -101,6 +118,7 @@ BEGIN
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_role_for_session() TO %I',role_name);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_has_task_access(BIGINT) TO %I',role_name);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_can_insert_own_artifact(BIGINT,TEXT) TO %I',role_name);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION public.agent_can_insert_own_message(BIGINT,TEXT) TO %I',role_name);
   END LOOP;
 END
 $grant_helpers$;
@@ -165,9 +183,7 @@ DROP POLICY IF EXISTS message_insert_sender ON public.agent_messages;
 CREATE POLICY message_insert_sender ON public.agent_messages FOR INSERT WITH CHECK (
   session_user='agent_supervisor' OR (
     from_role=COALESCE(public.agent_role_for_session(),'__denied__')
-    AND (task_id IS NULL OR EXISTS (
-      SELECT 1 FROM public.agent_tasks t WHERE t.id=agent_messages.task_id AND t.assigned_role=from_role
-    ))
+    AND (task_id IS NULL OR public.agent_can_insert_own_message(task_id,from_role))
   )
 );
 

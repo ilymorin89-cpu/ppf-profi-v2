@@ -368,7 +368,7 @@ test("Agent HQ blocks retry and retains reservation after ambiguous provider out
   try {
     [oldBudget]=await admin`SELECT * FROM agent_budget_config WHERE id=1`;
     await admin`UPDATE agent_budget_config SET enabled=true,
-      daily_cap_microusd=100000,monthly_cap_microusd=500000,per_run_cap_microusd=5000,
+      daily_cap_microusd=1000000,monthly_cap_microusd=5000000,per_run_cap_microusd=100000,
       input_price_per_million_microusd=100000,output_price_per_million_microusd=100000,
       web_search_price_microusd_per_call=0 WHERE id=1`;
     const [task]=await admin`INSERT INTO agent_tasks(assigned_role,title,objective,expected_output,created_by)

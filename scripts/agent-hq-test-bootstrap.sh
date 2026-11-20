@@ -7,19 +7,23 @@ export AGENT_HQ_TEST_DATABASE_URL
 echo "Provisioning disposable CI-only PostgreSQL LOGIN roles..."
 psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f /workspace/tests/agent-hq-provision-test-roles.sql
 
-echo "Applying Agent HQ production migration chain to disposable agent_hq_test..."
+echo "Applying base schema and trusted budget migrations..."
 psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f /workspace/drizzle/0003_agent_hq.sql
 psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f /workspace/drizzle/0004_agent_budget.sql
 psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f /workspace/drizzle/0005_agent_approval_idempotency.sql
 psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f /workspace/drizzle/0006_agent_web_search_budget.sql
 psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f /workspace/drizzle/0007_agent_task_access.sql
 psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f /workspace/drizzle/0008_agent_budget_trusted_settlement.sql
+
+echo "Registering the 19 worker LOGINs before migration 0009 computes per-role grants..."
+psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f /workspace/tests/agent-hq-register-test-workers.sql
+
+echo "Applying authenticated runtime RLS and identity migrations..."
 psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f /workspace/drizzle/0009_agent_hq_runtime_rls.sql
 psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f /workspace/drizzle/0010_agent_hq_authenticated_worker_identity.sql
 psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f /workspace/drizzle/0011_agent_hq_readonly_monitor.sql
-psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f /workspace/tests/agent-hq-register-test-workers.sql
 
-echo "Asserting that the migration chain alone installed the runtime RLS boundary..."
+echo "Asserting that the migration chain installed the runtime RLS boundary..."
 psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f /workspace/tests/agent-hq-role-isolation.sql
 psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f /workspace/tests/agent-hq-test-helpers.sql
 
