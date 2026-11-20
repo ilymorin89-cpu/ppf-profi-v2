@@ -13,6 +13,13 @@ CREATE POLICY message_insert_runtime_function ON public.agent_messages
   FOR INSERT TO agent_hq_runtime_fn_owner
   WITH CHECK (true);
 
+-- INSERT ... RETURNING also applies SELECT RLS. The function owner receives
+-- SELECT only on id/idempotency_key above, never message body or evidence.
+DROP POLICY IF EXISTS message_select_runtime_function ON public.agent_messages;
+CREATE POLICY message_select_runtime_function ON public.agent_messages
+  FOR SELECT TO agent_hq_runtime_fn_owner
+  USING (true);
+
 -- The function owner is NOLOGIN/NOBYPASSRLS and has no memberships. The
 -- SECURITY DEFINER capability below is the only worker-executable code path
 -- that runs as this identity; it validates session_user and task ownership.
