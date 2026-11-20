@@ -328,31 +328,11 @@ async function runTask(task) {
           const body = args.body.slice(0,8000);
           const idempotencyKey = "agent-" + createHash("sha256")
             .update(JSON.stringify([task.id, role, args.to_role, args.kind, body])).digest("hex");
-          const [messagePolicyContext] = await sql`SELECT
-            session_user::text AS session_login,
-            current_user::text AS current_role,
-            public.agent_role_for_session() AS mapped_role,
-            ${task.id}::bigint AS task_id,
-            ${role}::text AS attempted_from_role,
-            ${args.to_role}::text AS attempted_to_role,
-            ${args.kind}::text AS attempted_kind,
-            (SELECT assigned_role FROM public.agent_tasks WHERE id=${task.id}) AS assigned_role,
-            (${role}::text = COALESCE(public.agent_role_for_session(),'__denied__')) AS sender_matches,
-            public.agent_can_insert_own_message(${task.id},${role}) AS helper_allows,
-            (${role}::text = COALESCE(public.agent_role_for_session(),'__denied__')
-              AND (${task.id}::bigint IS NULL OR public.agent_can_insert_own_message(${task.id},${role}))) AS exact_policy_check,
-            (SELECT count(*)::int FROM pg_trigger
-              WHERE tgrelid='public.agent_messages'::regclass AND NOT tgisinternal) AS user_trigger_count
-          `;
-          console.log("Agent HQ send_message exact RLS inputs:", JSON.stringify(messagePolicyContext));
-          const [message] = await sql`INSERT INTO agent_messages
-            (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
-            VALUES (${task.id},${randomUUID()},${role},${args.to_role},${args.kind},${body},${idempotencyKey})
-            ON CONFLICT (idempotency_key) DO NOTHING
-            RETURNING id,to_role,kind`;
-          // Idempotent retries must not require UPDATE privilege on agent_messages.
-          // Worker LOGINs are intentionally INSERT-only; a duplicate is already persisted.
-          result = message || { to_role: args.to_role, kind: args.kind, duplicate: true };
+          const [message] = await sql`SELECT *
+            FROM public.agent_insert_own_message(
+              ${task.id},${randomUUID()},${role},${args.to_role},${args.kind},${body},${idempotencyKey}
+            )`;
+          result = message;
         } else if (call.name === "request_approval") {
           const actions = ["publish_site","deploy_production","send_external_message","launch_ad","spend_money","database_migration","delete_data","other"];
           if (!actions.includes(args.action) || typeof args.reason !== "string" || !args.reason.trim() || typeof args.payload !== "string") {
