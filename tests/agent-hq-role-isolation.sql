@@ -47,6 +47,19 @@ BEGIN
       RAISE EXCEPTION 'worker role % has forbidden direct UPDATE privileges',role_name;
     END IF;
 
+    RAISE NOTICE 'message ACL role=% table_insert=% task=% conversation=% from=% to=% kind=% body=% key=% evidence=% reply=% runtime_owner_member=%',
+      role_name,
+      has_table_privilege(role_name,'public.agent_messages','INSERT'),
+      has_column_privilege(role_name,'public.agent_messages','task_id','INSERT'),
+      has_column_privilege(role_name,'public.agent_messages','conversation_id','INSERT'),
+      has_column_privilege(role_name,'public.agent_messages','from_role','INSERT'),
+      has_column_privilege(role_name,'public.agent_messages','to_role','INSERT'),
+      has_column_privilege(role_name,'public.agent_messages','kind','INSERT'),
+      has_column_privilege(role_name,'public.agent_messages','body','INSERT'),
+      has_column_privilege(role_name,'public.agent_messages','idempotency_key','INSERT'),
+      has_column_privilege(role_name,'public.agent_messages','evidence','INSERT'),
+      has_column_privilege(role_name,'public.agent_messages','in_reply_to','INSERT'),
+      pg_has_role(role_name,'agent_hq_runtime_fn_owner','MEMBER');
     IF has_table_privilege(role_name,'public.agent_messages','INSERT')
        OR has_column_privilege(role_name,'public.agent_messages','task_id','INSERT')
        OR has_column_privilege(role_name,'public.agent_messages','conversation_id','INSERT')
