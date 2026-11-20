@@ -136,3 +136,8 @@ GRANT EXECUTE ON FUNCTION public.agent_insert_own_message(BIGINT,UUID,TEXT,TEXT,
      agent_community_manager,agent_content_seo,agent_ads_manager,agent_trend_scout,
      agent_auto_news_editor,agent_auto_law_monitor,agent_fact_checker,
      agent_seo,agent_qa_security,agent_coordinator;
+
+-- Supervisor remains a distinct privileged control-plane LOGIN with its own
+-- policy branch; worker principals never receive these direct INSERT rights.
+GRANT INSERT (task_id,conversation_id,from_role,to_role,kind,body,evidence,in_reply_to,idempotency_key)
+  ON public.agent_messages TO agent_supervisor;
