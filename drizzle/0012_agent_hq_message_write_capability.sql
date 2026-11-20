@@ -93,10 +93,13 @@ BEGIN
       'REVOKE INSERT (task_id,conversation_id,from_role,to_role,kind,body,evidence,in_reply_to,idempotency_key) ON public.agent_messages FROM %I',
       role_name
     );
-    EXECUTE format(
-      'GRANT EXECUTE ON FUNCTION public.agent_insert_own_message(BIGINT,UUID,TEXT,TEXT,TEXT,TEXT,TEXT) TO %I',
-      role_name
-    );
   END LOOP;
 END
 $worker_message_capability$;
+
+GRANT EXECUTE ON FUNCTION public.agent_insert_own_message(BIGINT,UUID,TEXT,TEXT,TEXT,TEXT,TEXT)
+  TO agent_web_engineer,agent_geo,agent_growth,agent_analytics,agent_vk_strategist,
+     agent_copywriter,agent_designer,agent_image_generator,agent_storyteller,
+     agent_community_manager,agent_content_seo,agent_ads_manager,agent_trend_scout,
+     agent_auto_news_editor,agent_auto_law_monitor,agent_fact_checker,
+     agent_seo,agent_qa_security,agent_coordinator;
