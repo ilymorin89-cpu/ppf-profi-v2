@@ -12,6 +12,7 @@ on:
       - "drizzle/0008_agent_budget_trusted_settlement.sql"
       - "drizzle/0009_agent_hq_runtime_rls.sql"
       - "drizzle/0010_agent_hq_authenticated_worker_identity.sql"
+      - "drizzle/0012_agent_hq_message_write_capability.sql"
       - "tests/agent-hq-provision-test-roles.sql"
       - "tests/agent-hq-register-test-workers.sql"
       - "tests/agent-hq-role-isolation.sql"
