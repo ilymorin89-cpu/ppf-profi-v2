@@ -78,6 +78,11 @@ BEGIN
     EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public'
       AND tablename='agent_messages' AND policyname='message_insert_runtime_function'
       AND 'agent_hq_runtime_fn_owner'=ANY(roles));
+  RAISE NOTICE 'message INSERT policies=%',
+    (SELECT json_agg(json_build_object('name',policyname,'permissive',permissive,
+      'roles',roles,'command',cmd,'check',with_check))
+     FROM pg_policies WHERE schemaname='public' AND tablename='agent_messages'
+       AND cmd IN ('INSERT','ALL'));
 
   INSERT INTO public.agent_messages AS inserted_message
     (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
