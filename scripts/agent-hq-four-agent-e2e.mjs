@@ -215,7 +215,16 @@ try {
       (public.agent_role_for_session()='qa_security') AS principal_matches,
       (SELECT assigned_role FROM public.agent_tasks WHERE id=${qaTask.id}) AS task_assigned_role,
       public.agent_can_insert_own_message(${qaTask.id},'qa_security') AS helper_allows,
-      has_table_privilege(session_user,'public.agent_messages','INSERT') AS has_insert_privilege,
+      (
+        has_column_privilege(session_user,'public.agent_messages','task_id','INSERT')
+        AND has_column_privilege(session_user,'public.agent_messages','conversation_id','INSERT')
+        AND has_column_privilege(session_user,'public.agent_messages','from_role','INSERT')
+        AND has_column_privilege(session_user,'public.agent_messages','to_role','INSERT')
+        AND has_column_privilege(session_user,'public.agent_messages','kind','INSERT')
+        AND has_column_privilege(session_user,'public.agent_messages','body','INSERT')
+        AND has_column_privilege(session_user,'public.agent_messages','idempotency_key','INSERT')
+        AND has_sequence_privilege(session_user,'public.agent_messages_id_seq','USAGE')
+      ) AS has_insert_privilege,
       (SELECT pg_get_userbyid(proowner) FROM pg_proc
         WHERE oid='public.agent_can_insert_own_message(bigint,text)'::regprocedure) AS helper_owner,
       (SELECT prosecdef FROM pg_proc
