@@ -216,15 +216,13 @@ try {
       (SELECT assigned_role FROM public.agent_tasks WHERE id=${qaTask.id}) AS task_assigned_role,
       public.agent_can_insert_own_message(${qaTask.id},'qa_security') AS helper_allows,
       (
-        has_column_privilege(session_user,'public.agent_messages','task_id','INSERT')
-        AND has_column_privilege(session_user,'public.agent_messages','conversation_id','INSERT')
-        AND has_column_privilege(session_user,'public.agent_messages','from_role','INSERT')
-        AND has_column_privilege(session_user,'public.agent_messages','to_role','INSERT')
-        AND has_column_privilege(session_user,'public.agent_messages','kind','INSERT')
-        AND has_column_privilege(session_user,'public.agent_messages','body','INSERT')
-        AND has_column_privilege(session_user,'public.agent_messages','idempotency_key','INSERT')
-        AND has_sequence_privilege(session_user,'public.agent_messages_id_seq','USAGE')
-      ) AS has_insert_privilege,
+        has_table_privilege(session_user,'public.agent_messages','INSERT')
+        OR has_column_privilege(session_user,'public.agent_messages','task_id','INSERT')
+      ) AS has_direct_insert_privilege,
+      (SELECT has_function_privilege(session_user,p.oid,'EXECUTE')
+        FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+        WHERE n.nspname='public' AND p.proname='agent_insert_own_message' AND p.pronargs=7
+        LIMIT 1) AS has_message_capability,
       (SELECT pg_get_userbyid(proowner) FROM pg_proc
         WHERE oid='public.agent_can_insert_own_message(bigint,text)'::regprocedure) AS helper_owner,
       (SELECT prosecdef FROM pg_proc
@@ -261,8 +259,10 @@ try {
       "QA message must target its own assigned task.");
     assert.equal(messagePolicyDiag.helper_allows, true,
       "The SECURITY DEFINER message ownership helper must allow QA's own task.");
-    assert.equal(messagePolicyDiag.has_insert_privilege, true,
-      "QA LOGIN must retain its INSERT-only message privilege.");
+    assert.equal(messagePolicyDiag.has_direct_insert_privilege, false,
+      "QA LOGIN must not retain direct INSERT privileges on agent_messages.");
+    assert.equal(messagePolicyDiag.has_message_capability, true,
+      "QA LOGIN must use the authenticated message-write capability.");
     assert.equal(messagePolicyDiag.helper_security_definer, true,
       "Message ownership helper must remain SECURITY DEFINER.");
     const visibleArtifacts = await qaDb`SELECT a.id,a.content
