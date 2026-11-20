@@ -328,6 +328,14 @@ async function runTask(task) {
           const body = args.body.slice(0,8000);
           const idempotencyKey = "agent-" + createHash("sha256")
             .update(JSON.stringify([task.id, role, args.to_role, args.kind, body])).digest("hex");
+          const [messagePolicyContext] = await sql`SELECT
+            session_user::text AS session_login,
+            public.agent_role_for_session() AS mapped_role,
+            ${task.id}::bigint AS task_id,
+            (SELECT assigned_role FROM public.agent_tasks WHERE id=${task.id}) AS assigned_role,
+            public.agent_can_insert_own_message(${task.id},${role}) AS helper_allows
+          `;
+          console.log("Agent HQ send_message RLS context:", JSON.stringify(messagePolicyContext));
           const [message] = await sql`INSERT INTO agent_messages
             (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
             VALUES (${task.id},${randomUUID()},${role},${args.to_role},${args.kind},${body},${idempotencyKey})
