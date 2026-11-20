@@ -59,8 +59,12 @@ BEGIN
        OR has_column_privilege(role_name,'public.agent_messages','in_reply_to','INSERT') THEN
       RAISE EXCEPTION 'worker role % retains direct message INSERT privileges',role_name;
     END IF;
-    IF NOT has_function_privilege(role_name,
-      'public.agent_insert_own_message(bigint,uuid,text,text,text,text,text)','EXECUTE') THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_proc p
+      JOIN pg_namespace n ON n.oid=p.pronamespace
+      WHERE n.nspname='public' AND p.proname='agent_insert_own_message'
+        AND p.pronargs=7 AND has_function_privilege(role_name,p.oid,'EXECUTE')
+    ) THEN
       RAISE EXCEPTION 'worker role % lacks authenticated message capability',role_name;
     END IF;
 
