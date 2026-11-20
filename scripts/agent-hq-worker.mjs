@@ -152,9 +152,9 @@ async function runTask(task) {
     if (/budget|cap|exceeds per-run/i.test(reason)) {
       await sql.begin(async tx => {
         await tx`SELECT public.agent_task_transition(${task.id},${workerId},'blocked')`;
-        await tx`INSERT INTO agent_messages
-          (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
-          VALUES (${task.id},${randomUUID()},${role},'coordinator','status',${reason.slice(0,4000)},${randomUUID()})`;
+        await tx`SELECT * FROM public.agent_insert_own_message(
+          ${task.id},${randomUUID()},${role},'coordinator','status',${reason.slice(0,4000)},${randomUUID()}
+        )`;
       });
     }
     throw error;
@@ -404,9 +404,9 @@ async function runTask(task) {
       if (!owned?.status) throw new Error("Lease lost before completion; result not committed");
       await tx`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content,evidence)
         VALUES (${task.id},${role},'result',${task.title},${result},'[]'::jsonb)`;
-      await tx`INSERT INTO agent_messages
-        (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
-        VALUES (${task.id},${randomUUID()},${role},'coordinator','result',${result.slice(0,12000)},${randomUUID()})`;
+      await tx`SELECT * FROM public.agent_insert_own_message(
+        ${task.id},${randomUUID()},${role},'coordinator','result',${result.slice(0,8000)},${randomUUID()}
+      )`;
     });
     console.log(JSON.stringify({ taskId: task.id, status: "done", inputTokens: totalInputTokens, outputTokens: totalOutputTokens, webSearchCalls: totalWebSearchCalls, costMicrousd: actualCost }));
   } catch (error) {
@@ -436,9 +436,9 @@ async function runTask(task) {
       const transition = Number(task.attempts) >= Number(task.max_attempts)
         ? "dead_letter" : safeToRetry ? "retry" : "blocked";
       await tx`SELECT public.agent_task_transition(${task.id},${workerId},${transition})`;
-      await tx`INSERT INTO agent_messages
-        (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
-        VALUES (${task.id},${randomUUID()},${role},'coordinator','status',${message.slice(0,4000)},${randomUUID()})`;
+      await tx`SELECT * FROM public.agent_insert_own_message(
+        ${task.id},${randomUUID()},${role},'coordinator','status',${message.slice(0,4000)},${randomUUID()}
+      )`;
     });
     console.error(`Task ${task.id} failed:`, message);
   } finally {
