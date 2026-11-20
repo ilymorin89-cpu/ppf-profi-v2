@@ -13,6 +13,20 @@ CREATE POLICY message_insert_runtime_function ON public.agent_messages
   FOR INSERT TO agent_hq_runtime_fn_owner
   WITH CHECK (true);
 
+-- The function owner is NOLOGIN/NOBYPASSRLS and has no memberships. The
+-- SECURITY DEFINER capability below is the only worker-executable code path
+-- that runs as this identity; it validates session_user and task ownership.
+DROP POLICY IF EXISTS message_insert_sender ON public.agent_messages;
+CREATE POLICY message_insert_sender ON public.agent_messages
+  FOR INSERT WITH CHECK (
+    current_user='agent_hq_runtime_fn_owner'
+    OR session_user='agent_supervisor'
+    OR (
+      from_role=COALESCE(public.agent_role_for_session(),'__denied__')
+      AND (task_id IS NULL OR public.agent_can_insert_own_message(task_id,from_role))
+    )
+  );
+
 CREATE OR REPLACE FUNCTION public.agent_insert_own_message(
   p_task_id BIGINT,
   p_conversation_id UUID,
@@ -57,6 +71,13 @@ BEGIN
      OR p_idempotency_key IS NULL OR length(p_idempotency_key)<1 OR length(p_idempotency_key)>160 THEN
     RAISE EXCEPTION 'invalid Agent HQ message payload' USING ERRCODE='22023';
   END IF;
+
+  RAISE NOTICE 'message capability identity session_user=% current_user=% role=% helper=% runtime_policy=%',
+    session_user,current_user,public.agent_role_for_session(),
+    public.agent_can_insert_own_message(p_task_id,p_from_role),
+    EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public'
+      AND tablename='agent_messages' AND policyname='message_insert_runtime_function'
+      AND 'agent_hq_runtime_fn_owner'=ANY(roles));
 
   INSERT INTO public.agent_messages AS inserted_message
     (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
