@@ -115,6 +115,11 @@ BEGIN
     AND 'agent_hq_runtime_fn_owner'=ANY(roles)) THEN
     RAISE EXCEPTION 'narrow runtime-function message INSERT policy is missing';
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public'
+    AND tablename='agent_messages' AND policyname='message_select_runtime_function'
+    AND cmd='SELECT' AND 'agent_hq_runtime_fn_owner'=ANY(roles)) THEN
+    RAISE EXCEPTION 'narrow runtime-function message RETURNING SELECT policy is missing';
+  END IF;
   IF NOT has_column_privilege('agent_hq_runtime_fn_owner','public.agent_messages','task_id','INSERT')
      OR NOT has_column_privilege('agent_hq_runtime_fn_owner','public.agent_messages','id','SELECT')
      OR NOT has_column_privilege('agent_hq_runtime_fn_owner','public.agent_messages','idempotency_key','SELECT')
