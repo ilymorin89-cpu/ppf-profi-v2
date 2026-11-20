@@ -23,6 +23,7 @@ on:
       - "drizzle/0009_agent_hq_runtime_rls.sql"
       - "drizzle/0010_agent_hq_authenticated_worker_identity.sql"
       - "drizzle/0011_agent_hq_readonly_monitor.sql"
+      - "drizzle/0012_agent_hq_message_write_capability.sql"
       - "tests/agent-hq-register-test-workers.sql"
       - "scripts/agent-hq-staging-register-workers.sql"
       - "tests/agent-hq-provision-test-roles.sql"
@@ -46,6 +47,8 @@ on:
       - "drizzle/0008_agent_budget_trusted_settlement.sql"
       - "drizzle/0009_agent_hq_runtime_rls.sql"
       - "drizzle/0010_agent_hq_authenticated_worker_identity.sql"
+      - "drizzle/0011_agent_hq_readonly_monitor.sql"
+      - "drizzle/0012_agent_hq_message_write_capability.sql"
       - "tests/agent-hq-register-test-workers.sql"
       - "scripts/agent-hq-staging-register-workers.sql"
       - "tests/agent-hq-provision-test-roles.sql"
@@ -135,6 +138,7 @@ jobs:
           psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0009_agent_hq_runtime_rls.sql
           psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0010_agent_hq_authenticated_worker_identity.sql
           psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0011_agent_hq_readonly_monitor.sql
+          psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0012_agent_hq_message_write_capability.sql
       - name: Assert migration-only RLS and least-privilege boundary
         run: psql "$AGENT_HQ_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/agent-hq-role-isolation.sql
       - name: Apply disposable CI-only aggregate helper after migration assertions
