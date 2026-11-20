@@ -122,17 +122,17 @@ test("every Agent HQ worker login sees only its own role and cannot forge messag
 
         const ownInboxKey = "role-matrix-inbox-" + marker + "-" + role;
         messageKeys.push(ownInboxKey);
-        await sql`INSERT INTO agent_messages
-          (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
-          VALUES (${idByRole.get(role)},${randomUUID()},${role},${role},'status','Message addressed to own role',${ownInboxKey})`;
+        await sql`SELECT * FROM public.agent_insert_own_message(
+          ${idByRole.get(role)},${randomUUID()},${role},${role},'status','Message addressed to own role',${ownInboxKey}
+        )`;
         const ownInbox = await sql`SELECT id FROM agent_messages WHERE idempotency_key=${ownInboxKey}`;
         assert.equal(ownInbox.length, 1, role + " must read messages addressed to itself.");
 
         const ownKey = "role-matrix-own-" + marker + "-" + role;
         messageKeys.push(ownKey);
-        await sql`INSERT INTO agent_messages
-          (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
-          VALUES (${idByRole.get(role)},${randomUUID()},${role},'coordinator','status','Own sender identity',${ownKey})`;
+        await sql`SELECT * FROM public.agent_insert_own_message(
+          ${idByRole.get(role)},${randomUUID()},${role},'coordinator','status','Own sender identity',${ownKey}
+        )`;
         if (role !== "coordinator") {
           const hidden = await sql`SELECT id FROM agent_messages WHERE idempotency_key=${ownKey}`;
           assert.equal(hidden.length, 0, role + " must not read messages addressed to another role.");
@@ -141,6 +141,13 @@ test("every Agent HQ worker login sees only its own role and cannot forge messag
         const forgedRole = role === "coordinator" ? "seo" : "coordinator";
         const forgedKey = "role-matrix-forged-" + marker + "-" + role;
         messageKeys.push(forgedKey);
+        await assert.rejects(
+          () => sql`SELECT * FROM public.agent_insert_own_message(
+            ${idByRole.get(role)},${randomUUID()},${forgedRole},'coordinator','status','Forged sender',${forgedKey}
+          )`,
+          error => error.code === "42501",
+          role + " must not forge another role through the message capability."
+        );
         await assert.rejects(
           () => sql`INSERT INTO agent_messages
             (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
