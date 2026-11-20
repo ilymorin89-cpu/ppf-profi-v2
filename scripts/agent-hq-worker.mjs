@@ -350,10 +350,9 @@ async function runTask(task) {
           }
           if (!approval) throw new Error("Approval request could not be persisted");
           const approvalMessageKey = "approval-" + approval.id;
-          await sql`INSERT INTO agent_messages
-            (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
-            VALUES (${task.id},${randomUUID()},${role},'coordinator','approval_request',${JSON.stringify(approval)},${approvalMessageKey})
-            ON CONFLICT (idempotency_key) DO NOTHING`;
+          await sql`SELECT * FROM public.agent_insert_own_message(
+            ${task.id},${randomUUID()},${role},'coordinator','approval_request',${JSON.stringify(approval)},${approvalMessageKey}
+          )`;
           result = approval;
         } else if (call.name === "delegate_task") {
           if (role !== "coordinator") throw new Error("Only coordinator may delegate tasks");
