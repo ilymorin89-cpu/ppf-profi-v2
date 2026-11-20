@@ -69,6 +69,7 @@ for migration in \
   psql "$SOURCE_URL" -v ON_ERROR_STOP=1 -f "$migration"
 done
 psql "$SOURCE_URL" -v ON_ERROR_STOP=1 -f tests/agent-hq-register-test-workers.sql
+psql "$SOURCE_URL" -v ON_ERROR_STOP=1 -f drizzle/0012_agent_hq_message_write_capability.sql
 psql "$SOURCE_URL" -v ON_ERROR_STOP=1 -f tests/agent-hq-role-isolation.sql
 
 # Insert a deterministic data marker, create a physical backup, then restore it.

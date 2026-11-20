@@ -71,17 +71,11 @@ async function main() {
     await assertAuthenticatedRole(from);
     const allowed = ["request","result","question","objection","handoff","approval_request","status"];
     if (!allowed.includes(kind)) throw new Error("Unsupported message kind");
-    const id = rawTaskId === "-" ? null : taskId(rawTaskId);
-    const message = await sql.begin(async tx => {
-      await tx`INSERT INTO agent_messages
-        (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
-        VALUES (${id},${randomUUID()},${from},${to},${kind},${body},${randomUUID()})`;
-      // INSERT is allowed for the authenticated sender, but SELECT RLS only
-      // exposes recipient inbox rows. Read the generated id from this session's
-      // sequence instead of RETURNING the newly inserted, non-inbox row.
-      const [created] = await tx`SELECT currval('agent_messages_id_seq') AS id`;
-      return { id: created.id, task_id: id, from_role: from, to_role: to, kind, body };
-    });
+    const id = taskId(rawTaskId);
+    await assertTaskRole(id);
+    const [message] = await sql`SELECT * FROM public.agent_insert_own_message(
+      ${id},${randomUUID()},${from},${to},${kind},${body},${randomUUID()}
+    )`;
     console.log(JSON.stringify(message, null, 2));
     return;
   }
@@ -152,12 +146,11 @@ async function main() {
       status=CASE WHEN attempts < max_attempts THEN 'queued' ELSE 'dead_letter' END,
       lease_owner=NULL,lease_until=NULL,updated_at=now()
       WHERE id=${id} AND lease_owner=${workerId} AND status IN ('claimed','running')
-      RETURNING id,status,attempts,max_attempts`;
+      RETURNING id,status,assigned_role,attempts,max_attempts`;
     if (!task) throw new Error("Lease not owned by this worker or task is no longer active");
-    await sql`INSERT INTO agent_messages
-      (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
-      SELECT ${id},${randomUUID()},assigned_role,'coordinator','status',${reason},${randomUUID()}
-      FROM agent_tasks WHERE id=${id}`;
+    await sql`SELECT * FROM public.agent_insert_own_message(
+      ${id},${randomUUID()},${task.assigned_role},'coordinator','status',${reason},${randomUUID()}
+    )`;
     console.log(JSON.stringify(task, null, 2));
     return;
   }
