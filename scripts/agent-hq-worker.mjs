@@ -237,8 +237,9 @@ async function runTask(task) {
             throw new Error("Project file read is not permitted");
           }
           const relativePath = args.path.replaceAll("\\\\", "/");
-          if (relativePath.startsWith("/") || relativePath.split("/").some(part => !part || part === "." || part === "..")) {
-            throw new Error("Project file path must be a normalized relative path");
+          const pathParts = relativePath.split("/");
+          if (relativePath.startsWith("/") || pathParts.some(part => !part || part === "." || part === ".." || [".git", "node_modules", ".next", ".vercel", "secrets", "credentials"].includes(part.toLowerCase())) || /(^|[._-])(env|secret|credential|private|token|key)([._-]|$)/i.test(pathParts.at(-1))) {
+            throw new Error("Project file path is outside the permitted read-only file policy");
           }
           const candidate = resolve(projectRoot, relativePath);
           if (!candidate.startsWith(projectRoot + sep)) throw new Error("Project file path escapes project root");
