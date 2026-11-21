@@ -26,7 +26,7 @@ Use the OpenAI Responses API as the execution runtime for Agent HQ's 19 speciali
 ## OpenAI API capability policy
 
 - Keep the Responses API as the model interface.
-- The built-in `web_search` tool is a supported option for research roles, but it is NOT enabled in the current worker. It incurs tool usage charges and must not be enabled until search-call usage is separately accounted for in the budget ledger and role policy.
+- The built-in `web_search` tool is available only behind an explicit environment flag and a positive per-call reserve. It is disabled by default. The worker records a configured reserve for each returned search call; this is conservative metering, not invoice reconciliation.
 - Research-role candidates: `seo`, `geo`, `growth`, `analytics`, `content_seo`, `trend_scout`, `auto_news_editor`, `auto_law_monitor`, `fact_checker`, and `qa_security`.
 - Repository editing should use a narrow GitHub capability with branch-only writes and pull-request review; do not expose general shell or production deployment.
 - File access should be read-only by default, scoped to explicit project paths, with size limits and secret redaction.
@@ -66,11 +66,11 @@ The worker exposes the Responses API `web_search` tool only when all of these ar
 - `AGENT_WEB_SEARCH_RESERVE_MICROUSD` is a positive integer in micro-USD
 - The role is in the hard-coded research-role allowlist in `agent-hq-worker.mjs`
 
-The worker reserves the configured per-search amount for up to four model turns before the run. It records the configured reserve for each returned `web_search_call` in the run ledger. This is a conservative configured estimate, not a provider invoice reconciliation; set the reserve above the current applicable per-call price and review actual billing separately. The feature remains off by default. Search usage pricing can change; consult current OpenAI pricing before enabling it.
+The worker reserves the configured per-search amount for up to four model turns before the run. It records the configured reserve for each returned `web_search_call` in the run ledger. This is a conservative configured estimate, not a provider invoice reconciliation; set the reserve above the current applicable per-call price plus a margin for search-content tokens, and review actual billing separately. The feature remains off by default. The current published standard web-search rate is $10 per 1,000 calls, plus search-content tokens billed at model rates; pricing can change, so consult the [OpenAI API pricing page](https://developers.openai.com/api/docs/pricing) before enabling it.
 
 ### Read-only project files
 
-Set `AGENT_PROJECT_ROOT` to the absolute project directory on the worker host. Only `coordinator`, `web_engineer`, `seo`, `qa_security`, and `fact_checker` receive `read_project_file`. It accepts normalized relative paths only, resolves symlinks, blocks traversal outside the root, allows a limited set of text extensions and rejects files larger than 64 KiB. It cannot write files, execute commands or read arbitrary absolute paths.
+Set `AGENT_PROJECT_ROOT` to the absolute project directory on the worker host. Only `coordinator`, `web_engineer`, `seo`, `qa_security`, and `fact_checker` receive `read_project_file`. It accepts normalized relative paths only, resolves symlinks, blocks traversal outside the root, rejects Windows drive paths and sensitive path components, allows a limited set of text extensions and rejects files larger than 64 KiB. The path rules have isolated unit tests; those tests have not yet been executed in this environment. It cannot write files, execute commands or read arbitrary absolute paths.
 
 Example environment (do not copy a real secret into chat or source control):
 
