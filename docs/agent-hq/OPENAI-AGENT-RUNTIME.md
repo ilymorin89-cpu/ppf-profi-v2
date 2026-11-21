@@ -12,7 +12,7 @@ Use the OpenAI Responses API as the execution runtime for Agent HQ's 19 speciali
 - Workers currently have three application function tools: `send_message`, `request_approval`, and coordinator-only `delegate_task`.
 - The supervisor waits for specialist tasks and creates an independent QA task before closing a parent task.
 - Workers are not 19 always-on autonomous services merely because 19 role definitions exist. A process manager and isolated deployment configuration are still required.
-- Workers currently have no repository/file editing, shell, browser, or web-search capability. A prompt asking them to search or edit does not grant those capabilities.
+- Workers now have a gated built-in OpenAI web-search capability for selected research roles and a read-only project-file tool for a small allowlist of roles. No repository writes, shell, arbitrary browser navigation or production access are provided.
 
 ## Target architecture
 
@@ -55,3 +55,29 @@ Use the OpenAI Responses API as the execution runtime for Agent HQ's 19 speciali
 ## Immediate implementation status
 
 The current code is a useful orchestration foundation, not a finished autonomous 19-agent service. The latest branch changes add a guard against an unfinished final tool-call batch and validate bus sender/recipient/worker roles. GitHub Actions are unavailable due to exhausted quota, so these changes are not yet locally tested or CI-verified. Do not merge based on code inspection alone.
+
+## Newly added restricted capabilities
+
+### OpenAI web search
+
+The worker exposes the Responses API `web_search` tool only when all of these are true:
+
+- `AGENT_WEB_SEARCH_ENABLED=true`
+- `AGENT_WEB_SEARCH_RESERVE_MICROUSD` is a positive integer in micro-USD
+- The role is in the hard-coded research-role allowlist in `agent-hq-worker.mjs`
+
+The worker reserves the configured per-search amount for up to four model turns before the run. It records the configured reserve for each returned `web_search_call` in the run ledger. This is a conservative configured estimate, not a provider invoice reconciliation; set the reserve above the current applicable per-call price and review actual billing separately. The feature remains off by default. Search usage pricing can change; consult current OpenAI pricing before enabling it.
+
+### Read-only project files
+
+Set `AGENT_PROJECT_ROOT` to the absolute project directory on the worker host. Only `coordinator`, `web_engineer`, `seo`, `qa_security`, and `fact_checker` receive `read_project_file`. It accepts normalized relative paths only, resolves symlinks, blocks traversal outside the root, allows a limited set of text extensions and rejects files larger than 64 KiB. It cannot write files, execute commands or read arbitrary absolute paths.
+
+Example environment (do not copy a real secret into chat or source control):
+
+```dotenv
+AGENT_PROJECT_ROOT=/srv/ppf-profi
+AGENT_WEB_SEARCH_ENABLED=false
+# Set only after checking current OpenAI web-search pricing:
+# AGENT_WEB_SEARCH_ENABLED=true
+# AGENT_WEB_SEARCH_RESERVE_MICROUSD=<conservative-per-call-reserve>
+```
