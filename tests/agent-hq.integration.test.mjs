@@ -108,7 +108,10 @@ test("Agent HQ queue lifecycle (requires isolated migrated test database)", asyn
       assert.equal(dead.status, "dead_letter");
     });
   } finally {
-    if (taskId) await sql`DELETE FROM agent_tasks WHERE assigned_role=${role}`;
+    if (taskId) {
+      await sql`DELETE FROM agent_runs WHERE task_id IN (SELECT id FROM agent_tasks WHERE assigned_role=${role})`;
+      await sql`DELETE FROM agent_tasks WHERE assigned_role=${role}`;
+    }
     await sql.end({ timeout: 5 });
   }
 });
