@@ -1,5 +1,6 @@
 import postgres from "postgres";
 import { randomUUID } from "node:crypto";
+import { AGENT_ROLES, AGENT_ROLE_NAMES } from "./agent-hq-roles.mjs";
 
 const role = process.env.AGENT_ROLE;
 const workerId = process.env.AGENT_WORKER_ID || `${role || "worker"}-${process.pid}`;
@@ -10,7 +11,7 @@ const maxOutputTokens = Number(process.env.AGENT_MAX_OUTPUT_TOKENS || 1200);
 const maxModelTurns = 4;
 const pollMs = Number(process.env.AGENT_POLL_MS || 5000);
 
-const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security"];
+const allowedRoles = AGENT_ROLE_NAMES;
 if (!role || !databaseUrl || !apiKey || !model || !allowedRoles.includes(role)) {
   console.error("Required: AGENT_ROLE, DATABASE_URL, OPENAI_API_KEY, AGENT_MODEL");
   process.exit(1);
@@ -20,15 +21,7 @@ if (!Number.isInteger(maxOutputTokens) || maxOutputTokens < 64 || maxOutputToken
 }
 const sql = postgres(databaseUrl, { max: 2, idle_timeout: 20 });
 let stopping = false;
-const roleInstructions = {
-  coordinator: "Coordinate work. Break objectives into verifiable subtasks and route them to the correct specialist. Do not claim work was done unless evidence is present.",
-  web_engineer: "Inspect and reason about website engineering tasks. Never claim to have changed or deployed code unless a tool result proves it.",
-  seo: "Audit technical and on-page SEO. Separate observed facts from hypotheses. Include URLs, evidence, impact and prioritized fixes.",
-  geo: "Improve discoverability in AI answers and local search. Avoid guarantees; distinguish measured evidence from recommendations.",
-  growth: "Focus on qualified PPF PROFI leads and conversion. Prefer measurable experiments over vanity metrics.",
-  analytics: "Analyze tracking and funnel data. Never invent metrics; explicitly identify missing instrumentation or data.",
-  qa_security: "Independently challenge assumptions, check acceptance criteria, security and regressions. Return blockers separately from minor issues."
-};
+const roleInstructions = AGENT_ROLES;
 const instructions = roleInstructions[role] || "Complete the assigned specialist task rigorously. State evidence, uncertainty, limitations and next action.";
 
 function outputText(response) {
@@ -126,7 +119,7 @@ async function runTask(task) {
       "",
       "Return a concise, evidence-backed result. Clearly label facts, assumptions, unknowns, blockers and next action. Do not claim to have accessed systems, changed files, published content, contacted customers or spent money unless an authorized tool actually did so. You have no tools in this worker process; if another role must act, explain the handoff needed."
     ].join("\n");
-    const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security"];
+    const allowedRoles = AGENT_ROLE_NAMES;
     const tools = [
       {
         type: "function", name: "send_message",
