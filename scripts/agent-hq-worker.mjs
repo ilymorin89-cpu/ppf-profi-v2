@@ -137,6 +137,7 @@ async function runTask(task) {
   let webSearchCalls = 0;
   let totalMeteredCost = 0;
   let receivedProviderResponse = false;
+  let requestInFlight = false;
 
   try {
     const inbox = await sql`SELECT from_role,kind,left(body,1000) AS body,created_at FROM agent_messages WHERE to_role=${role} AND (task_id=${task.id} OR task_id=${task.parent_task_id || task.id} OR task_id IN (SELECT id FROM agent_tasks WHERE parent_task_id=${task.parent_task_id}) OR task_id IS NULL) ORDER BY created_at DESC LIMIT 12`;
@@ -208,6 +209,7 @@ async function runTask(task) {
     let responseInput = prompt;
     let data;
     for (let turn = 0; turn < maxModelTurns; turn++) {
+      requestInFlight = true;
       const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
         headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
@@ -220,6 +222,7 @@ async function runTask(task) {
         }),
         signal: AbortSignal.any([taskAbort.signal, AbortSignal.timeout(120_000)])
       });
+      requestInFlight = false;
       if (!response.ok) {
         const detail = (await response.text()).slice(0, 1200);
         throw new Error(`OpenAI API ${response.status}: ${detail}`);
@@ -336,7 +339,7 @@ async function runTask(task) {
         lease_owner=NULL,lease_until=NULL,updated_at=now()
         WHERE id=${task.id} AND lease_owner=${workerId}`;
       await tx`UPDATE agent_runs SET status='failed',input_tokens=${totalInputTokens},output_tokens=${totalOutputTokens},
-        cost_microusd=CASE WHEN ${receivedProviderResponse} THEN ${totalMeteredCost} ELSE cost_microusd END,
+        cost_microusd=CASE WHEN ${receivedProviderResponse && !requestInFlight} THEN ${totalMeteredCost} ELSE cost_microusd END,
         error=${message.slice(0,4000)},finished_at=now() WHERE id=${run.id}`;
       await tx`INSERT INTO agent_messages
         (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
