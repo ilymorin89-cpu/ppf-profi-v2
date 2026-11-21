@@ -1,0 +1,57 @@
+name: Website CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "public/**"
+      - "data/**"
+      - "package.json"
+      - "package-lock.json"
+      - "next.config.ts"
+      - "tsconfig.json"
+      - "postcss.config.mjs"
+      - "eslint.config.mjs"
+      - ".github/workflows/website-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "public/**"
+      - "data/**"
+      - "package.json"
+      - "package-lock.json"
+      - "next.config.ts"
+      - "tsconfig.json"
+      - "postcss.config.mjs"
+      - "eslint.config.mjs"
+      - ".github/workflows/website-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: website-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Next.js production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build website
+        run: npm run build
