@@ -2,7 +2,8 @@ import postgres from "postgres";
 import { randomUUID } from "node:crypto";
 import { AGENT_ROLES, AGENT_ROLE_NAMES } from "./agent-hq-roles.mjs";
 import { readFile, realpath } from "node:fs/promises";
-import { resolve, sep, extname } from "node:path";
+import { resolve, extname } from "node:path";
+import { normalizeProjectRelativePath, isPathWithinRoot } from "./agent-hq-file-policy.mjs";
 
 const role = process.env.AGENT_ROLE;
 const workerId = process.env.AGENT_WORKER_ID || `${role || "worker"}-${process.pid}`;
@@ -233,18 +234,12 @@ async function runTask(task) {
         const args = JSON.parse(call.arguments || "{}");
         let result;
         if (call.name === "read_project_file") {
-          if (!roleCanReadProject || typeof args.path !== "string" || !args.path.trim() || args.path.includes("\\0")) {
-            throw new Error("Project file read is not permitted");
-          }
-          const relativePath = args.path.replaceAll("\\\\", "/");
-          const pathParts = relativePath.split("/");
-          if (relativePath.startsWith("/") || pathParts.some(part => !part || part === "." || part === ".." || [".git", "node_modules", ".next", ".vercel", "secrets", "credentials"].includes(part.toLowerCase())) || /(^|[._-])(env|secret|credential|private|token|key)([._-]|$)/i.test(pathParts.at(-1))) {
-            throw new Error("Project file path is outside the permitted read-only file policy");
-          }
+          if (!roleCanReadProject) throw new Error("Project file read is not permitted");
+          const relativePath = normalizeProjectRelativePath(args.path);
           const candidate = resolve(projectRoot, relativePath);
-          if (!candidate.startsWith(projectRoot + sep)) throw new Error("Project file path escapes project root");
+          if (!isPathWithinRoot(projectRoot, candidate)) throw new Error("Project file path escapes project root");
           const actualPath = await realpath(candidate);
-          if (!actualPath.startsWith(projectRoot + sep)) throw new Error("Project file symlink escapes project root");
+          if (!isPathWithinRoot(projectRoot, actualPath)) throw new Error("Project file symlink escapes project root");
           const extension = extname(actualPath).toLowerCase();
           if (!allowedProjectExtensions.has(extension)) throw new Error("File extension is not allowed for project reading");
           const file = await readFile(actualPath);
