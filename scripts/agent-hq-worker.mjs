@@ -117,13 +117,14 @@ async function runTask(task) {
     }
     throw error;
   }
+  const taskAbort = new AbortController();
   const heartbeat = setInterval(async () => {
     try {
       const [lease] = await sql`UPDATE agent_tasks SET status='running',
         lease_until=now()+interval '3 minutes',updated_at=now()
         WHERE id=${task.id} AND lease_owner=${workerId} AND status IN ('claimed','running')
         RETURNING id`;
-      if (!lease) stopping = true;
+      if (!lease) { stopping = true; taskAbort.abort(new Error("Task lease lost; aborting active model request")); }
     } catch (error) {
       console.error("Heartbeat failed:", error instanceof Error ? error.message : error);
       stopping = true;
@@ -132,7 +133,7 @@ async function runTask(task) {
   heartbeat.unref?.();
 
   try {
-    const inbox = await sql`SELECT from_role,kind,left(body,1000) AS body,created_at FROM agent_messages WHERE to_role=${role} AND (task_id=${task.id} OR task_id=${task.parent_task_id || task.id} OR task_id IS NULL) ORDER BY created_at DESC LIMIT 6`;
+    const inbox = await sql`SELECT from_role,kind,left(body,1000) AS body,created_at FROM agent_messages WHERE to_role=${role} AND (task_id=${task.id} OR task_id=${task.parent_task_id || task.id} OR task_id IN (SELECT id FROM agent_tasks WHERE parent_task_id=${task.parent_task_id}) OR task_id IS NULL) ORDER BY created_at DESC LIMIT 12`;
     const siblingArtifacts = task.parent_task_id ? await sql`SELECT a.id,a.created_by,a.title,left(a.content,1500) AS content FROM agent_artifacts a JOIN agent_tasks c ON c.id=a.task_id WHERE c.parent_task_id=${task.parent_task_id} ORDER BY a.created_at LIMIT 5` : [];
     const prompt = [
       `Task: ${task.title}`,
@@ -214,7 +215,7 @@ async function runTask(task) {
           tools,
           max_output_tokens: maxOutputTokens
         }),
-        signal: AbortSignal.timeout(120_000)
+        signal: AbortSignal.any([taskAbort.signal, AbortSignal.timeout(120_000)])
       });
       if (!response.ok) {
         const detail = (await response.text()).slice(0, 1200);
