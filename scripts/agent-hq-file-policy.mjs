@@ -1,4 +1,4 @@
-import { relative, isAbsolute, resolve } from "node:path";
+import { relative, isAbsolute, resolve, sep } from "node:path";
 
 const blockedDirectories = new Set([
   ".git", "node_modules", ".next", ".vercel", "secrets", "credentials"
@@ -27,7 +27,7 @@ export function normalizeProjectRelativePath(input) {
 
 export function isPathWithinRoot(root, candidate) {
   const rel = relative(resolve(root), resolve(candidate));
-  return rel === "" || (!isAbsolute(rel) && rel !== ".." && !rel.startsWith(`..${process.platform === "win32" ? "\\\\" : "/"}`));
+  return rel === "" || (!isAbsolute(rel) && rel !== ".." && !rel.startsWith(`..${sep}`));
 }
 
 export function isAllowedProjectExtension(pathname) {
