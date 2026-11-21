@@ -38,10 +38,10 @@ Use the OpenAI Responses API as the execution runtime for Agent HQ's 19 speciali
 2. Run queue concurrency, lease recovery, supervisor, QA and approval tests against a disposable PostgreSQL database only.
 3. Prove daily, monthly and per-run budget reservation is concurrency-safe and that every billable tool cost is recorded, including web-search tool calls.
 4. Add per-role tool allowlists and validate every tool argument server-side.
-5. Add cancellation, timeout, retry and idempotency tests.
-6. Verify secrets are supplied only through environment/secret storage and never logged or committed.
-7. Deploy an isolated staging worker and staging database. Keep production worker count at zero until all gates pass.
-8. Run a single manually approved, no-external-side-effects test task, then review its run, artifacts, messages, costs and QA verdict.
+6. Add cancellation, timeout, retry and idempotency tests.
+7. Verify secrets are supplied only through environment/secret storage and never logged or committed.
+8. Deploy an isolated staging worker and staging database. Keep production worker count at zero until all gates pass.
+9. Run a single manually approved, no-external-side-effects test task, then review its run, artifacts, messages, costs and QA verdict.
 
 ## Safety defaults
 
@@ -66,7 +66,7 @@ The worker exposes the Responses API `web_search` tool only when all of these ar
 - `AGENT_WEB_SEARCH_RESERVE_MICROUSD` is a positive integer in micro-USD
 - The role is in the hard-coded research-role allowlist in `agent-hq-worker.mjs`
 
-The worker reserves the configured per-search amount for up to four model turns before the run. It records the configured reserve for each returned `web_search_call` in the run ledger. This is a conservative configured estimate, not a provider invoice reconciliation; set the reserve above the current applicable per-call price plus a margin for search-content tokens, and review actual billing separately. The feature remains off by default. The current published standard web-search rate is $10 per 1,000 calls, plus search-content tokens billed at model rates; pricing can change, so consult the [OpenAI API pricing page](https://developers.openai.com/api/docs/pricing) before enabling it.
+The worker reserves the configured per-search amount for up to four model turns before the run. Each successful Responses API response now creates an idempotent `agent_run_events` row with token usage, search-call count, configured search reserve, model and response ID. The run-level cost remains reserved while running and is reconciled to observed usage on success. On failure after a provider response, observed usage is retained; if no provider response was received, the original reservation remains as a conservative upper bound. It records the configured reserve for each returned `web_search_call` in the run ledger. This is a conservative configured estimate, not a provider invoice reconciliation; set the reserve above the current applicable per-call price plus a margin for search-content tokens, and review actual billing separately. The feature remains off by default. The current published standard web-search rate is $10 per 1,000 calls, plus search-content tokens billed at model rates; pricing can change, so consult the [OpenAI API pricing page](https://developers.openai.com/api/docs/pricing) before enabling it.
 
 ### Read-only project files
 
