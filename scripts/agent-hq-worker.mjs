@@ -1,6 +1,8 @@
 import postgres from "postgres";
 import { randomUUID } from "node:crypto";
 import { AGENT_ROLES, AGENT_ROLE_NAMES } from "./agent-hq-roles.mjs";
+import { readFile, realpath } from "node:fs/promises";
+import { resolve, sep, extname } from "node:path";
 
 const role = process.env.AGENT_ROLE;
 const workerId = process.env.AGENT_WORKER_ID || `${role || "worker"}-${process.pid}`;
@@ -25,6 +27,12 @@ if (webSearchEnabled && webSearchReserveMicrousd <= 0) {
   throw new Error("Web search requires a positive AGENT_WEB_SEARCH_RESERVE_MICROUSD reservation");
 }
 const roleCanSearchWeb = webSearchEnabled && WEB_SEARCH_ROLES.has(role);
+const projectRoot = process.env.AGENT_PROJECT_ROOT ? await realpath(resolve(process.env.AGENT_PROJECT_ROOT)) : null;
+const FILE_READ_ROLES = new Set(["coordinator", "web_engineer", "seo", "qa_security", "fact_checker"]);
+const roleCanReadProject = Boolean(projectRoot && FILE_READ_ROLES.has(role));
+const maxProjectFileBytes = 64 * 1024;
+const allowedProjectExtensions = new Set([".md", ".mjs", ".js", ".ts", ".tsx", ".json", ".sql", ".yml", ".yaml", ".txt", ".css"]);
+
 
 const allowedRoles = AGENT_ROLE_NAMES;
 if (!role || !databaseUrl || !apiKey || !model || !allowedRoles.includes(role)) {
@@ -134,11 +142,16 @@ async function runTask(task) {
       `Recent inter-agent messages: ${JSON.stringify(inbox)}`,
       `Parent task specialist artifacts for review: ${JSON.stringify(siblingArtifacts)}`,
       "",
-      "Return a concise, evidence-backed result. Clearly label facts, assumptions, unknowns, blockers and next action. Do not claim to have accessed systems, changed files, published content, contacted customers or spent money unless an authorized tool actually did so. You have no tools in this worker process; if another role must act, explain the handoff needed."
+      "Return a concise, evidence-backed result. Clearly label facts, assumptions, unknowns, blockers and next action. Do not claim to have accessed systems, changed files, published content, contacted customers or spent money unless an authorized tool actually did so. Use only explicitly provided tools; project file access, if present, is read-only and path-scoped."
     ].join("\n");
     const allowedRoles = AGENT_ROLE_NAMES;
     const tools = [
       ...(roleCanSearchWeb ? [{ type: "web_search", search_context_size: "low" }] : []),
+      ...(roleCanReadProject ? [{
+        type: "function", name: "read_project_file",
+        description: "Read one text file inside the configured project root. Read-only; never use absolute paths or parent traversal.",
+        parameters: { type: "object", additionalProperties: false, properties: { path: { type: "string" } }, required: ["path"] }, strict: true
+      }] : []),
       {
         type: "function", name: "send_message",
         description: "Send a direct message to another specialist agent. Use this to request evidence, challenge a finding, or hand off work.",
@@ -219,7 +232,24 @@ async function runTask(task) {
       for (const call of calls) {
         const args = JSON.parse(call.arguments || "{}");
         let result;
-        if (call.name === "send_message") {
+        if (call.name === "read_project_file") {
+          if (!roleCanReadProject || typeof args.path !== "string" || !args.path.trim() || args.path.includes("\\0")) {
+            throw new Error("Project file read is not permitted");
+          }
+          const relativePath = args.path.replaceAll("\\\\", "/");
+          if (relativePath.startsWith("/") || relativePath.split("/").some(part => !part || part === "." || part === "..")) {
+            throw new Error("Project file path must be a normalized relative path");
+          }
+          const candidate = resolve(projectRoot, relativePath);
+          if (!candidate.startsWith(projectRoot + sep)) throw new Error("Project file path escapes project root");
+          const actualPath = await realpath(candidate);
+          if (!actualPath.startsWith(projectRoot + sep)) throw new Error("Project file symlink escapes project root");
+          const extension = extname(actualPath).toLowerCase();
+          if (!allowedProjectExtensions.has(extension)) throw new Error("File extension is not allowed for project reading");
+          const file = await readFile(actualPath);
+          if (file.byteLength > maxProjectFileBytes) throw new Error("Project file exceeds 64 KiB read limit");
+          result = { path: relativePath, bytes: file.byteLength, content: file.toString("utf8") };
+        } else if (call.name === "send_message") {
           if (!allowedRoles.includes(args.to_role) || !["request","question","objection","handoff","status"].includes(args.kind) || typeof args.body !== "string" || !args.body.trim()) {
             throw new Error("Invalid send_message arguments");
           }
