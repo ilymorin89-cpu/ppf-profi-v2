@@ -16,7 +16,8 @@ export function normalizeProjectRelativePath(input) {
   const filename = parts.at(-1) || "";
   if (
     normalized.startsWith("/") ||
-    parts.some(part => !part || part === "." || part === ".." || blockedDirectories.has(part.toLowerCase())) ||
+    parts.some(part => !part || part === "." || part === ".." || blockedDirectories.has(part.toLowerCase()) || /(^|[._-])(env|secret|credential|private|token|key)([._-]|$)/i.test(part)) ||
+    /^[a-z]:\//i.test(normalized) ||
     /(^|[._-])(env|secret|credential|private|token|key)([._-]|$)/i.test(filename)
   ) {
     throw new Error("Project file path is outside the permitted read-only file policy");
