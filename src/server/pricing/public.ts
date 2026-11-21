@@ -25,6 +25,8 @@ export type PublicCar = {
   base: string;
   gen: string;
   years: string;
+  daysRisk: number | null;
+  daysFull: number | null;
   prices: Record<ScenarioCode, Record<FilmCode, PublicPrice | null>>;
 };
 
@@ -82,7 +84,7 @@ export function getPublicCatalog(): PublicCar[] {
       prices[s] = {} as Record<FilmCode, PublicPrice | null>;
       for (const f of FILM_CODES) prices[s][f] = getPublicPrice(c.code, s, f);
     }
-    return { code: c.code, brand: c.brand, model: c.model, base: c.base, gen: c.gen, years: c.years, prices };
+    return { code: c.code, brand: c.brand, model: c.model, base: c.base, gen: c.gen, years: c.years, daysRisk: c.daysRisk, daysFull: c.daysFull, prices };
   });
 }
 

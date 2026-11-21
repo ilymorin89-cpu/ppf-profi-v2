@@ -4,8 +4,8 @@ import SiteHeader from "@/components/site/SiteHeader";
 import SiteFooter from "@/components/site/SiteFooter";
 import JsonLd from "@/components/site/JsonLd";
 import { CAR_LANDINGS, type CarLanding } from "@/content/car-landing-pages";
-import { BRAND_PAGE, CONTACTS, FILM_LIFE, MATERIAL_WARRANTY, WARRANTY_WORK, formatRub, telegramUrl } from "@/content/site";
-import { getPublicCatalog } from "@/server/pricing/public";
+import { ADDON_TEXTS, BRAND_PAGE, CONTACTS, FILM_LIFE, MATERIAL_WARRANTY, SCENARIOS, WARRANTY_WORK, formatRub, telegramUrl } from "@/content/site";
+import { getPublicAddonPrices, getPublicCatalog } from "@/server/pricing/public";
 import { getCalculatorProps } from "@/server/calculator/props";
 import { breadcrumbSchema, organizationSchema, serviceSchema } from "@/server/seo/schema";
 
@@ -27,6 +27,7 @@ export default function CarLandingPage({ page }: Props) {
   if (!car) return null;
   const calculatorCar = getCalculatorProps().cars.find((item) => item.code === page.code);
   const path = `/ppf/${page.slug}`;
+  const addonPrices = getPublicAddonPrices();
   const risk = car.prices.RISK_ZONES;
   const full = car.prices.FULL;
   const rows = [
@@ -43,8 +44,9 @@ export default function CarLandingPage({ page }: Props) {
   const calculatorUrl = `/calculator?car=${encodeURIComponent(car.code)}`;
   const faq = [
     { q: `Сколько стоит оклейка ${car.brand} ${car.model}?`, a: min !== null ? `Стоимость начинается от ${formatRub(min)}. Цена зависит от состава работ и выбранной плёнки. Итоговую смету подтверждаем после осмотра.` : "Стоимость рассчитывается индивидуально после выбора состава работ и осмотра автомобиля." },
-    { q: "Что входит в зоны риска?", a: "Состав зон риска согласуется перед работой. Обычно он включает наиболее подверженные сколам элементы передней части кузова; точный перечень зависит от автомобиля и выбранного пакета." },
-    { q: "Сколько занимает оклейка?", a: "Срок зависит от объёма защиты, состояния лакокрасочного покрытия и сложности монтажа. Подтверждаем срок после осмотра и согласования состава работ." },
+    { q: "Что входит в зоны риска?", a: `${SCENARIOS.RISK_ZONES.desc}. Перечень и границы оклейки подтверждаем перед началом работ.` },
+    { q: "Что означает полная оклейка?", a: `${SCENARIOS.FULL.desc}. Конкретный перечень окрашенных элементов и исключения согласуем при осмотре автомобиля.` },
+    { q: "Сколько занимает оклейка?", a: `Ориентир по каталогу для этой модели: зоны риска — ${car.daysRisk ?? "срок уточняется"} дн., полная оклейка — ${car.daysFull ?? "срок уточняется"} дн. Подтверждаем график после осмотра.` },
     { q: "Какая гарантия предоставляется?", a: `Гарантия на монтаж: ${WARRANTY_WORK}. ${MATERIAL_WARRANTY}. ${FILM_LIFE}` },
   ];
 
@@ -93,6 +95,24 @@ export default function CarLandingPage({ page }: Props) {
           </div>
         </section>
 
+        <section className="mx-auto max-w-7xl px-4 pb-14 sm:px-6">
+          <div className="eyebrow">Состав работ</div>
+          <h2 className="mt-3 text-2xl font-extrabold sm:text-3xl">Что входит в пакеты защиты</h2>
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <article className="dark-card p-6"><h3 className="text-lg font-extrabold">Зоны риска</h3><p className="mt-3 text-sm leading-7 text-white/70">{SCENARIOS.RISK_ZONES.desc}.</p><p className="mt-3 text-xs leading-6 text-white/45">Границы оклейки и конкретные детали согласуем до начала работ.</p></article>
+            <article className="dark-card p-6"><h3 className="text-lg font-extrabold">Полная оклейка</h3><p className="mt-3 text-sm leading-7 text-white/70">{SCENARIOS.FULL.desc}.</p><p className="mt-3 text-xs leading-6 text-white/45">Перечень окрашенных элементов, входящих в смету, подтверждаем после осмотра.</p></article>
+          </div>
+          <h3 className="mt-8 text-lg font-extrabold">Дополнительные опции</h3>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-white/55">Работы рассчитываются отдельно и не включены автоматически в базовую стоимость пакета.</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {Object.entries(addonPrices).map(([code, value]) => {
+              const label = ADDON_TEXTS[code]?.label ?? code;
+              const price = value.priceMax && value.priceMax > value.price ? `от ${formatRub(value.price)} до ${formatRub(value.priceMax)}` : formatRub(value.price);
+              const note = code === "MATTE" ? "Доплата только к полной оклейке" : ADDON_TEXTS[code]?.desc;
+              return <div key={code} className="dark-card p-4"><div className="text-sm font-bold">{label}</div><div className="mt-2 text-base font-extrabold accent">{price}{ADDON_TEXTS[code]?.unit ? ` / ${ADDON_TEXTS[code].unit}` : ""}</div>{note && <p className="mt-1 text-xs leading-5 text-white/45">{note}</p>}</div>;
+            })}
+          </div>
+        </section>
         <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6">
           <div className="eyebrow">Стоимость</div>
           <h2 className="mt-3 text-2xl font-extrabold sm:text-3xl">Цены на оклейку {car.brand} {car.model}</h2>
@@ -106,7 +126,11 @@ export default function CarLandingPage({ page }: Props) {
               </Link>
             ))}
           </div>
-          <p className="mt-4 text-xs text-white/45">Сроки и состав работ зависят от выбранного пакета, состояния кузова и особенностей автомобиля.</p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {car.daysRisk !== null && <div className="dark-card p-4"><div className="text-xs text-white/45">Ориентир по сроку · зоны риска</div><div className="mt-1 text-lg font-extrabold">{car.daysRisk} {car.daysRisk === 1 ? "день" : car.daysRisk >= 2 && car.daysRisk <= 4 ? "дня" : "дней"}</div></div>}
+            {car.daysFull !== null && <div className="dark-card p-4"><div className="text-xs text-white/45">Ориентир по сроку · полная оклейка</div><div className="mt-1 text-lg font-extrabold">{car.daysFull} {car.daysFull === 1 ? "день" : car.daysFull >= 2 && car.daysFull <= 4 ? "дня" : "дней"}</div></div>}
+          </div>
+          <p className="mt-4 text-xs text-white/45">Сроки ориентировочные по внутреннему каталогу расчёта. Фактический срок подтверждаем после осмотра, согласования состава работ и графика.</p>
         </section>
 
         <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6">
