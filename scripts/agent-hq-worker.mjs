@@ -11,6 +11,21 @@ const maxOutputTokens = Number(process.env.AGENT_MAX_OUTPUT_TOKENS || 1200);
 const maxModelTurns = 4;
 const pollMs = Number(process.env.AGENT_POLL_MS || 5000);
 
+const WEB_SEARCH_ROLES = new Set([
+  "seo", "geo", "growth", "analytics", "content_seo",
+  "trend_scout", "auto_news_editor", "auto_law_monitor",
+  "fact_checker", "qa_security"
+]);
+const webSearchEnabled = process.env.AGENT_WEB_SEARCH_ENABLED === "true";
+const webSearchReserveMicrousd = Number(process.env.AGENT_WEB_SEARCH_RESERVE_MICROUSD || 0);
+if (!Number.isSafeInteger(webSearchReserveMicrousd) || webSearchReserveMicrousd < 0) {
+  throw new Error("AGENT_WEB_SEARCH_RESERVE_MICROUSD must be a non-negative integer in micro-USD");
+}
+if (webSearchEnabled && webSearchReserveMicrousd <= 0) {
+  throw new Error("Web search requires a positive AGENT_WEB_SEARCH_RESERVE_MICROUSD reservation");
+}
+const roleCanSearchWeb = webSearchEnabled && WEB_SEARCH_ROLES.has(role);
+
 const allowedRoles = AGENT_ROLE_NAMES;
 if (!role || !databaseUrl || !apiKey || !model || !allowedRoles.includes(role)) {
   console.error("Required: AGENT_ROLE, DATABASE_URL, OPENAI_API_KEY, AGENT_MODEL");
@@ -62,19 +77,21 @@ async function runTask(task) {
         throw new Error("Agent budget is disabled or has zero caps; refusing model call");
       }
       const estimate = Math.ceil((estimatedInputTokens * maxModelTurns * Number(budget.input_price_per_million_microusd) + maxOutputTokens * maxModelTurns * Number(budget.output_price_per_million_microusd)) / 1000000);
-      if (estimate <= 0 || estimate > Number(budget.per_run_cap_microusd) || (Number(task.budget_limit_microusd) > 0 && estimate > Number(task.budget_limit_microusd))) {
+      const webSearchReserve = roleCanSearchWeb ? webSearchReserveMicrousd * maxModelTurns : 0;
+      const totalReservation = estimate + webSearchReserve;
+      if (totalReservation <= 0 || totalReservation > Number(budget.per_run_cap_microusd) || (Number(task.budget_limit_microusd) > 0 && totalReservation > Number(task.budget_limit_microusd))) {
         throw new Error("Estimated request exceeds per-run or task budget");
       }
       const [totals] = await tx`SELECT
         COALESCE(SUM(cost_microusd) FILTER (WHERE started_at >= date_trunc('day',now())),0) AS daily,
         COALESCE(SUM(cost_microusd) FILTER (WHERE started_at >= date_trunc('month',now())),0) AS monthly
         FROM agent_runs`;
-      if (Number(totals.daily) + estimate > Number(budget.daily_cap_microusd) || Number(totals.monthly) + estimate > Number(budget.monthly_cap_microusd)) {
+      if (Number(totals.daily) + totalReservation > Number(budget.daily_cap_microusd) || Number(totals.monthly) + totalReservation > Number(budget.monthly_cap_microusd)) {
         throw new Error("Daily or monthly agent budget exhausted; refusing model call");
       }
       const [created] = await tx`INSERT INTO agent_runs
         (task_id,role,worker_id,provider,model,status,cost_microusd)
-        VALUES (${task.id},${role},${workerId},'openai',${model},'running',${estimate}) RETURNING id`;
+        VALUES (${task.id},${role},${workerId},'openai',${model},'running',${totalReservation}) RETURNING id`;
       return created;
     });
   
@@ -121,6 +138,7 @@ async function runTask(task) {
     ].join("\n");
     const allowedRoles = AGENT_ROLE_NAMES;
     const tools = [
+      ...(roleCanSearchWeb ? [{ type: "web_search", search_context_size: "low" }] : []),
       {
         type: "function", name: "send_message",
         description: "Send a direct message to another specialist agent. Use this to request evidence, challenge a finding, or hand off work.",
@@ -170,6 +188,7 @@ async function runTask(task) {
     let data;
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
+    let webSearchCalls = 0;
     for (let turn = 0; turn < maxModelTurns; turn++) {
       const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
@@ -188,6 +207,7 @@ async function runTask(task) {
         throw new Error(`OpenAI API ${response.status}: ${detail}`);
       }
       data = await response.json();
+      webSearchCalls += (data.output || []).filter(item => item.type === "web_search_call").length;
       totalInputTokens += Number(data.usage?.input_tokens || 0);
       totalOutputTokens += Number(data.usage?.output_tokens || 0);
       const calls = (data.output || []).filter(item => item.type === "function_call");
@@ -249,6 +269,7 @@ async function runTask(task) {
     const usage = { input_tokens: totalInputTokens, output_tokens: totalOutputTokens };
     const [budget] = await sql`SELECT input_price_per_million_microusd,output_price_per_million_microusd FROM agent_budget_config WHERE id=1`;
     const actualCost = Math.ceil((usage.input_tokens * Number(budget.input_price_per_million_microusd) + usage.output_tokens * Number(budget.output_price_per_million_microusd)) / 1000000);
+    const meteredCost = actualCost + (webSearchCalls * (roleCanSearchWeb ? webSearchReserveMicrousd : 0));
     await sql.begin(async tx => {
       const [owned] = await tx`UPDATE agent_tasks SET
         status=CASE WHEN ${role}='coordinator' AND EXISTS (SELECT 1 FROM agent_tasks child WHERE child.parent_task_id=${task.id}) THEN 'review' ELSE 'done' END,
@@ -260,12 +281,12 @@ async function runTask(task) {
       await tx`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content,evidence)
         VALUES (${task.id},${role},'result',${task.title},${result},'[]'::jsonb)`;
       await tx`UPDATE agent_runs SET status='succeeded',input_tokens=${usage.input_tokens || 0},
-        output_tokens=${usage.output_tokens || 0},cost_microusd=${actualCost},finished_at=now() WHERE id=${run.id}`;
+        output_tokens=${usage.output_tokens || 0},cost_microusd=${meteredCost},finished_at=now() WHERE id=${run.id}`;
       await tx`INSERT INTO agent_messages
         (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
         VALUES (${task.id},${randomUUID()},${role},'coordinator','result',${result.slice(0,12000)},${randomUUID()})`;
     });
-    console.log(JSON.stringify({ taskId: task.id, status: "done", inputTokens: usage.input_tokens || 0, outputTokens: usage.output_tokens || 0 }));
+    console.log(JSON.stringify({ taskId: task.id, status: "done", inputTokens: usage.input_tokens || 0, outputTokens: usage.output_tokens || 0, webSearchCalls, costMicrousd: meteredCost }));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await sql.begin(async tx => {
