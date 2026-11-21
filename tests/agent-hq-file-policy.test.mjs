@@ -8,7 +8,7 @@ test("normalizes Windows separators to project-relative POSIX paths", () => {
 
 test("rejects absolute, traversal, empty, dot, NUL and protected paths", () => {
   for (const value of [
-    "/etc/passwd", "C:\\Windows\\win.ini", "../outside.txt",
+    "/etc/passwd", "C:\\Windows\\win.ini", "../outside.txt", "src/secret/config.json", "C:\\project\\file.ts",
     "src/../outside.txt", "src//page.tsx", "./page.tsx",
     "src/.git/config", "node_modules/pkg/index.js",
     "secrets/api.json", "src/.env.local", "src/private-key.txt",
