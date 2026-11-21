@@ -106,7 +106,11 @@ export default function CarLandingPage({ page }: Props) {
               </Link>
             ))}
           </div>
-          <p className="mt-4 text-xs text-white/45">Сроки и состав работ зависят от выбранного пакета, состояния кузова и особенностей автомобиля.</p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {car.daysRisk !== null && <div className="dark-card p-4"><div className="text-xs text-white/45">Ориентир по сроку · зоны риска</div><div className="mt-1 text-lg font-extrabold">{car.daysRisk} {car.daysRisk === 1 ? "день" : car.daysRisk >= 2 && car.daysRisk <= 4 ? "дня" : "дней"}</div></div>}
+            {car.daysFull !== null && <div className="dark-card p-4"><div className="text-xs text-white/45">Ориентир по сроку · полная оклейка</div><div className="mt-1 text-lg font-extrabold">{car.daysFull} {car.daysFull === 1 ? "день" : car.daysFull >= 2 && car.daysFull <= 4 ? "дня" : "дней"}</div></div>}
+          </div>
+          <p className="mt-4 text-xs text-white/45">Сроки ориентировочные по внутреннему каталогу расчёта. Фактический срок подтверждаем после осмотра, согласования состава работ и графика.</p>
         </section>
 
         <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6">
