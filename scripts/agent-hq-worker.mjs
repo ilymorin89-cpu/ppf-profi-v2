@@ -132,6 +132,11 @@ async function runTask(task) {
     }
   }, 45_000);
   heartbeat.unref?.();
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+  let webSearchCalls = 0;
+  let totalMeteredCost = 0;
+  let receivedProviderResponse = false;
 
   try {
     const inbox = await sql`SELECT from_role,kind,left(body,1000) AS body,created_at FROM agent_messages WHERE to_role=${role} AND (task_id=${task.id} OR task_id=${task.parent_task_id || task.id} OR task_id IN (SELECT id FROM agent_tasks WHERE parent_task_id=${task.parent_task_id}) OR task_id IS NULL) ORDER BY created_at DESC LIMIT 12`;
@@ -202,9 +207,6 @@ async function runTask(task) {
     ];
     let responseInput = prompt;
     let data;
-    let totalInputTokens = 0;
-    let totalOutputTokens = 0;
-    let webSearchCalls = 0;
     for (let turn = 0; turn < maxModelTurns; turn++) {
       const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
@@ -223,9 +225,22 @@ async function runTask(task) {
         throw new Error(`OpenAI API ${response.status}: ${detail}`);
       }
       data = await response.json();
-      webSearchCalls += (data.output || []).filter(item => item.type === "web_search_call").length;
-      totalInputTokens += Number(data.usage?.input_tokens || 0);
-      totalOutputTokens += Number(data.usage?.output_tokens || 0);
+      receivedProviderResponse = true;
+      const responseSearchCalls = (data.output || []).filter(item => item.type === "web_search_call").length;
+      const responseInputTokens = Number(data.usage?.input_tokens || 0);
+      const responseOutputTokens = Number(data.usage?.output_tokens || 0);
+      webSearchCalls += responseSearchCalls;
+      totalInputTokens += responseInputTokens;
+      totalOutputTokens += responseOutputTokens;
+      const [responsePrices] = await sql`SELECT input_price_per_million_microusd,output_price_per_million_microusd FROM agent_budget_config WHERE id=1`;
+      const responseCost = Math.ceil((responseInputTokens * Number(responsePrices.input_price_per_million_microusd) + responseOutputTokens * Number(responsePrices.output_price_per_million_microusd)) / 1000000)
+        + responseSearchCalls * (roleCanSearchWeb ? webSearchReserveMicrousd : 0);
+      totalMeteredCost += responseCost;
+      await sql`INSERT INTO agent_run_events
+        (run_id,task_id,role,event_type,input_tokens,output_tokens,web_search_calls,cost_microusd,metadata,idempotency_key)
+        VALUES (${run.id},${task.id},${role},'responses_api_usage',${responseInputTokens},${responseOutputTokens},
+          ${responseSearchCalls},${responseCost},${JSON.stringify({ response_id: data.id || null, model, turn })}::jsonb,${`${run.id}-response-${turn}`})
+        ON CONFLICT (idempotency_key) DO NOTHING`;
       const calls = (data.output || []).filter(item => item.type === "function_call");
       if (!calls.length) break;
       if (turn === maxModelTurns - 1) {
@@ -295,9 +310,7 @@ async function runTask(task) {
     }
     if (!result) throw new Error("Model returned no text output");
     const usage = { input_tokens: totalInputTokens, output_tokens: totalOutputTokens };
-    const [budget] = await sql`SELECT input_price_per_million_microusd,output_price_per_million_microusd FROM agent_budget_config WHERE id=1`;
-    const actualCost = Math.ceil((usage.input_tokens * Number(budget.input_price_per_million_microusd) + usage.output_tokens * Number(budget.output_price_per_million_microusd)) / 1000000);
-    const meteredCost = actualCost + (webSearchCalls * (roleCanSearchWeb ? webSearchReserveMicrousd : 0));
+    const meteredCost = totalMeteredCost;
     await sql.begin(async tx => {
       const [owned] = await tx`UPDATE agent_tasks SET
         status=CASE WHEN ${role}='coordinator' AND EXISTS (SELECT 1 FROM agent_tasks child WHERE child.parent_task_id=${task.id}) THEN 'review' ELSE 'done' END,
@@ -322,7 +335,9 @@ async function runTask(task) {
         status=CASE WHEN attempts < max_attempts THEN 'queued' ELSE 'dead_letter' END,
         lease_owner=NULL,lease_until=NULL,updated_at=now()
         WHERE id=${task.id} AND lease_owner=${workerId}`;
-      await tx`UPDATE agent_runs SET status='failed',error=${message.slice(0,4000)},finished_at=now() WHERE id=${run.id}`;
+      await tx`UPDATE agent_runs SET status='failed',input_tokens=${totalInputTokens},output_tokens=${totalOutputTokens},
+        cost_microusd=CASE WHEN ${receivedProviderResponse} THEN ${totalMeteredCost} ELSE cost_microusd END,
+        error=${message.slice(0,4000)},finished_at=now() WHERE id=${run.id}`;
       await tx`INSERT INTO agent_messages
         (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
         VALUES (${task.id},${randomUUID()},${role},'coordinator','status',${message.slice(0,4000)},${randomUUID()})`;
