@@ -107,7 +107,7 @@ export default function CarLandingPage({ page }: Props) {
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {Object.entries(addonPrices).map(([code, value]) => {
               const label = ADDON_TEXTS[code]?.label ?? code;
-              const price = value.priceMax && value.priceMax > value.price ? `${formatRub(value.price)}–${formatRub(value.priceMax)}` : `от ${formatRub(value.price)}`;
+              const price = value.priceMax && value.priceMax > value.price ? `от ${formatRub(value.price)} до ${formatRub(value.priceMax)}` : formatRub(value.price);
               const note = code === "MATTE" ? "Доплата только к полной оклейке" : ADDON_TEXTS[code]?.desc;
               return <div key={code} className="dark-card p-4"><div className="text-sm font-bold">{label}</div><div className="mt-2 text-base font-extrabold accent">{price}{ADDON_TEXTS[code]?.unit ? ` / ${ADDON_TEXTS[code].unit}` : ""}</div>{note && <p className="mt-1 text-xs leading-5 text-white/45">{note}</p>}</div>;
             })}
