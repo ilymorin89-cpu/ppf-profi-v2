@@ -137,7 +137,9 @@ export function createOpenSeoMcpClient({
       throw new Error(`OpenSEO tool "${name}" is not in the explicit read-only allowlist.`);
     }
     await initialize();
-    const toolArgs = { ...args, project_id: projectId };
+    const toolArgs = (name === "whoami" || name === "list_projects")
+      ? { ...args }
+      : { ...args, project_id: projectId };
     const response = await rpc("tools/call", { name, arguments: toolArgs });
     if (response.error) throw new Error(`OpenSEO tool "${name}" failed: ${response.error.message}`);
     if (response.result?.isError) {
