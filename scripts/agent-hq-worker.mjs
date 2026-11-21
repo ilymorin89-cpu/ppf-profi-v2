@@ -128,6 +128,7 @@ async function runTask(task) {
     } catch (error) {
       console.error("Heartbeat failed:", error instanceof Error ? error.message : error);
       stopping = true;
+      taskAbort.abort(new Error("Heartbeat failed; aborting active model request"));
     }
   }, 45_000);
   heartbeat.unref?.();
