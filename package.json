@@ -15,7 +15,8 @@
     "agent-hq": "node scripts/agent-hq-bus.mjs",
     "agent-hq:test": "node --test tests/agent-hq.integration.test.mjs",
     "agent-hq:worker": "node scripts/agent-hq-worker.mjs",
-    "agent-hq:supervisor": "node scripts/agent-hq-supervisor.mjs"
+    "agent-hq:supervisor": "node scripts/agent-hq-supervisor.mjs",
+    "openseo:test": "node --test tests/openseo-mcp-client.test.mjs"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",
