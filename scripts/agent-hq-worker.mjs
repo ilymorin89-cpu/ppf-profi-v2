@@ -192,6 +192,9 @@ async function runTask(task) {
       totalOutputTokens += Number(data.usage?.output_tokens || 0);
       const calls = (data.output || []).filter(item => item.type === "function_call");
       if (!calls.length) break;
+      if (turn === maxModelTurns - 1) {
+        throw new Error(`Agent tool-call limit reached (${maxModelTurns}); refusing to execute another tool batch without a final model response`);
+      }
       const outputs = [];
       for (const call of calls) {
         const args = JSON.parse(call.arguments || "{}");
