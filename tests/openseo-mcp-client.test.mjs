@@ -34,7 +34,7 @@ test("OpenSEO MCP client initializes, lists tools and pins calls to project", as
   });
   const tools = await client.listTools();
   assert.equal(tools[0].name, "whoami");
-  const result = await client.callTool("whoami");
+  const result = await client.callTool("get_project_context");
   assert.equal(result.content[0].text, "ok");
   const call = calls.find(item => item.body.method === "tools/call");
   assert.equal(call.body.params.arguments.project_id, "ppf-project");
