@@ -28,6 +28,26 @@ test("Agent HQ queue lifecycle (requires isolated migrated test database)", asyn
       assert.equal(Number(budget.per_run_cap_microusd), 0);
     });
 
+    await t.test("per-response usage ledger persists auditable costs", async () => {
+      const [run] = await sql`INSERT INTO agent_runs
+        (task_id,role,worker_id,provider,model,status,cost_microusd)
+        VALUES (${taskId},${role},${workers[0]},'test','test-model','running',25)
+        RETURNING id`;
+      await sql`INSERT INTO agent_run_events
+        (run_id,task_id,role,event_type,input_tokens,output_tokens,web_search_calls,cost_microusd,metadata,idempotency_key)
+        VALUES (${run.id},${taskId},${role},'responses_api_usage',100,50,1,25,'{"response_id":"test-response"}'::jsonb,${`test-ledger-${run.id}`})`;
+      const [event] = await sql`SELECT input_tokens,output_tokens,web_search_calls,cost_microusd,metadata
+        FROM agent_run_events WHERE run_id=${run.id}`;
+      assert.equal(event.input_tokens, 100);
+      assert.equal(event.output_tokens, 50);
+      assert.equal(event.web_search_calls, 1);
+      assert.equal(Number(event.cost_microusd), 25);
+      assert.equal(event.metadata.response_id, "test-response");
+      await assert.rejects(() => sql`INSERT INTO agent_run_events
+        (run_id,task_id,role,event_type,idempotency_key)
+        VALUES (${run.id},${taskId},${role},'duplicate','test-ledger-${run.id}')`);
+    });
+
     await t.test("parallel workers cannot claim the same task", async () => {
       const claim = worker => sql.begin(tx => tx`
         WITH candidate AS (
