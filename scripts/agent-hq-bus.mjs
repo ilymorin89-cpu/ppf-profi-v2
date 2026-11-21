@@ -1,5 +1,6 @@
 import postgres from "postgres";
 import { randomUUID } from "node:crypto";
+import { AGENT_ROLE_NAMES } from "./agent-hq-roles.mjs";
 
 const url = process.env.DATABASE_URL;
 if (!url) {
@@ -23,6 +24,7 @@ async function main() {
   if (command === "enqueue") {
     const [role, title, objective] = args;
     required(role, "role"); required(title, "title"); required(objective, "objective");
+    if (!AGENT_ROLE_NAMES.includes(role)) throw new Error(`Unknown Agent HQ role: ${role}`);
     const [task] = await sql`INSERT INTO agent_tasks (assigned_role,title,objective,expected_output,created_by)
       VALUES (${role},${title},${objective},'Evidence-backed result and next action','owner')
       RETURNING id,status,assigned_role,title,created_at`;
