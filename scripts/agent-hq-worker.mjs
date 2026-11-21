@@ -45,6 +45,13 @@ if (!Number.isInteger(maxOutputTokens) || maxOutputTokens < 64 || maxOutputToken
 }
 const sql = postgres(databaseUrl, { max: 2, idle_timeout: 20 });
 let stopping = false;
+let activeTaskAbort = null;
+for (const signal of ["SIGINT", "SIGTERM"]) {
+  process.once(signal, () => {
+    stopping = true;
+    activeTaskAbort?.abort(new Error(`Worker received ${signal}; cancelling active task`));
+  });
+}
 const roleInstructions = AGENT_ROLES;
 const instructions = roleInstructions[role] || "Complete the assigned specialist task rigorously. State evidence, uncertainty, limitations and next action.";
 
@@ -118,6 +125,7 @@ async function runTask(task) {
     throw error;
   }
   const taskAbort = new AbortController();
+  activeTaskAbort = taskAbort;
   const heartbeat = setInterval(async () => {
     try {
       const [lease] = await sql`UPDATE agent_tasks SET status='running',
@@ -348,6 +356,7 @@ async function runTask(task) {
     console.error(`Task ${task.id} failed:`, message);
   } finally {
     clearInterval(heartbeat);
+    if (activeTaskAbort === taskAbort) activeTaskAbort = null;
   }
 }
 
