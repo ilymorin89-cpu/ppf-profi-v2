@@ -62,8 +62,7 @@ export function createOpenSeoMcpClient({
   apiKey = process.env.OPENSEO_API_KEY,
   projectId = process.env.OPENSEO_PROJECT_ID,
   endpoint = process.env.OPENSEO_MCP_URL || "https://app.openseo.so/mcp",
-  fetchImpl = globalThis.fetch,
-  allowedTools = DEFAULT_READ_ONLY_TOOLS
+  fetchImpl = globalThis.fetch
 } = {}) {
   if (!apiKey || !apiKey.startsWith("oseo_")) {
     throw new Error("OPENSEO_API_KEY is required and must be stored outside the repository.");
@@ -134,7 +133,7 @@ export function createOpenSeoMcpClient({
     if (MUTATING_TOOLS.has(name)) {
       throw new Error(`OpenSEO tool "${name}" is blocked: mutation is not enabled for Agent HQ.`);
     }
-    if (!allowedTools.has(name)) {
+    if (!DEFAULT_READ_ONLY_TOOLS.has(name)) {
       throw new Error(`OpenSEO tool "${name}" is not in the explicit read-only allowlist.`);
     }
     await initialize();
