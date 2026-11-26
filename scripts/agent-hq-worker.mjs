@@ -1,5 +1,9 @@
 import postgres from "postgres";
 import { randomUUID } from "node:crypto";
+import { AGENT_ROLES, AGENT_ROLE_NAMES } from "./agent-hq-roles.mjs";
+import { readFile, realpath } from "node:fs/promises";
+import { resolve, extname } from "node:path";
+import { normalizeProjectRelativePath, isPathWithinRoot } from "./agent-hq-file-policy.mjs";
 
 const role = process.env.AGENT_ROLE;
 const workerId = process.env.AGENT_WORKER_ID || `${role || "worker"}-${process.pid}`;
@@ -10,7 +14,28 @@ const maxOutputTokens = Number(process.env.AGENT_MAX_OUTPUT_TOKENS || 1200);
 const maxModelTurns = 4;
 const pollMs = Number(process.env.AGENT_POLL_MS || 5000);
 
-const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security"];
+const WEB_SEARCH_ROLES = new Set([
+  "seo", "geo", "growth", "analytics", "content_seo",
+  "trend_scout", "auto_news_editor", "auto_law_monitor",
+  "fact_checker", "qa_security"
+]);
+const webSearchEnabled = process.env.AGENT_WEB_SEARCH_ENABLED === "true";
+const webSearchReserveMicrousd = Number(process.env.AGENT_WEB_SEARCH_RESERVE_MICROUSD || 0);
+if (!Number.isSafeInteger(webSearchReserveMicrousd) || webSearchReserveMicrousd < 0) {
+  throw new Error("AGENT_WEB_SEARCH_RESERVE_MICROUSD must be a non-negative integer in micro-USD");
+}
+if (webSearchEnabled && webSearchReserveMicrousd <= 0) {
+  throw new Error("Web search requires a positive AGENT_WEB_SEARCH_RESERVE_MICROUSD reservation");
+}
+const roleCanSearchWeb = webSearchEnabled && WEB_SEARCH_ROLES.has(role);
+const projectRoot = process.env.AGENT_PROJECT_ROOT ? await realpath(resolve(process.env.AGENT_PROJECT_ROOT)) : null;
+const FILE_READ_ROLES = new Set(["coordinator", "web_engineer", "seo", "qa_security", "fact_checker"]);
+const roleCanReadProject = Boolean(projectRoot && FILE_READ_ROLES.has(role));
+const maxProjectFileBytes = 64 * 1024;
+const allowedProjectExtensions = new Set([".md", ".mjs", ".js", ".ts", ".tsx", ".json", ".sql", ".yml", ".yaml", ".txt", ".css"]);
+
+
+const allowedRoles = AGENT_ROLE_NAMES;
 if (!role || !databaseUrl || !apiKey || !model || !allowedRoles.includes(role)) {
   console.error("Required: AGENT_ROLE, DATABASE_URL, OPENAI_API_KEY, AGENT_MODEL");
   process.exit(1);
@@ -20,15 +45,14 @@ if (!Number.isInteger(maxOutputTokens) || maxOutputTokens < 64 || maxOutputToken
 }
 const sql = postgres(databaseUrl, { max: 2, idle_timeout: 20 });
 let stopping = false;
-const roleInstructions = {
-  coordinator: "Coordinate work. Break objectives into verifiable subtasks and route them to the correct specialist. Do not claim work was done unless evidence is present.",
-  web_engineer: "Inspect and reason about website engineering tasks. Never claim to have changed or deployed code unless a tool result proves it.",
-  seo: "Audit technical and on-page SEO. Separate observed facts from hypotheses. Include URLs, evidence, impact and prioritized fixes.",
-  geo: "Improve discoverability in AI answers and local search. Avoid guarantees; distinguish measured evidence from recommendations.",
-  growth: "Focus on qualified PPF PROFI leads and conversion. Prefer measurable experiments over vanity metrics.",
-  analytics: "Analyze tracking and funnel data. Never invent metrics; explicitly identify missing instrumentation or data.",
-  qa_security: "Independently challenge assumptions, check acceptance criteria, security and regressions. Return blockers separately from minor issues."
-};
+let activeTaskAbort = null;
+for (const signal of ["SIGINT", "SIGTERM"]) {
+  process.once(signal, () => {
+    stopping = true;
+    activeTaskAbort?.abort(new Error(`Worker received ${signal}; cancelling active task`));
+  });
+}
+const roleInstructions = AGENT_ROLES;
 const instructions = roleInstructions[role] || "Complete the assigned specialist task rigorously. State evidence, uncertainty, limitations and next action.";
 
 function outputText(response) {
@@ -69,19 +93,21 @@ async function runTask(task) {
         throw new Error("Agent budget is disabled or has zero caps; refusing model call");
       }
       const estimate = Math.ceil((estimatedInputTokens * maxModelTurns * Number(budget.input_price_per_million_microusd) + maxOutputTokens * maxModelTurns * Number(budget.output_price_per_million_microusd)) / 1000000);
-      if (estimate <= 0 || estimate > Number(budget.per_run_cap_microusd) || (Number(task.budget_limit_microusd) > 0 && estimate > Number(task.budget_limit_microusd))) {
+      const webSearchReserve = roleCanSearchWeb ? webSearchReserveMicrousd * maxModelTurns : 0;
+      const totalReservation = estimate + webSearchReserve;
+      if (totalReservation <= 0 || totalReservation > Number(budget.per_run_cap_microusd) || (Number(task.budget_limit_microusd) > 0 && totalReservation > Number(task.budget_limit_microusd))) {
         throw new Error("Estimated request exceeds per-run or task budget");
       }
       const [totals] = await tx`SELECT
         COALESCE(SUM(cost_microusd) FILTER (WHERE started_at >= date_trunc('day',now())),0) AS daily,
         COALESCE(SUM(cost_microusd) FILTER (WHERE started_at >= date_trunc('month',now())),0) AS monthly
         FROM agent_runs`;
-      if (Number(totals.daily) + estimate > Number(budget.daily_cap_microusd) || Number(totals.monthly) + estimate > Number(budget.monthly_cap_microusd)) {
+      if (Number(totals.daily) + totalReservation > Number(budget.daily_cap_microusd) || Number(totals.monthly) + totalReservation > Number(budget.monthly_cap_microusd)) {
         throw new Error("Daily or monthly agent budget exhausted; refusing model call");
       }
       const [created] = await tx`INSERT INTO agent_runs
         (task_id,role,worker_id,provider,model,status,cost_microusd)
-        VALUES (${task.id},${role},${workerId},'openai',${model},'running',${estimate}) RETURNING id`;
+        VALUES (${task.id},${role},${workerId},'openai',${model},'running',${totalReservation}) RETURNING id`;
       return created;
     });
   
@@ -98,22 +124,31 @@ async function runTask(task) {
     }
     throw error;
   }
+  const taskAbort = new AbortController();
+  activeTaskAbort = taskAbort;
   const heartbeat = setInterval(async () => {
     try {
       const [lease] = await sql`UPDATE agent_tasks SET status='running',
         lease_until=now()+interval '3 minutes',updated_at=now()
         WHERE id=${task.id} AND lease_owner=${workerId} AND status IN ('claimed','running')
         RETURNING id`;
-      if (!lease) stopping = true;
+      if (!lease) { stopping = true; taskAbort.abort(new Error("Task lease lost; aborting active model request")); }
     } catch (error) {
       console.error("Heartbeat failed:", error instanceof Error ? error.message : error);
       stopping = true;
+      taskAbort.abort(new Error("Heartbeat failed; aborting active model request"));
     }
   }, 45_000);
   heartbeat.unref?.();
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+  let webSearchCalls = 0;
+  let totalMeteredCost = 0;
+  let receivedProviderResponse = false;
+  let requestInFlight = false;
 
   try {
-    const inbox = await sql`SELECT from_role,kind,left(body,1000) AS body,created_at FROM agent_messages WHERE to_role=${role} AND (task_id=${task.id} OR task_id=${task.parent_task_id || task.id} OR task_id IS NULL) ORDER BY created_at DESC LIMIT 6`;
+    const inbox = await sql`SELECT from_role,kind,left(body,1000) AS body,created_at FROM agent_messages WHERE to_role=${role} AND (task_id=${task.id} OR task_id=${task.parent_task_id || task.id} OR task_id IN (SELECT id FROM agent_tasks WHERE parent_task_id=${task.parent_task_id}) OR task_id IS NULL) ORDER BY created_at DESC LIMIT 12`;
     const siblingArtifacts = task.parent_task_id ? await sql`SELECT a.id,a.created_by,a.title,left(a.content,1500) AS content FROM agent_artifacts a JOIN agent_tasks c ON c.id=a.task_id WHERE c.parent_task_id=${task.parent_task_id} ORDER BY a.created_at LIMIT 5` : [];
     const prompt = [
       `Task: ${task.title}`,
@@ -124,10 +159,16 @@ async function runTask(task) {
       `Recent inter-agent messages: ${JSON.stringify(inbox)}`,
       `Parent task specialist artifacts for review: ${JSON.stringify(siblingArtifacts)}`,
       "",
-      "Return a concise, evidence-backed result. Clearly label facts, assumptions, unknowns, blockers and next action. Do not claim to have accessed systems, changed files, published content, contacted customers or spent money unless an authorized tool actually did so. You have no tools in this worker process; if another role must act, explain the handoff needed."
+      "Return a concise, evidence-backed result. Clearly label facts, assumptions, unknowns, blockers and next action. Do not claim to have accessed systems, changed files, published content, contacted customers or spent money unless an authorized tool actually did so. Use only explicitly provided tools; project file access, if present, is read-only and path-scoped."
     ].join("\n");
-    const allowedRoles = ["coordinator","web_engineer","seo","geo","growth","analytics","qa_security"];
+    const allowedRoles = AGENT_ROLE_NAMES;
     const tools = [
+      ...(roleCanSearchWeb ? [{ type: "web_search", search_context_size: "low" }] : []),
+      ...(roleCanReadProject ? [{
+        type: "function", name: "read_project_file",
+        description: "Read one text file inside the configured project root. Read-only; never use absolute paths or parent traversal.",
+        parameters: { type: "object", additionalProperties: false, properties: { path: { type: "string" } }, required: ["path"] }, strict: true
+      }] : []),
       {
         type: "function", name: "send_message",
         description: "Send a direct message to another specialist agent. Use this to request evidence, challenge a finding, or hand off work.",
@@ -175,9 +216,8 @@ async function runTask(task) {
     ];
     let responseInput = prompt;
     let data;
-    let totalInputTokens = 0;
-    let totalOutputTokens = 0;
     for (let turn = 0; turn < maxModelTurns; turn++) {
+      requestInFlight = true;
       const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
         headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
@@ -188,22 +228,52 @@ async function runTask(task) {
           tools,
           max_output_tokens: maxOutputTokens
         }),
-        signal: AbortSignal.timeout(120_000)
+        signal: AbortSignal.any([taskAbort.signal, AbortSignal.timeout(120_000)])
       });
+      requestInFlight = false;
       if (!response.ok) {
         const detail = (await response.text()).slice(0, 1200);
         throw new Error(`OpenAI API ${response.status}: ${detail}`);
       }
       data = await response.json();
-      totalInputTokens += Number(data.usage?.input_tokens || 0);
-      totalOutputTokens += Number(data.usage?.output_tokens || 0);
+      receivedProviderResponse = true;
+      const responseSearchCalls = (data.output || []).filter(item => item.type === "web_search_call").length;
+      const responseInputTokens = Number(data.usage?.input_tokens || 0);
+      const responseOutputTokens = Number(data.usage?.output_tokens || 0);
+      webSearchCalls += responseSearchCalls;
+      totalInputTokens += responseInputTokens;
+      totalOutputTokens += responseOutputTokens;
+      const [responsePrices] = await sql`SELECT input_price_per_million_microusd,output_price_per_million_microusd FROM agent_budget_config WHERE id=1`;
+      const responseCost = Math.ceil((responseInputTokens * Number(responsePrices.input_price_per_million_microusd) + responseOutputTokens * Number(responsePrices.output_price_per_million_microusd)) / 1000000)
+        + responseSearchCalls * (roleCanSearchWeb ? webSearchReserveMicrousd : 0);
+      totalMeteredCost += responseCost;
+      await sql`INSERT INTO agent_run_events
+        (run_id,task_id,role,event_type,input_tokens,output_tokens,web_search_calls,cost_microusd,metadata,idempotency_key)
+        VALUES (${run.id},${task.id},${role},'responses_api_usage',${responseInputTokens},${responseOutputTokens},
+          ${responseSearchCalls},${responseCost},${JSON.stringify({ response_id: data.id || null, model, turn })}::jsonb,${`${run.id}-response-${turn}`})
+        ON CONFLICT (idempotency_key) DO NOTHING`;
       const calls = (data.output || []).filter(item => item.type === "function_call");
       if (!calls.length) break;
+      if (turn === maxModelTurns - 1) {
+        throw new Error(`Agent tool-call limit reached (${maxModelTurns}); refusing to execute another tool batch without a final model response`);
+      }
       const outputs = [];
       for (const call of calls) {
         const args = JSON.parse(call.arguments || "{}");
         let result;
-        if (call.name === "send_message") {
+        if (call.name === "read_project_file") {
+          if (!roleCanReadProject) throw new Error("Project file read is not permitted");
+          const relativePath = normalizeProjectRelativePath(args.path);
+          const candidate = resolve(projectRoot, relativePath);
+          if (!isPathWithinRoot(projectRoot, candidate)) throw new Error("Project file path escapes project root");
+          const actualPath = await realpath(candidate);
+          if (!isPathWithinRoot(projectRoot, actualPath)) throw new Error("Project file symlink escapes project root");
+          const extension = extname(actualPath).toLowerCase();
+          if (!allowedProjectExtensions.has(extension)) throw new Error("File extension is not allowed for project reading");
+          const file = await readFile(actualPath);
+          if (file.byteLength > maxProjectFileBytes) throw new Error("Project file exceeds 64 KiB read limit");
+          result = { path: relativePath, bytes: file.byteLength, content: file.toString("utf8") };
+        } else if (call.name === "send_message") {
           if (!allowedRoles.includes(args.to_role) || !["request","question","objection","handoff","status"].includes(args.kind) || typeof args.body !== "string" || !args.body.trim()) {
             throw new Error("Invalid send_message arguments");
           }
@@ -251,8 +321,7 @@ async function runTask(task) {
     }
     if (!result) throw new Error("Model returned no text output");
     const usage = { input_tokens: totalInputTokens, output_tokens: totalOutputTokens };
-    const [budget] = await sql`SELECT input_price_per_million_microusd,output_price_per_million_microusd FROM agent_budget_config WHERE id=1`;
-    const actualCost = Math.ceil((usage.input_tokens * Number(budget.input_price_per_million_microusd) + usage.output_tokens * Number(budget.output_price_per_million_microusd)) / 1000000);
+    const meteredCost = totalMeteredCost;
     await sql.begin(async tx => {
       const [owned] = await tx`UPDATE agent_tasks SET
         status=CASE WHEN ${role}='coordinator' AND EXISTS (SELECT 1 FROM agent_tasks child WHERE child.parent_task_id=${task.id}) THEN 'review' ELSE 'done' END,
@@ -264,12 +333,12 @@ async function runTask(task) {
       await tx`INSERT INTO agent_artifacts (task_id,created_by,artifact_type,title,content,evidence)
         VALUES (${task.id},${role},'result',${task.title},${result},'[]'::jsonb)`;
       await tx`UPDATE agent_runs SET status='succeeded',input_tokens=${usage.input_tokens || 0},
-        output_tokens=${usage.output_tokens || 0},cost_microusd=${actualCost},finished_at=now() WHERE id=${run.id}`;
+        output_tokens=${usage.output_tokens || 0},cost_microusd=${meteredCost},finished_at=now() WHERE id=${run.id}`;
       await tx`INSERT INTO agent_messages
         (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
         VALUES (${task.id},${randomUUID()},${role},'coordinator','result',${result.slice(0,12000)},${randomUUID()})`;
     });
-    console.log(JSON.stringify({ taskId: task.id, status: "done", inputTokens: usage.input_tokens || 0, outputTokens: usage.output_tokens || 0 }));
+    console.log(JSON.stringify({ taskId: task.id, status: "done", inputTokens: usage.input_tokens || 0, outputTokens: usage.output_tokens || 0, webSearchCalls, costMicrousd: meteredCost }));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await sql.begin(async tx => {
@@ -277,7 +346,9 @@ async function runTask(task) {
         status=CASE WHEN attempts < max_attempts THEN 'queued' ELSE 'dead_letter' END,
         lease_owner=NULL,lease_until=NULL,updated_at=now()
         WHERE id=${task.id} AND lease_owner=${workerId}`;
-      await tx`UPDATE agent_runs SET status='failed',error=${message.slice(0,4000)},finished_at=now() WHERE id=${run.id}`;
+      await tx`UPDATE agent_runs SET status='failed',input_tokens=${totalInputTokens},output_tokens=${totalOutputTokens},
+        cost_microusd=CASE WHEN ${receivedProviderResponse && !requestInFlight} THEN ${totalMeteredCost} ELSE cost_microusd END,
+        error=${message.slice(0,4000)},finished_at=now() WHERE id=${run.id}`;
       await tx`INSERT INTO agent_messages
         (task_id,conversation_id,from_role,to_role,kind,body,idempotency_key)
         VALUES (${task.id},${randomUUID()},${role},'coordinator','status',${message.slice(0,4000)},${randomUUID()})`;
@@ -285,6 +356,7 @@ async function runTask(task) {
     console.error(`Task ${task.id} failed:`, message);
   } finally {
     clearInterval(heartbeat);
+    if (activeTaskAbort === taskAbort) activeTaskAbort = null;
   }
 }
 

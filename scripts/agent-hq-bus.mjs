@@ -1,5 +1,6 @@
 import postgres from "postgres";
 import { randomUUID } from "node:crypto";
+import { AGENT_ROLE_NAMES } from "./agent-hq-roles.mjs";
 
 const url = process.env.DATABASE_URL;
 if (!url) {
@@ -23,6 +24,7 @@ async function main() {
   if (command === "enqueue") {
     const [role, title, objective] = args;
     required(role, "role"); required(title, "title"); required(objective, "objective");
+    if (!AGENT_ROLE_NAMES.includes(role)) throw new Error(`Unknown Agent HQ role: ${role}`);
     const [task] = await sql`INSERT INTO agent_tasks (assigned_role,title,objective,expected_output,created_by)
       VALUES (${role},${title},${objective},'Evidence-backed result and next action','owner')
       RETURNING id,status,assigned_role,title,created_at`;
@@ -33,6 +35,8 @@ async function main() {
     const [from, to, rawTaskId, kind, ...bodyParts] = args;
     const body = bodyParts.join(" ");
     required(from, "fromRole"); required(to, "toRole"); required(kind, "kind"); required(body, "message");
+    if (!AGENT_ROLE_NAMES.includes(from) && !["owner", "supervisor"].includes(from)) throw new Error(`Unknown sender role: ${from}`);
+    if (!AGENT_ROLE_NAMES.includes(to)) throw new Error(`Unknown recipient role: ${to}`);
     const allowed = ["request","result","question","objection","handoff","approval_request","status"];
     if (!allowed.includes(kind)) throw new Error("Unsupported message kind");
     const id = rawTaskId === "-" ? null : taskId(rawTaskId);
@@ -45,6 +49,7 @@ async function main() {
   }
   if (command === "inbox") {
     const role = required(args[0], "role");
+    if (!AGENT_ROLE_NAMES.includes(role)) throw new Error(`Unknown Agent HQ role: ${role}`);
     const rows = await sql`SELECT id,task_id,from_role,to_role,kind,body,evidence,created_at
       FROM agent_messages WHERE to_role=${role} ORDER BY created_at DESC LIMIT 50`;
     console.log(JSON.stringify(rows, null, 2));
@@ -52,6 +57,7 @@ async function main() {
   }
   if (command === "claim") {
     const role = required(args[0], "role");
+    if (!AGENT_ROLE_NAMES.includes(role)) throw new Error(`Unknown Agent HQ role: ${role}`);
     const workerId = required(args[1], "workerId");
     const rows = await sql.begin(async tx => tx`
       WITH candidate AS (
